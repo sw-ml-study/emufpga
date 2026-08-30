@@ -1,8 +1,9 @@
 number = 3
 slug = "spm-stream"
-status = "in-progress"
+status = "completed"
 description = "seek-free WeightStream trait plus memory and file impls and eta/Ps/Rp metrics"
 role = "legacy"
 context_files = []
 created_at = "2026-08-30T15:23:07"
-commits = []
+completed_at = "2026-08-30T16:03:56"
+commits = ["da28d69834b2f0a7d3c21ec9195d0a57be1b2645"]
