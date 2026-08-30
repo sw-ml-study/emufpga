@@ -1,0 +1,11 @@
+number = 1
+slug = "repo-scaffold"
+status = "pending"
+description = """
+Scaffold the emufpga repository so that every later step has a working
+build ..."""
+role = "production"
+context_files = []
+created_at = "2026-08-30T13:40:17"
+task_type = "rust-scaffold"
+commits = []

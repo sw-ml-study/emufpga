@@ -1,0 +1,1824 @@
+So, there used to be a CRT terminal that used "bit-serial" processing and TI chips that held 512 bits per.  How could this be re-implemented today using FPGAs and/or currently avaialable chips to implement a radically different GPU that can perform GPT or other inference, presumably cheaper than the recently super-inflated RAM prices.  How would this archticure work.  Trading off random access for cheaper (slower) serial access with custom FPGA linear algebra operations.  Could this amortize the cost of scaning a layer or be use in parallel somehow for things like MoE, Mamba Spaces, MTP, etc.?
+
+Yes. There is a credible architecture here, but I would not try to recreate 512-bit shift-register chips literally. I would recreate their semantics:
+
+Model weights live in a circulating/sequential address space. Compute moves to the weight stream rather than weights being fetched randomly by compute.
+
+That is almost the inverse of a GPU.
+
+The historical precedent is especially apt: Intel's history describes Datapoint/Computer Terminal Corp. using 512-bit recirculating shift registers in CRT terminals and then considering the same rotating memory concept for computer main memory. TI's TMS3401 was likewise a 512-bit dynamic shift register intended for display/delay-line/serial-storage applications.
+
+I think a modern version could be quite interesting for inference, particularly with quantized models, MoE, speculative/MTP execution, and state-space models.
+
+1. Think "Serial Tensor Processor," not GPU
+
+A conventional GPU looks roughly like:
+
+       HBM / GDDR
+           |
+     huge random-access
+       bandwidth
+           |
+    caches / crossbars
+           |
+    thousands of ALUs
+
+Your machine could instead look like:
+
+ Sequential parameter stores
+  |   |   |   |   |   |   |
+  v   v   v   v   v   v   v
++-----------------------------+
+|  weight stream deserializers |
++-----------------------------+
+        |||||||||||||
+        vvvvvvvvvvvvv
++-----------------------------+
+| bit/low-bit MAC pipelines   |
+| add/sub/XNOR/popcount       |
++-----------------------------+
+             |
+       accumulator SRAM
+             |
+      activation SRAM
+             |
+      next layer / block
+
+The critical architectural rule becomes:
+
+Never ask the parameter store for an arbitrary weight.
+
+Instead:
+
+Arrange weights physically in exactly the order the tensor engine consumes them.
+Start a layer scan.
+Every clock produces another group of weights.
+FPGA fabric immediately consumes them.
+Keep only activations, scales and partial sums in fast SRAM.
+When the stream reaches the end of the layer, the matrix operation is finished.
+
+That sounds horribly restrictive for general computing.
+
+For inference matrix multiplication, however, it's surprisingly natural.
+
+2. Matrix-vector multiplication is almost made for this
+
+Consider a transformer linear layer:
+
+$$ y = Wx $$
+
+For single-token inference, x might contain 4K–16K activation values, while W contains tens or hundreds of millions of parameters.
+
+You do not need random access to W.
+
+Lay it out something like:
+
+w[0,0] w[1,0] w[2,0] ... w[M-1,0]
+w[0,1] w[1,1] w[2,1] ... w[M-1,1]
+...
+
+Now hold:
+
+x[j]
+
+while streaming an entire column of weights.
+
+Conceptually:
+
+x0 --> w00 --> accum0
+    --> w10 --> accum1
+    --> w20 --> accum2
+       ...
+    --> wm0 --> accumM
+
+x1 --> w01 --> accum0
+    --> w11 --> accum1
+       ...
+
+You only need fast storage for:
+
+activation vector x;
+output accumulators;
+quantization scales;
+some pipeline buffers.
+
+Those are tiny compared with W.
+
+For example, even:
+
+16K activations × 16 bits = 32 KB
+16K accumulators × 32 bits = 64 KB
+
+is trivial FPGA SRAM territory.
+
+The 35 GB of Q4 parameters of a roughly 70B model don't need to be RAM at all.
+
+That's the key observation.
+
+3. Don't make the serial memory literally one bit wide
+
+Here's where I'd depart from the old CRT design.
+
+One serial chain:
+
+0 -> 1 -> 1 -> 0 -> 1 -> ...
+
+is unnecessarily slow.
+
+Instead make hundreds or thousands of independent serial lanes:
+
+           FPGA
+             |
+   +---------+---------+
+   | | | | | | | | | |
+   v v v v v v v v v v
+  S0 S1 S2 S3 ...    S255
+
+Each S is a sequential parameter stream.
+
+This turns the problem into:
+
+How cheaply can we manufacture aggregate sequential bandwidth?
+
+That is quite different from:
+
+How cheaply can we manufacture 1 TB of low-latency coherent random-access memory?
+
+And commodity storage technology is extremely good at the former.
+
+4. NAND flash becomes an interesting candidate
+
+The obvious 2026 candidates aren't shift registers.
+
+They are:
+
+raw NAND flash;
+eMMC/UFS;
+multiple inexpensive NVMe devices;
+QSPI/OSPI flash for smaller prototypes;
+serial/HyperRAM/PSRAM for intermediate designs;
+even hard disks for deliberately extreme experiments.
+
+NAND is attractive because you don't actually care about its awful random-access characteristics.
+
+Store:
+
+Layer 0:
+  Q weights
+  K weights
+  V weights
+  O weights
+  MLP weights
+
+Layer 1:
+  ...
+
+Layer 79:
+  ...
+
+already tiled into FPGA consumption order.
+
+The FPGA performs enormous sequential reads.
+
+No filesystem.
+
+No virtual memory.
+
+No page cache.
+
+Possibly not even a conventional SSD controller in the ultimate machine.
+
+Instead:
+
+NAND channels -> ECC -> FIFO -> tensor lanes
+
+You would essentially be building a read-mostly tensor tape drive made out of semiconductor flash.
+
+Model loading becomes formatting the "tape."
+
+5. Low-bit quantization makes this much more interesting
+
+Q8 works.
+
+Q4 is better.
+
+Q2/ternary is where this architecture gets really peculiar.
+
+Imagine 1.58-bit/ternary weights:
+
+-1
+ 0
++1
+
+The weight-processing element doesn't need a multiplier:
+
+-1 => accumulator -= activation
+ 0 => do nothing
++1 => accumulator += activation
+
+So the storage stream itself effectively contains instructions for the arithmetic unit.
+
+A stream like:
+
++ 0 - - + + 0 + ...
+
+drives accumulator banks.
+
+That's quite close philosophically to your old serial processor.
+
+For binary weights:
+
+XNOR
+popcount
+accumulate
+
+can turn LUT fabric into enormous amounts of low-precision compute.
+
+FPGA DSP blocks can then be reserved for higher-precision activation/scaling/output operations.
+
+6. The important metric isn't TOPS
+
+For autoregressive LLM inference, the first-order constraint becomes:
+
+$$ \text{tokens/sec} \lesssim \frac{\text{parameter-stream bandwidth}} {\text{bytes of parameters touched/token}} $$
+
+A Q4 70B model is roughly 35 GB of parameter data.
+
+Ignoring various complications:
+
+Aggregate stream BW	Full 35-GB scans/sec
+10 GB/s	0.29
+25 GB/s	0.71
+50 GB/s	1.43
+100 GB/s	2.86
+200 GB/s	5.71
+400 GB/s	11.4
+
+This illustrates both the problem and the opportunity.
+
+A conventional accelerator gets its speed from astonishing memory bandwidth. AMD's current Versal HBM parts reach up to 819 GB/s, while the older U55C offers 460 GB/s HBM2 and, strikingly, about 35 TB/s of internal SRAM bandwidth.
+
+Your system says:
+
+I won't try to buy expensive HBM bandwidth. I'll use much cheaper storage, then restructure inference to extract more useful computation from every byte passing the FPGA.
+
+And that's where things get interesting.
+
+7. Batching completely changes the economics
+
+Suppose one weight arrives:
+
+w
+
+Normally for one-token inference:
+
+w * x0
+
+and it's gone.
+
+But if you're serving 32 independent sequences, you can do:
+
+w*x0
+w*x1
+w*x2
+...
+w*x31
+
+before throwing w away.
+
+Suddenly one flash read supports 32 MACs.
+
+That is exactly how you amortize the scan.
+
+So your architecture could have:
+
+              weight w
+                 |
+       +---------+---------+
+       |         |         |
+      x0        x1       ... x31
+       |         |           |
+      MAC       MAC          MAC
+
+The weight stream is broadcast.
+
+Activations remain resident in FPGA SRAM/DRAM.
+
+A 35 GB model scanned at only 50 GB/s still takes ~700 ms per complete scan, but a batch of 32 gives approximately:
+
+32 tokens / 0.7 sec ≈ 46 token-results/sec
+
+aggregate throughput.
+
+Latency isn't great.
+
+Throughput/$ could be.
+
+That's a very different accelerator market than an interactive gaming GPU.
+
+8. MoE is possibly the killer application
+
+MoE is much more compatible with this architecture than a huge dense transformer.
+
+DeepSeek-V3, for example, has 671B total parameters but activates only about 37B parameters per token.
+
+Instead of:
+
+one gigantic serial stream
+
+make each expert a separate stream:
+
+Expert 0 NAND bank --> FPGA engine 0
+Expert 1 NAND bank --> FPGA engine 1
+Expert 2 NAND bank --> FPGA engine 2
+...
+Expert N NAND bank --> FPGA engine N
+
+The router executes using resident fast memory.
+
+Then:
+
+token A -> experts 3, 17
+token B -> experts 2, 17
+token C -> experts 3, 9
+
+A scheduler collects requests:
+
+Expert 3:
+   A
+   C
+   G
+   K
+   ...
+
+Expert 17:
+   A
+   B
+   D
+   ...
+
+Then starts one sequential scan of Expert 3 and computes all tokens requesting Expert 3 simultaneously.
+
+That's superb amortization.
+
+In other words:
+
+Instead of bringing an expert into VRAM, route activations to where the expert's serial stream lives.
+
+The expert is almost a physical device.
+
+9. It suggests a really unusual physical MoE
+
+Imagine a backplane:
+
+              Router FPGA
+                  |
+     +------------+-------------+
+     |            |             |
+     v            v             v
+ Expert Card  Expert Card   Expert Card
+     #0           #1           #2
+     |            |             |
+ Flash banks   Flash banks   Flash banks
+     |            |             |
+ FPGA MACs     FPGA MACs     FPGA MACs
+
+An expert board might cost mostly:
+
+cheap flash + modest FPGA
+
+rather than:
+
+expensive GPU + expensive HBM
+
+And you could have hundreds of them.
+
+Network traffic contains activations, not parameters.
+
+That's an important inversion.
+
+10. This also scales strangely well over Ethernet
+
+Suppose an expert has hundreds of MB of weights.
+
+Shipping that expert across a network is terrible.
+
+But an activation vector might only be tens of KB.
+
+Therefore:
+
+        token activation
+              |
+              v
+        25/100 Gb Ethernet
+              |
+              v
+        expert appliance
+              |
+       serial flash scan
+              |
+              v
+        result activation
+
+is quite plausible.
+
+It becomes a dataflow machine.
+
+FPGAs are particularly good here because the Ethernet packet can potentially flow:
+
+Ethernet MAC
+   -> activation FIFO
+   -> expert engine
+   -> output FIFO
+   -> Ethernet MAC
+
+without CPUs touching the hot path.
+
+11. Mamba/state-space models could be even cleaner
+
+State-space architectures remove one major annoyance of transformer decoding: the growing KV cache.
+
+A recurrent SSM structure conceptually has:
+
+small state(t)
+    +
+input(t)
+    |
+    v
+state update
+    |
+    v
+output(t)
+
+So its dynamic working set can remain comparatively small and local.
+
+That's exactly what our architecture wants:
+
+large immutable parameter stream -> slow sequential storage
+
+small mutable recurrent state    -> FPGA SRAM
+
+activations                       -> FPGA SRAM
+
+Rather than:
+
+gigantic immutable weights + growing KV cache
+
+competing for external memory.
+
+Mamba doesn't magically eliminate the need to consume model parameters, of course, but its state behavior matches the serial-parameter/local-state division very nicely.
+
+I'd put SSM/Mamba-style architectures near the top of the research list.
+
+12. MTP and speculative decoding are perhaps even more important
+
+Multi-token prediction and speculative decoding can attack the biggest weakness of this architecture.
+
+Without them:
+
+scan model
+-> one token
+scan model
+-> one token
+scan model
+-> one token
+
+Ouch.
+
+If another mechanism gives you candidates:
+
+t+1 t+2 t+3 t+4 t+5 t+6
+
+the big model can potentially verify a block much more like a matrix operation.
+
+Now a stream of weights can participate in computation for several positions:
+
+weight w
+   |
+   +-> candidate t+1
+   +-> candidate t+2
+   +-> candidate t+3
+   +-> candidate t+4
+
+Thus speculative execution effectively creates temporal batching within one user's sequence.
+
+That is extremely valuable here.
+
+I'd investigate:
+
+serial parameter store
+       +
+small resident draft model
+       +
+multi-token verifier
+
+as a single integrated design.
+
+The draft model might live entirely in ordinary DRAM or FPGA-attached SRAM.
+
+The large verifier sits on cheap sequential storage.
+
+13. There is another possibility: circulating weights
+
+Here's where I'd revive the old CRT idea almost literally.
+
+Suppose the parameter stream forms a logical ring:
+
+             +------------------------+
+             |                        |
+             v                        |
+Layer0 -> Layer1 -> ... -> Layer79 --+
+
+The physical representation need not rewrite NAND continuously; the controller just wraps its address.
+
+Now the whole model is a rotating object.
+
+Computation waits for whatever is about to pass under the "head."
+
+That sounds crazy until there are many requests.
+
+Instead of executing:
+
+request A from beginning to end
+request B from beginning to end
+
+execute:
+
+Layer 0 passes:
+ A B C D E F G...
+
+Layer 1 passes:
+ A B C D E F G...
+
+Layer 2 passes:
+ A B C D E F G...
+
+Requests become objects moving around a pipeline while the model continually rotates.
+
+That's essentially:
+
+a token factory instead of a token processor.
+
+Latency might be seconds.
+
+Throughput might nevertheless be substantial.
+
+14. Multiple independent rings are even better
+
+Don't build:
+
+35 GB ring
+
+Build perhaps:
+
+ring 0  attention layer subset
+ring 1  MLP/expert subset
+ring 2  expert group
+...
+
+And stripe each ring:
+
+flash0 ──┐
+flash1 ──┤
+flash2 ──┤
+...      ├── FPGA
+flash31 ─┘
+
+The FPGA knows exactly which bit arrives at every cycle.
+
+That removes an enormous amount of machinery normally associated with memory:
+
+arbitrary addresses;
+caches;
+cache coherency;
+speculative memory requests;
+complex schedulers;
+large crossbars;
+virtual memory;
+memory consistency;
+random fetch queues.
+
+We're spending silicon on arithmetic, not pretending inference is a general-purpose workload.
+
+15. FPGA BRAM becomes your "real RAM"
+
+The hierarchy I envision is:
+
+Level 0     registers
+            accumulators
+            tiny state
+
+Level 1     FPGA BRAM / UltraRAM
+            activations
+            recurrent state
+            routing queues
+
+Level 2     modest DDR/PSRAM
+            KV cache if needed
+            longer-lived activations
+            batch queues
+
+Level 3     serial model store
+            NAND / NVMe / flash
+            immutable weights
+
+So we're not claiming RAM is unnecessary.
+
+We're saying:
+
+Don't waste expensive RAM storing immutable 70-billion-element matrices that you're going to traverse sequentially anyway.
+
+That's the much more defensible proposition.
+
+16. KV cache becomes an architectural discriminator
+
+Dense transformer weights fit the sequential model wonderfully.
+
+KV cache doesn't.
+
+KV wants something closer to:
+
+append
+read previous sequence
+append
+read previous sequence
+
+However, even KV access is mostly highly structured rather than arbitrary.
+
+Options therefore include:
+
+keep KV in ordinary cheap DDR;
+quantize KV heavily;
+use GQA;
+use MLA;
+use sliding-window attention;
+use SSM/recurrent architecture;
+segregate KV memory from parameter storage.
+
+DeepSeek's MLA is particularly relevant because it deliberately reduces the inference-time KV burden.
+
+So I wouldn't try to make everything serial.
+
+I'd attack the gigantic immutable parameter store first.
+
+17. The FPGA tensor unit could be remarkably simple
+
+For Q4, one lane might look like:
+
+           4-bit weight
+                |
+            decode/scale
+                |
+activation ---> MAC ----> accumulator
+
+For ternary:
+
+       two-bit encoded weight
+              |
+       +------+------+
+       |      |      |
+      -1      0     +1
+       |      |      |
+      SUB    NOP     ADD
+        \     |     /
+         accumulator
+
+And instantiate hundreds/thousands.
+
+Since the FPGA knows the stream schedule at synthesis/runtime configuration time, the addressing logic becomes tiny.
+
+You could even design specialized pipelines for:
+
+RMSNorm
+matrix-vector
+SiLU
+elementwise multiply
+attention dot product
+RoPE
+softmax
+requantization
+
+without implementing anything resembling a GPU ISA.
+
+18. There's a fascinating bit-serial variation
+
+Your original observation suggests going further.
+
+Don't deserialize Q4 into parallel 4-bit values at all.
+
+Store bitplanes:
+
+W bit 0 stream
+W bit 1 stream
+W bit 2 stream
+W bit 3 stream
+
+And perform bit-serial arithmetic.
+
+This trades:
+
+silicon area
+
+against:
+
+clock cycles
+
+in a very FPGA-friendly way.
+
+For inference where memory is already the bottleneck, slower arithmetic isn't necessarily harmful if enough lanes keep up with the incoming bitstream.
+
+This is an important principle:
+
+The MAC array only has to be fast enough to consume storage bandwidth.
+
+Anything faster is wasted silicon.
+
+That is almost the opposite of GPU design.
+
+19. There are really three parallelism dimensions
+
+I would exploit all three.
+
+A. Spatial striping
+256 flash streams
+       ↓
+256+ weight lanes
+
+raises raw bandwidth.
+
+B. Batch parallelism
+one weight
+   ↓
+x0 x1 x2 ... x31
+
+amortizes every parameter byte over users.
+
+C. Expert parallelism
+expert0 expert1 expert2 ...
+
+means unused model parameters aren't read at all.
+
+And speculative/MTP gives a fourth pseudo-dimension:
+
+D. Temporal parallelism
+token t+1
+token t+2
+token t+3
+...
+
+reuse the same parameter scan.
+
+Combining B+C+D is where I think this starts becoming genuinely interesting rather than merely "slow GPU made out of flash."
+
+20. The architecture therefore favors some models dramatically
+Architecture	Serial-weight suitability	Reason
+Dense Transformer, batch=1	Fair	must scan nearly every weight/token
+Dense Transformer, large batch	Good	weight scan amortized
+GQA/MLA Transformer	Better	smaller fast-memory requirement
+MoE	Excellent	only selected experts need scanning
+Speculative decoding	Excellent	multiple positions per weight scan
+MTP	Very interesting	increases temporal reuse
+Mamba/SSM	Excellent candidate	small recurrent state, no huge KV
+Embedding/RAG lookup	Poor	inherently random access
+Training	Poor initially	weights/gradients need extensive writes
+
+So I'd explicitly target inference, not training.
+
+21. And I wouldn't start with an HBM FPGA
+
+An Alveo V80 gives ~810–820 GB/s memory bandwidth, precisely because AMD put expensive HBM beside the FPGA.
+
+That's useful as a performance reference, but philosophically backwards for this experiment.
+
+The PoC should ask:
+
+Can 10–50 GB/s of cheap sequential storage plus clever reuse compete with much more expensive random-access memory for the right workload?
+
+A first machine could be very modest:
+
+                    PCIe FPGA
+                       |
+       +---------------+---------------+
+       |               |               |
+    NVMe #0         NVMe #1         NVMe #2 ...
+       |               |               |
+       +-------- sequential DMA --------+
+                       |
+                 weight FIFOs
+                       |
+             quantized tensor engine
+                       |
+                  FPGA SRAM
+
+NVMe isn't the final architecture—it contains lots of machinery you don't need—but it makes an extremely convenient prototype.
+
+22. Then eliminate NVMe
+
+A second-generation board could go:
+
+                 FPGA
+        +----------+----------+
+        |          |          |
+    NAND ch0   NAND ch1   ... NAND chN
+        |          |          |
+       ECC        ECC         ECC
+        \          |          /
+         +----- FIFOs -------+
+                  |
+            tensor engine
+
+Now you're actually building the modern equivalent of the serial-memory terminal.
+
+The NAND isn't a filesystem.
+
+It is effectively a huge ROM containing a tensor program.
+
+Model installation lays out the physical streams.
+
+Inference clocks them.
+
+23. One potentially radical variant: storage is the instruction stream
+
+This may be the most interesting outcome of the idea.
+
+Instead of weights being considered data:
+
+opcode + address + weight
+
+encode the model stream as something closer to:
+
+ACCUM +A3, x173
+ACCUM -A4, x173
+SKIP
+ACCUM +A6, x173
+...
+SCALE block
+NEXT_ACTIVATION
+...
+
+For ternary networks especially, the weight and operation collapse into one thing.
+
+Then the "model file" effectively becomes FPGA microcode.
+
+That's very reminiscent of the old bit-serial machines, except the serial medium might contain hundreds of billions of operations.
+
+24. What I would build as the first serious experiment
+
+Not GPT-70B.
+
+I'd make the research progression:
+
+Phase 1
+Q4 matrix-vector engine
+FPGA + NVMe sequential DMA
+measure GB/s -> useful MAC/s
+
+Then:
+
+Phase 2
+small 0.5B–3B transformer
+weights never loaded into host RAM
+FPGA streams every layer
+
+Then:
+
+Phase 3
+batch 1 versus 4/8/16/32
+prove weight-scan amortization
+
+Then:
+
+Phase 4
+tiny MoE
+one parameter stream per expert
+router + activation queues
+
+Then:
+
+Phase 5
+ternary/BitNet-style engine
+eliminate conventional multipliers
+
+And then the really interesting comparisons:
+
+Phase 6
+Transformer vs Mamba/SSM
+
+Phase 7
+speculative/MTP verifier
+
+Phase 8
+raw NAND instead of NVMe
+
+I would consider Phase 3 and Phase 4 the make-or-break experiments.
+
+25. My tentative architecture
+
+I'd give the concept a name such as a Serial Parameter Machine (SPM):
+
+             HOST / TOKENIZER
+                    |
+              command queue
+                    |
+                    v
++------------------------------------------------+
+|                  CONTROL FPGA                  |
+|                                                |
+|  scheduler -> router -> activation SRAM        |
+|                       |                        |
+|                       v                        |
+|               +---------------+                |
+|               | Tensor Engine |                |
+|               +-------+-------+                |
+|                       ^                        |
+|                       |                        |
+|  stream 0 -> FIFO ----+                        |
+|  stream 1 -> FIFO ----+                        |
+|  stream 2 -> FIFO ----+                        |
+|      ...              |                        |
+|  stream N -> FIFO ----+                        |
+|                                                |
+|  SRAM: accumulators / activation / SSM state   |
++------------------------------------------------+
+        ^       ^       ^             ^
+        |       |       |             |
+      NAND    NAND    NAND ...       NAND
+      bank0   bank1   bank2          bankN
+
+For MoE, replicate the bottom half:
+
+             global router
+            /      |      \
+           /       |       \
+       Expert A Expert B Expert C
+        SPM       SPM      SPM
+
+And possibly connect them with 25/100 Gb Ethernet.
+
+The central architectural bet
+
+The really important insight isn't "serial RAM might be cheaper."
+
+It's this:
+
+Modern inference treats gigantic immutable matrices as though they require general-purpose random-access memory, even though the dominant operation repeatedly traverses those matrices in highly predictable patterns.
+
+If parameter RAM is the expensive resource, that assumption deserves to be attacked.
+
+And the combinations you mentioned attack its biggest disadvantage in complementary ways:
+
+MoE: don't scan weights you don't need.
+Batching: use every scanned weight many times.
+MTP/speculation: use every scanned weight for several future positions.
+Mamba/SSM: greatly reduce the other big random-access working set.
+low-bit/ternary: reduce serial bandwidth and make FPGA arithmetic drastically cheaper.
+many parallel serial banks: substitute inexpensive aggregate sequential bandwidth for expensive HBM.
+
+That combination is much more compelling to me than simply putting a transformer on an FPGA.
+
+In fact, I think the most interesting research target is an MoE/SSM-ish model deliberately trained for a rotating/sequential parameter machine, rather than asking this architecture to run today's CUDA-optimized transformer unchanged. Once the model is co-designed around when parameters pass the computation point, the old 512-bit recirculating-memory idea stops looking primitive and starts looking like a very different memory/compute scheduling paradigm.
+
+So I have thoughts.  (1) I have a 1.58-bit quant of Deepseek R1 and I have a large RAM, large number of cores, and large hard drives (and ssds) on rack mount Linux -- I want to try this approach there (before I use physical circuits and FPGAs).  (2) I have FPGAs and some much smaller LLMs, like Hierarchical Reasoning Model, Tiny Recursive Model, Baby Dragon Hatchlings, and SMOL* LLMs.  I want to start with the smallest one and the fewest FPGAs.  (3) newer Raspberry Pi chips have PIOs and I wonder if these can be leveraged, too.   What can I do to proceed on these 3 fronts (in parallel)?
+
+Yes. I would treat these as three implementations of the same abstract machine, with increasing amounts of actual hardware:
+
+Linux simulation: prove that sequential parameter access can perform useful inference without loading the model conventionally into RAM.
+FPGA implementation: prove that computation can be physically coupled to the weight stream.
+RP2350/PIO implementation: explore very cheap deterministic streaming front ends and distributed serial lanes.
+
+The important thing is to define the abstraction once so results from each experiment transfer to the others.
+
+Common architecture: the Serial Parameter Machine
+
+I would start by specifying a deliberately restrictive interface:
+
+ParameterStream
+    open(layer/expert/segment)
+    next_block() -> packed weights
+    rewind()
+    close()
+
+TensorEngine
+    begin(operation, activation-vector)
+    consume(weight-block)
+    finish() -> activation-vector
+
+And impose one severe experimental rule:
+
+The tensor engine may never seek backward or randomly into the parameter stream while performing an operation.
+
+Metadata, activations, accumulators, normalization constants, routing state, etc. can use normal RAM.
+
+That separates the question we actually care about:
+
+Can the huge immutable parameter store become sequential storage?
+
+from the much less interesting question:
+
+Can we eliminate RAM entirely?
+
+We don't need to.
+
+Front 1 — DeepSeek-R1 1.58-bit on your rack server
+
+This should be the first experiment because it requires no special hardware and lets you measure whether the premise survives contact with a large real model.
+
+I would not initially try to modify llama.cpp or another full inference runtime.
+
+Build a small streaming tensor benchmark first.
+
+Experiment 1A: sequential ternary GEMV
+
+Take one representative large matrix from the model.
+
+For 1.58-bit weights, conceptually you should have something equivalent to:
+
+-1, 0, +1
+
+plus whatever grouping/scaling metadata that particular quantization actually uses.
+
+Don't assume its on-disk representation is literally two bits per weight. Decode the actual format once and either:
+
+stream/decode it directly, or
+preprocess it into your own SPM file format.
+
+For the research experiment, I strongly prefer the latter.
+
+Something like:
+
+SPM1
+metadata
+scale block
+packed ternary weights
+scale block
+packed ternary weights
+...
+
+laid out in exact execution order.
+
+Then benchmark:
+
+NVMe/HDD
+   |
+   | sequential read
+   v
+large aligned buffers
+   |
+   v
+decode {-1,0,+1}
+   |
+   v
+multi-core add/sub accumulators
+
+No multiplication for the ternary component:
+
+match weight {
+    Minus => acc -= x,
+    Zero  => {},
+    Plus  => acc += x,
+}
+
+The CPU machine is emulating what the FPGA will eventually do.
+
+Measure five numbers
+
+For every run, record:
+
+Metric	Why
+raw sequential GB/s	physical storage limit
+decoded weights/s	representation overhead
+useful weights/s	tensor engine rate
+CPU utilization	whether compute or I/O dominates
+output vectors/s	inference-relevant result
+
+Most importantly calculate:
+
+$$ \eta = \frac{\text{tensor engine consumption bandwidth}} {\text{storage bandwidth}} $$
+
+Ideally the compute side can consume everything storage produces.
+
+If it can't, the FPGA design already has a clear target.
+
+Experiment 1B: RAM versus SSD versus HDD
+
+Your particular hardware makes this unusually informative because you can implement several levels of the hypothetical memory hierarchy on the same machine.
+
+Run the identical SPM engine with parameter streams residing on:
+
+tmpfs / anonymous RAM
+        ↓
+NVMe SSD
+        ↓
+SAS/SATA SSD
+        ↓
+single HDD
+        ↓
+striped HDD array
+
+The tensor computation must be identical.
+
+That produces something close to a price/performance curve for parameter memory.
+
+The HDD result will be especially entertaining.
+
+A large disk sequentially reading at perhaps hundreds of MB/s obviously won't make DeepSeek interactive. But it tells you whether this:
+
+disk platter
+     ↓
+continuous parameter stream
+     ↓
+compute
+
+actually works.
+
+That's almost literally the magnetic-disk descendant of the old delay-line machine.
+
+Experiment 1C: don't infer a token yet
+
+Next implement a complete single linear layer.
+
+Then:
+
+RMSNorm
+Q/K/V projections
+attention
+output projection
+MLP
+
+one operation at a time.
+
+Compare every output with a conventional implementation.
+
+I'd make correctness much stricter than normal model testing:
+
+reference operation
+        versus
+serial-stream operation
+
+max absolute error
+mean error
+cosine similarity
+
+That gives you a regression suite suitable for later FPGA implementations.
+
+Experiment 1D: finally stream an entire model
+
+The runtime state becomes approximately:
+
+                   RAM
+              +------------+
+token/state ->| activations|
+              | KV cache   |
+              | metadata   |
+              +------------+
+                     ^
+                     |
+SSD/HDD -> sequential weights -> CPU tensor engine
+
+The model weights should never become resident as a complete model.
+
+Use O_DIRECT, asynchronous I/O or io_uring, huge aligned buffers, and double/triple buffering:
+
+storage -> buffer A -> compute
+             ^
+storage -> buffer B
+
+while the CPU consumes A, DMA/I/O fills B.
+
+On a many-core server, dedicate roles:
+
+cores 0–1       I/O/decode
+cores 2–N       tensor lanes
+another core    scheduler/runtime
+
+NUMA placement will matter considerably on a large rack server.
+
+Experiment 1E: the really important test — reuse one scan
+
+Once single-token streaming works, don't optimize it much.
+
+Immediately test:
+
+batch = 1
+2
+4
+8
+16
+32
+
+because this is where the architecture either becomes interesting or dies.
+
+One streamed weight:
+
+              w
+              |
+     +--------+--------+------ ...
+     |        |        |
+    x0       x1       x2
+     |        |        |
+   acc0     acc1     acc2
+
+Now your storage bandwidth remains roughly constant while useful operations increase with batch size until CPU compute becomes limiting.
+
+That crossover is perhaps the single most important measurement in the whole project.
+
+DeepSeek-R1/MoE gives you another excellent experiment
+
+Don't initially stream all of R1.
+
+Treat experts as independently addressable sequential files:
+
+expert-000.spm
+expert-001.spm
+expert-002.spm
+...
+
+The normal RAM-resident router says:
+
+token A -> expert 17
+token B -> expert 42
+token C -> expert 17
+token D -> expert 17
+
+Instead of executing A immediately, enqueue:
+
+expert 17 queue = [A,C,D]
+expert 42 queue = [B]
+
+Then scan expert 17 once for all three tokens.
+
+This is a fundamentally different MoE scheduler:
+
+conventional:
+token-centric scheduling
+
+SPM:
+parameter-centric scheduling
+
+That's worth investigating independently of FPGA work.
+
+Front 2 — start tiny on an FPGA
+
+Here I would not start with a conventional SmolLM.
+
+Among the architectures you listed, TRM is especially attractive as a hardware proving ground. The published Tiny Recursive Model is only about 7M parameters, while HRM is around 27M.
+
+TRM also gives you a fascinating architectural property:
+
+It repeatedly applies a tiny physical network rather than getting depth by having many unique layers.
+
+That's almost tailor-made for limited hardware.
+
+Why recurrence helps your FPGA experiment
+
+Instead of:
+
+layer 0 hardware
+layer 1 hardware
+...
+layer 40 hardware
+
+you can have:
+
+              +----------------+
+              | tiny FPGA net  |
+              +-------+--------+
+                      |
+                      v
+                    state
+                      |
+                      +------ back around
+
+The parameters can circulate too.
+
+So recurrence is not merely an algorithmic feature.
+
+It gives you temporal hardware reuse.
+
+FPGA Phase 0: don't run a model
+
+Build only:
+
+external parameter stream
+        |
+        v
+      FIFO
+        |
+        v
+packed low-bit decoder
+        |
+        v
+parallel accumulator bank
+
+Feed known test vectors.
+
+Have the FPGA calculate:
+
+$$ y=Wx $$
+
+and compare results against the Linux SPM reference.
+
+Once that works, you've established the common abstraction.
+
+FPGA Phase 1: put a tiny matrix outside the FPGA
+
+Even if the matrix would fit in BRAM, deliberately don't put it there.
+
+That's important.
+
+Something like:
+
+SPI flash / SRAM / host stream
+             |
+             v
+            FPGA
+             |
+        GEMV engine
+
+Otherwise you'll accidentally prove merely that FPGA BRAM is fast.
+
+The research proposition specifically concerns external sequential parameter storage.
+
+Phase 2: deliberately restrict the interface
+
+The FPGA should see something like:
+
+BEGIN_MATRIX
+SCALE ...
+WEIGHTS ...
+WEIGHTS ...
+WEIGHTS ...
+END_MATRIX
+
+rather than addresses.
+
+That prevents the implementation from quietly evolving back toward a normal memory controller.
+
+Think of it almost as an instruction set.
+
+Phase 3: TRM
+
+TRM's recursive structure is particularly appealing.
+
+The model repeatedly updates latent state z and answer state y with a very small network.
+
+So an implementation might resemble:
+
+              parameter ring
+             /              \
+            v                |
+      +-----------+          |
+x --->| FPGA core |---- z ---+
+y --->|           |
+      +-----------+
+           |
+           +---- y'
+
+You may be able to keep:
+
+x
+y
+z
+accumulators
+
+on FPGA while parameters remain external.
+
+That is almost a textbook implementation of your idea.
+
+Phase 4: Baby Dragon Hatchling
+
+BDH becomes interesting for a different reason.
+
+The architecture combines state-space-like sequential computation with graph/sparse structure and synaptic state; the paper describes its inference working memory in terms of dynamically changing synaptic state.
+
+That creates an intriguing partition:
+
+static learned parameters
+        ↓
+serial external storage
+
+dynamic synaptic/state information
+        ↓
+FPGA BRAM
+
+Which is exactly the hierarchy we're trying to create.
+
+I'd put BDH after TRM, though, because sparse dynamic behavior introduces additional addressing/scheduling questions.
+
+Then move to SmolLM
+
+A conventional small transformer is valuable because it lets you say:
+
+This isn't merely an accelerator for weird recursive research architectures.
+
+I'd probably progression-test approximately:
+
+synthetic GEMV
+     ↓
+tiny MLP
+     ↓
+TRM
+     ↓
+HRM / BDH
+     ↓
+small transformer / SmolLM
+
+rather than starting with transformer machinery.
+
+How many FPGAs?
+
+Initially:
+
+One.
+
+The point of the first FPGA isn't speed.
+
+It's proving:
+
+external serial weights
+       +
+resident activation/state
+       +
+streaming low-bit computation
+
+Then two FPGAs lets you test something genuinely architectural.
+
+Not simply:
+
+FPGA A does half matrix
+FPGA B does half matrix
+
+I'd instead test:
+
+Pipeline
+stream A -> FPGA A -> activation -> FPGA B -> stream B
+
+and then:
+
+Expert partitioning
+router
+  | \
+  |  \
+FPGA A FPGA B
+expertA expertB
+
+The latter is much closer to the eventual MoE machine.
+
+Front 3 — RP2350 PIO
+
+This is a surprisingly good idea, with one qualification:
+
+PIO should initially be considered part of the memory fabric, not the tensor processor.
+
+The RP2350 has three PIO blocks with four state machines each, so twelve state machines total. Each has shift registers/FIFOs and can be fed through DMA; Raspberry Pi documents sustained PIO DMA throughput of up to one word per clock in the relevant path.
+
+That's extremely aligned with what we're exploring.
+
+A PIO state machine practically is a tiny modern serial processor
+
+Each state machine provides things like:
+
+input shift register
+output shift register
+two scratch registers
+small FIFO
+tiny deterministic program
+
+That is uncannily close to the historical architecture you're riffing on.
+
+But it isn't a MAC engine.
+
+Use it initially as:
+
+serial memory -> PIO -> DMA -> RAM/CPU
+
+or:
+
+RAM -> DMA -> PIO -> parallel serial lanes -> FPGA
+PIO experiment A: emulate the 512-bit memory chip
+
+This would be a wonderfully clean first experiment.
+
+Build a PIO program behaving logically like:
+
+512-bit circulating store
+
+clock -> bit n
+clock -> bit n+1
+...
+clock -> bit 511
+clock -> bit 0
+
+Except perhaps use several independent lanes.
+
+For example:
+
+PIO SM0 -> stream 0
+PIO SM1 -> stream 1
+PIO SM2 -> stream 2
+PIO SM3 -> stream 3
+...
+
+DMA keeps the streams fed.
+
+Now you have a modern programmable recreation of the old shift-register memory behavior.
+
+PIO experiment B: RP2350 as "weight DIMM controller"
+
+This is more practical.
+
+Imagine:
+
+              RP2350
+        +----------------+
+flash -> DMA -> PIO0 ----+--> weight lane 0
+             -> PIO1 ----+--> weight lane 1
+             -> PIO2 ----+--> weight lane 2
+                         |
+                    control/clock
+                         |
+                         v
+                       FPGA
+
+The FPGA receives already-framed deterministic weight streams.
+
+RP2350 handles:
+
+storage protocol;
+DMA;
+buffering;
+framing;
+lane timing;
+checksums;
+stream restart;
+block addressing outside the hot computation loop.
+
+FPGA handles:
+
+decode;
+add/sub/MAC;
+accumulation;
+activation/state.
+
+That's a very appealing division of labor.
+
+PIO experiment C: use many RP2350s
+
+This gets wonderfully strange.
+
+A $5-ish-class microcontroller becomes a smart serial-memory channel.
+
+Conceptually:
+
+RP2350 #0 + flash ----\
+RP2350 #1 + flash -----\
+RP2350 #2 + flash ------> FPGA tensor core
+RP2350 #3 + flash -----/
+...
+
+Each provides one or several independent weight lanes.
+
+You have essentially created a poor man's HBM where:
+
+expensive wide parallel RAM
+
+has been replaced by:
+
+many cheap independent serial controllers
+
+Latency is terrible.
+
+But for a scheduled continuous stream, latency largely disappears after startup.
+
+What matters becomes aggregate bandwidth.
+
+PIO could also perform low-bit unpacking
+
+PIO instruction space is very limited, so don't expect real neural arithmetic from it.
+
+But it could plausibly transform a storage representation:
+
+packed ternary
+       ↓
+PIO
+       ↓
+bitplanes / lane symbols
+       ↓
+FPGA
+
+For example the FPGA might receive separate control signals representing:
+
+positive
+negative
+zero
+
+rather than packed two-bit codes.
+
+Whether that is worthwhile depends on pin count and clock rate; it may be better to transmit packed bits and decode in FPGA LUTs.
+
+That is exactly the kind of thing your testbed should measure rather than assume.
+
+The three projects should share one file format
+
+This may be the most important practical recommendation.
+
+Create something like:
+
+.spm
+
+Serial Parameter Machine model format.
+
+Not intended as yet another general ML exchange format.
+
+It's a physical execution layout.
+
+Perhaps:
+
+SPM header
+model metadata
+
+stream directory
+    stream 0
+    stream 1
+    ...
+
+operation descriptor
+    matrix dimensions
+    quantization
+    scale layout
+    lane count
+    output accumulator format
+
+stream payload
+    weights physically ordered
+
+Then:
+
+GGUF / safetensors / whatever
+              |
+              v
+          spm-pack
+              |
+              v
+          model.spm
+          /   |    \
+         /    |     \
+ Linux SPM   FPGA   RP2350
+ emulator    DMA     streamer
+
+That makes all three fronts one project rather than three experiments.
+
+I'd also create a software "virtual FPGA"
+
+This would be a very useful Rust component.
+
+Something like:
+
+trait WeightStream {
+    fn next(&mut self, dst: &mut [u8]) -> Result<usize>;
+}
+
+trait TensorSink {
+    fn begin(&mut self, op: &Op);
+    fn consume(&mut self, weights: &[u8]);
+    fn finish(&mut self, output: &mut [i32]);
+}
+
+Then implementations:
+
+FileWeightStream
+MmapWeightStream
+DirectIoWeightStream
+MemoryWeightStream
+
+CpuTensorSink
+FpgaTensorSink
+NetworkTensorSink
+
+Later:
+
+PioWeightStream
+
+The important thing is that TensorSink never gets an address.
+
+It only gets the next bytes.
+
+That enforces the architecture in software.
+
+The experiments converge nicely
+
+I'd run the three tracks like this:
+
+Stage	Linux	FPGA	RP2350
+0	stream benchmark	FIFO benchmark	PIO stream
+1	ternary GEMV	ternary GEMV	multi-lane serializer
+2	one layer	one layer	flash→PIO
+3	small model simulator	TRM	RP2350→FPGA
+4	DeepSeek expert	TRM/BDH	multiple lanes
+5	batched MoE	2-FPGA experts	multiple RP2350s
+6	full R1 experiment	SmolLM	serial-memory fabric
+
+And maintain the exact same correctness vectors.
+
+One metric I'd introduce immediately: scan productivity
+
+GB/s alone doesn't express what we're trying to improve.
+
+Define:
+
+$$ P_s = \frac{\text{useful parameter applications}} {\text{parameter values read from storage}} $$
+
+For ordinary batch-1 dense inference:
+
+Ps ≈ 1
+
+Batch 16:
+
+Ps ≈ 16
+
+MoE batching might give:
+
+one expert scan
+× 27 queued tokens
+=> Ps ≈ 27
+
+MTP verifying eight positions potentially increases it again.
+
+You might eventually have:
+
+storage bandwidth = 10 GB/s
+scan productivity = 64
+
+behaving more like 640 GB/s worth of naïvely consumed parameter traffic, assuming the compute fabric can exploit all that reuse.
+
+That's the architecture's entire economic argument.
+
+And another metric: parameter residency ratio
+
+Define:
+
+$$ R_p = \frac{\text{parameter bytes resident in random-access RAM}} {\text{total model parameter bytes}} $$
+
+Conventional inference is roughly:
+
+Rp ≈ 1
+
+Your goal should be:
+
+Rp → 0
+
+while allowing:
+
+activation/state RAM != 0
+
+A successful DeepSeek experiment might therefore say:
+
+200+ GB parameter model, 1–5 GB working random-access memory, all remaining parameters consumed sequentially.
+
+Even if it's slow, that is already a meaningful result.
+
+What I would actually start building
+
+I'd make the first deliverable a Rust repository, perhaps provisionally:
+
+serial-parameter-machine/
+    crates/
+        spm-format/
+        spm-pack/
+        spm-stream/
+        spm-tensor-cpu/
+        spm-reference/
+    models/
+        synthetic/
+        trm/
+    benches/
+
+The first program should do nothing more ambitious than:
+
+spm-pack matrix.bin matrix.spm
+
+spm-bench \
+    --input matrix.spm \
+    --backend direct-io \
+    --batch 1,2,4,8,16,32
+
+and produce:
+
+storage MB/s
+weights/sec
+effective operations/sec
+scan productivity
+latency
+CPU utilization
+working-set RAM
+numerical error
+
+Then use exactly that .spm test vector to drive an FPGA.
+
+I would resist touching full DeepSeek inference until that benchmark exists. It gives you a clean falsifiable experiment: if sequential low-bit GEMV plus batching cannot make sensible use of SSD/HDD bandwidth on your many-core server, we learn that cheaply. If it does, the same software becomes the golden model for FPGA development.
+
+And I particularly like TRM → one FPGA as the second thread. Its roughly 7M-parameter recursive network is small enough to make the hardware understandable, while recurrence gives the serial/circulating architecture something interesting to exploit rather than merely demonstrating a tiny transformer.
+
+The RP2350 thread can proceed almost independently by building the serial memory subsystem first: DMA → PIO → deterministic multi-lane streams. The RP2350 has 12 PIO state machines and enhanced DMA, so it is unusually well suited to experimenting with precisely this kind of cheap, deterministic streaming fabric.
+
+Taken together, this gives you a very nice progression: disk as delay line → PIO as smart shift register → FPGA as bit-serial tensor processor.
