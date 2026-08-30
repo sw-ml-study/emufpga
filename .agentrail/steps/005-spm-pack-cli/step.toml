@@ -1,8 +1,9 @@
 number = 5
 slug = "spm-pack-cli"
-status = "in-progress"
+status = "completed"
 description = "emufpga pack subcommand, CLI help/version passing sw-checklist"
 role = "legacy"
 context_files = []
 created_at = "2026-08-30T15:23:07"
-commits = []
+completed_at = "2026-08-30T16:33:54"
+commits = ["7eaa998603194e1b4c9d8f41e465b016e816d52e"]
