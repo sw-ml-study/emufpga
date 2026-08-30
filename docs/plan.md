@@ -132,9 +132,11 @@ Target gates, stricter than the `sw-checklist` FAIL line, per
 `../sw-mlpl` CLAUDE.md:
 
 - 25 LOC per function
-- 5 functions per module
-- 5 modules per crate
-- 5 crates per component
+- 4 functions per module
+- 4 modules per crate (`lib.rs` counts, so: a facade plus three)
+- 350 LOC per file
+- No automated gate on crates per component -- let the module ceiling
+  decide how many crates a component needs
 
 `lib.rs` and `mod.rs` are facades only -- no executable logic. Behavior
 lives in named files following the convention `parse.rs` (input ->
@@ -154,14 +156,23 @@ clean.
 
 The full target shape. Saga 1 builds a subset (marked *).
 
-**`components/format/`** -- the `.spm` container
+**`components/format/`** -- the `.spm` container (built, saga 1 step 2)
 
 | Crate | Responsibility |
 | --- | --- |
-| `spm-header` * | magic, version, model metadata, endianness |
-| `spm-codec` * | ternary and Q4 bit packing, scale-group encoding |
-| `spm-layout` * | stream directory, op descriptors, consumption-order tiling |
-| `spm-file` * | reader/writer composing the three above |
+| `spm-bytes` * | little-endian integer primitives |
+| `spm-header` * | magic, version, endianness, stream count |
+| `spm-codec` * | ternary bit packing; Q4 arrives in saga 3 |
+| `spm-layout` * | op descriptors, consumption-order tiling, scale-group arithmetic |
+| `spm-walk` * | forward-only cursor over the (stream, group) sequence |
+| `spm-file` * | reader/writer composing the above |
+
+Six crates rather than the four first sketched: the four-module
+ceiling pushed the byte primitives and the group cursor out into their
+own crates. The cursor in particular earns its place -- reader, writer
+and the step 003 `WeightStream` all walk the same group sequence, and a
+disagreement between them would surface as plausible wrong numbers
+rather than an error.
 
 **`components/stream/`** -- sequential parameter access
 

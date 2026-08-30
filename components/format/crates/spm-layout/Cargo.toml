@@ -1,0 +1,11 @@
+[package]
+name = "spm-layout"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-bytes = { path = "../spm-bytes" }

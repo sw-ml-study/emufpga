@@ -1,0 +1,22 @@
+# The .spm container: a physical execution layout, not a model
+# interchange format. See docs/spm-format.md for the byte layout and
+# docs/plan.md section 3 for why the reader exposes no seek.
+
+[workspace]
+members = [
+    "crates/spm-bytes",
+    "crates/spm-header",
+    "crates/spm-codec",
+    "crates/spm-layout",
+    "crates/spm-walk",
+    "crates/spm-file",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.lints.clippy]
+pedantic = "warn"

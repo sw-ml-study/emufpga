@@ -1,0 +1,11 @@
+[package]
+name = "spm-walk"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-layout = { path = "../spm-layout" }

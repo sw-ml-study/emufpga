@@ -10,9 +10,26 @@ below are stricter and are what we actually aim for.
 | Unit | Target | sw-checklist WARN | sw-checklist FAIL |
 | --- | --- | --- | --- |
 | Function | 25 LOC | > 25 LOC | > 50 LOC |
-| Module | 5 functions | > 4 functions | > 7 functions |
-| Crate | 5 modules | > 4 modules | > 7 modules |
-| Component | 5 crates | -- | -- |
+| Module | 4 functions | > 4 functions | > 7 functions |
+| Crate | 4 modules | > 4 modules | > 7 modules |
+| File | 350 LOC | > 350 LOC | -- |
+| Component | no automated gate | -- | -- |
+
+The module and crate targets are 4, not 5: `sw-checklist` warns
+*above* 4, so targeting 5 guarantees a warning. `lib.rs` counts as one
+of a crate's four modules, which in practice means **a facade plus
+three modules of behavior**. That is tight on purpose -- it is the
+pressure that produces small single-purpose crates.
+
+Only `src/` is measured. Integration tests under `tests/` are not
+counted, so test files may hold as many helpers and cases as
+readability wants. Inline `#[cfg(test)] mod tests` blocks in `src/` ARE
+counted, which is a second reason to prefer `tests/`.
+
+There is no automated gate on crates per component. `components/format`
+runs to six crates because the four-module ceiling pushed the header,
+codec, layout, cursor and file concerns apart. Let the module gate
+decide the crate count rather than picking a crate count first.
 
 Rust edition 2024. Every component workspace sets
 `[workspace.lints.clippy] pedantic = "warn"`, and

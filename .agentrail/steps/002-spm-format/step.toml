@@ -1,6 +1,6 @@
 number = 2
 slug = "spm-format"
-status = "pending"
+status = "in-progress"
 description = """
 Build `components/format/` -- the `.spm` container. Read docs/plan.md
 section..."""

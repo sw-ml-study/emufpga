@@ -1,0 +1,17 @@
+[package]
+name = "spm-file"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-header = { path = "../spm-header" }
+spm-codec = { path = "../spm-codec" }
+spm-layout = { path = "../spm-layout" }
+spm-walk = { path = "../spm-walk" }
+
+[dev-dependencies]
+spm-walk = { path = "../spm-walk" }
