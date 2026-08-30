@@ -1,11 +1,12 @@
 number = 1
 slug = "repo-scaffold"
-status = "in-progress"
+status = "completed"
 description = """
 Scaffold the emufpga repository so that every later step has a working
 build ..."""
 role = "production"
 context_files = []
 created_at = "2026-08-30T13:40:17"
+completed_at = "2026-08-30T15:23:07"
 task_type = "rust-scaffold"
-commits = []
+commits = ["b1132603ad5f521427f73d55066cc7cc710b6821"]

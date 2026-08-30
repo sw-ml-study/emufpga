@@ -1,0 +1,8 @@
+number = 8
+slug = "resource-budget-and-fit"
+status = "pending"
+description = "emufpga fit, utilization and predicted throughput per board"
+role = "legacy"
+context_files = []
+created_at = "2026-08-30T15:23:07"
+commits = []

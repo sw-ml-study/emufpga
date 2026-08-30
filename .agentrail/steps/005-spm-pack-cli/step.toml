@@ -1,0 +1,8 @@
+number = 5
+slug = "spm-pack-cli"
+status = "pending"
+description = "emufpga pack subcommand, CLI help/version passing sw-checklist"
+role = "legacy"
+context_files = []
+created_at = "2026-08-30T15:23:07"
+commits = []

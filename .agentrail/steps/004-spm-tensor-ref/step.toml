@@ -1,0 +1,8 @@
+number = 4
+slug = "spm-tensor-ref"
+status = "pending"
+description = "batched accumulators, multiplier-free ternary GEMV, f32 reference, golden vectors"
+role = "legacy"
+context_files = []
+created_at = "2026-08-30T15:23:07"
+commits = []

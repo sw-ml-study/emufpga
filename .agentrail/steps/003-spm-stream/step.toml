@@ -1,0 +1,8 @@
+number = 3
+slug = "spm-stream"
+status = "pending"
+description = "seek-free WeightStream trait plus memory and file impls and eta/Ps/Rp metrics"
+role = "legacy"
+context_files = []
+created_at = "2026-08-30T15:23:07"
+commits = []
