@@ -1,6 +1,6 @@
 number = 5
 slug = "spm-pack-cli"
-status = "pending"
+status = "in-progress"
 description = "emufpga pack subcommand, CLI help/version passing sw-checklist"
 role = "legacy"
 context_files = []

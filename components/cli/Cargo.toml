@@ -1,0 +1,26 @@
+# The emufpga binary and the quantizer behind `pack`.
+#
+# clap handles argument parsing. The rest of this repo has no external
+# dependencies, but the CLI grows to five subcommands (pack, bench,
+# fit, sim, verify) and hand-rolled parsing for that would be more code
+# to maintain than it saves -- and clap's generated --help is what
+# sw-checklist validates.
+#
+# spm-quantize stays dependency-free so the quantization rule can be
+# reused by saga 4's model import without pulling a CLI parser in.
+
+[workspace]
+members = [
+    "crates/spm-quantize",
+    "crates/emufpga-cli",
+    "crates/emufpga",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.lints.clippy]
+pedantic = "warn"

@@ -252,14 +252,28 @@ wire value and nothing on disk depends on accumulator width.
 | `emufpga-perf` | throughput and scan-productivity report |
 | `emufpga-render` | text / markdown / TSV rendering |
 
-**`components/cli/`** -- binaries
+**`components/cli/`** -- binaries (`pack` built, saga 1 step 5)
 
 | Crate | Responsibility |
 | --- | --- |
-| `emufpga-cli` * | argument parsing and subcommand dispatch |
-| `emufpga` * | thin binary; must satisfy `sw-checklist` help/version validation |
+| `spm-quantize` * | dense f32 matrix to ternary `.spm`, dependency-free |
+| `emufpga-cli` * | argument parsing and subcommand dispatch (clap) |
+| `emufpga` * | thin binary: parse, dispatch, print, exit code |
 
-Subcommands: `pack`, `bench`, `fit`, `sim`, `verify`.
+Subcommands: `pack` (step 5), `bench` (step 6), `fit` (step 8), then
+`sim` and `verify` in saga 2.
+
+`clap` is the repository's only external dependency, and
+`sw-checklist` has a check that looks for it specifically.
+`spm-quantize` stays dependency-free so saga 4's model import can reuse
+the quantization rule without pulling a CLI parser in.
+
+**Quantization is per-group absmean** (the BitNet b1.58 rule):
+`scale = mean(|w|)` over the group, `t = clamp(round(w / scale), -1, 1)`,
+ties away from zero. An all-zero group is written as `scale = 1.0` with
+every weight `Zero`, keeping a zero scale out of the wire format. The
+transform is lossy by design and the rule is pinned by tests rather
+than left implicit.
 
 ## 6. Device profiles
 

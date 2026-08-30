@@ -1,0 +1,18 @@
+[package]
+name = "emufpga-cli"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-quantize = { path = "../spm-quantize" }
+clap = { version = "4.5.51", features = ["derive"] }
+
+[dev-dependencies]
+spm-codec = { path = "../../../format/crates/spm-codec" }
+spm-gemv-ref = { path = "../../../tensor/crates/spm-gemv-ref" }
+spm-numeric = { path = "../../../tensor/crates/spm-numeric" }
+spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
