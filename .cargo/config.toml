@@ -1,0 +1,20 @@
+# Single shared target directory for the whole repository.
+#
+# Cargo discovers this config by walking up from the invocation
+# directory, so any `cargo` command -- run from the repo root or from
+# any component workspace under components/ -- resolves to the same
+# target/ tree here at the root.
+#
+# Why: this repo has NO root Cargo.toml. Every directory under
+# components/ is its own workspace (see docs/plan.md section 5), and
+# each would otherwise grow its own multi-GB target/. One shared target
+# keeps disk bounded and keeps cross-workspace rebuilds cache-warm.
+#
+# The consequence is that two cargo invocations can never run
+# concurrently: they block on the same build lock and deadlock. Every
+# cargo call in this repo MUST route through scripts/serial.sh.
+#
+# `target-dir` is relative to this config file's directory.
+
+[build]
+target-dir = "target"

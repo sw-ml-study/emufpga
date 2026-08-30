@@ -1,6 +1,6 @@
 number = 1
 slug = "repo-scaffold"
-status = "pending"
+status = "in-progress"
 description = """
 Scaffold the emufpga repository so that every later step has a working
 build ..."""

@@ -1,0 +1,19 @@
+# Build products (one shared target/ for every component workspace,
+# see .cargo/config.toml).
+target/
+
+# macOS and editor noise
+.DS_Store
+*~
+*.swp
+*.swo
+
+# Local configuration and scratch output
+.env
+.env.*
+out/
+
+# AgentRail session transcripts are local and can grow without bound.
+# Durable saga records -- saga.toml, steps/, trajectories/ -- stay tracked;
+# losing them would break the handoff between sessions.
+.agentrail/sessions/

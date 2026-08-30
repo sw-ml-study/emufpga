@@ -1,0 +1,23 @@
+# Line-ending discipline.
+#
+# Windows clones (where core.autocrlf may default to true) would
+# otherwise convert text files to CRLF. The Rust toolchain and the
+# shell scripts under scripts/ both reject stray \r characters, and a
+# CRLF .spm golden fixture would silently fail its byte-for-byte
+# comparison. Pin every text format to LF and mark binaries explicitly.
+
+* text=auto eol=lf
+
+*.rs      text eol=lf
+*.toml    text eol=lf
+*.md      text eol=lf
+*.sh      text eol=lf
+*.txt     text eol=lf
+justfile  text eol=lf
+
+# Binary formats git must never transform. .spm files are physical
+# execution layouts pinned byte for byte by golden tests.
+*.spm     binary
+*.bin     binary
+*.png     binary
+*.fs      binary

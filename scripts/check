@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run the pre-commit gate across component workspaces.
+#
+#   scripts/check                 # gate every component that has changed
+#   scripts/check --all           # gate every component workspace
+#   scripts/check format stream   # gate the named components
+#
+# Default behaviour implements the checkpoint rule "scope tests to what
+# you changed, do not widen just to be safe": it gates only the
+# components touched by the working tree plus staged changes. Use
+# --all before a release or after a cross-cutting refactor.
+#
+# Components without a Cargo.toml are placeholders for workspaces a
+# later saga fills in, and are skipped.
+#
+# check-locks and sw-checklist ALWAYS run, even when no component
+# changed. Both are properties of the whole tree, and a gate that goes
+# quiet when it has nothing to compile is a gate you stop trusting.
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$ROOT/scripts"
+cd "$ROOT"
+
+components_with_manifest() {
+    for ws in "$ROOT"/components/*/; do
+        [ -f "$ws/Cargo.toml" ] || continue
+        basename "$ws"
+    done
+}
+
+changed_components() {
+    # Union of staged, unstaged and untracked paths, reduced to the
+    # component name. Committed-but-unpushed work is deliberately NOT
+    # included: the gate runs before a commit, not after.
+    {
+        git diff --name-only
+        git diff --name-only --cached
+        git ls-files --others --exclude-standard
+    } 2>/dev/null \
+        | sed -n 's#^components/\([^/]*\)/.*#\1#p' \
+        | sort -u
+}
+
+select_targets() {
+    case "${1:-}" in
+        --all) components_with_manifest ;;
+        "")    comm -12 <(changed_components) <(components_with_manifest | sort) ;;
+        *)     printf '%s\n' "$@" ;;
+    esac
+}
+
+targets="$(select_targets "$@")"
+
+if [ -z "${targets//[[:space:]]/}" ]; then
+    if [ -z "$(components_with_manifest)" ]; then
+        echo "no component workspaces yet -- nothing to gate"
+    else
+        echo "no component workspaces changed -- nothing to gate (use --all to force)"
+    fi
+else
+    for name in $targets; do
+        ws="components/$name"
+        if [ ! -f "$ROOT/$ws/Cargo.toml" ]; then
+            echo "skipping $ws (no Cargo.toml yet)"
+            continue
+        fi
+        "$SCRIPT_DIR/gate.sh" "$ROOT/$ws"
+    done
+fi
+
+echo "=== Cargo.lock consistency ==="
+"$SCRIPT_DIR/check-locks.sh"
+
+echo "=== sw-checklist ==="
+# Repo-wide by design: the complexity gates (docs/code_metrics.md) are
+# a property of the whole tree, and the ratchet policy compares counts
+# commit to commit, so a scoped count would not be comparable.
+checklist_out="$(sw-checklist 2>&1)" && checklist_rc=0 || checklist_rc=$?
+echo "$checklist_out" | tail -20
+
+# sw-checklist exits nonzero when the tree contains no Cargo.toml at
+# all. That is a real failure once any component workspace exists, and
+# an expected transitional state only while the repo is still bare
+# (saga 1 step 1). Tolerate it in exactly that case and nowhere else,
+# so the gate never learns to ignore a genuine standards failure.
+if [ "$checklist_rc" -ne 0 ]; then
+    if [ -z "$(components_with_manifest)" ]; then
+        echo "sw-checklist: no baseline yet -- repo has no component workspaces"
+    else
+        exit "$checklist_rc"
+    fi
+fi

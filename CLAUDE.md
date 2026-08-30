@@ -230,6 +230,116 @@ a safety net for what is not yet committed.
 
 This file gives Claude Code (and other agentrail-aware agents) the rules for this project. The block below the H1 marked as `agentrail:global` is auto-managed by `agentrail instructions apply` -- content outside those markers is preserved verbatim.
 
-## Project-specific notes
 
-*(add project-specific build commands, architecture, and conventions here)*
+## What this project is
+
+A Serial Parameter Machine research vehicle. See `README.md` for the
+idea, `docs/plan.md` for the architecture and saga roadmap, and
+`docs/research.txt` for the source argument.
+
+Two rules carry the whole design. Break either and the project stops
+measuring what it claims to measure:
+
+1. **The tensor engine may never seek backward or randomly into the
+   parameter stream while performing an operation.** `WeightStream` has
+   no seek in its surface, so this is a type-system property rather
+   than a discipline. If you find yourself wanting to add one, you have
+   found a design problem, not a missing method.
+2. **`.spm` is a physical execution layout, not a model interchange
+   format.** Weights are stored in exactly the order the engine
+   consumes them. Reading a stream to the end IS the matrix operation.
+
+## Build discipline
+
+**Every build entry point lives in `./scripts`.** The `justfile` only
+delegates. Do not invent ad-hoc cargo invocations in docs, CI, or
+agent sessions.
+
+```
+just check        # gate the components you changed
+just check-all    # gate every component
+just build        # build all components, serially
+just locks        # Cargo.lock consistency sweep
+just gate format  # gate one component
+```
+
+**Every cargo call must route through `scripts/serial.sh`.** This is
+not a style preference. There is no root `Cargo.toml`; every directory
+under `components/` is its own workspace, and `.cargo/config.toml`
+points them all at one shared `target/`. Two concurrent cargo
+invocations therefore block on the same build lock and deadlock,
+producing no output while wall-clock burns.
+
+**`cargo -p <pkg>` must run inside the owning workspace.** With no root
+manifest there is no repo-wide package namespace. `scripts/gate.sh`
+takes the workspace directory as its first argument for this reason.
+
+**A stale `Cargo.lock` is a real failure, not noise.** A manifest change
+in one component strands the locks of every workspace that
+path-depends on it until someone builds there. Run
+`scripts/check-locks.sh --fix` after changing any manifest.
+
+## Architecture and complexity gates
+
+`docs/code_metrics.md` is canonical. The short version:
+
+- 25 LOC per function, 5 functions per module, 5 modules per crate,
+  5 crates per component. Stricter than the `sw-checklist` FAIL line.
+- `lib.rs` and `mod.rs` are facades only -- no executable logic.
+- File names carry meaning: `model.rs`, `parse.rs`, `validate.rs`,
+  `plan.rs`, `run.rs`, `render.rs`, `error.rs`, `test_support.rs`,
+  `fixtures.rs`. Read them to know where new code belongs.
+- Split by responsibility, never mechanically, and never with
+  whitespace tricks, `#[rustfmt::skip]` or `#[allow(...)]`.
+- Do not add new logic to an already over-limit function or module.
+  Extract first, then add.
+- Separate decisions from effects. This matters more here than in most
+  projects: a decision made in software must match a decision made in
+  silicon, and pure decision functions are the ones that can be
+  golden-tested against RTL.
+
+**Ratchet:** this repo starts at zero code, so the goal is not paydown
+but prevention -- keep `sw-checklist` failures and warnings at zero
+from the first crate onward. Record counts in a `sw-checklist:` commit
+trailer. A commit that raises either count needs
+`sw-checklist: exception` with a justification.
+
+## Markdown
+
+**ASCII only.** `sw-markdown-checker -f "**/*.md"` gates every
+hand-written `.md`.
+
+Known pre-existing failure, not yours to fix: the `agentrail:global`
+markered block in `CLAUDE.md` and `AGENTS.md` contains em dashes
+emitted by `agentrail instructions apply` itself. Never hand-edit
+inside those markers -- the fix belongs upstream in agentrail, and your
+edit would be overwritten on the next apply. Everything outside the
+markers must pass.
+
+## Checkpoint
+
+Order does not vary: **gates -> docs -> commit -> push.** Under
+agentrail, `agentrail complete` comes AFTER the commit lands, because
+the step records `HEAD` at completion time, and nothing may change
+after `complete`.
+
+- Scope tests to the components you changed. Do not widen "just to be
+  safe" -- `just check` already does the scoping.
+- All selected tests pass. Zero clippy warnings; fix, never suppress.
+- Stage by explicit path. Never `git add -A`.
+- Commit `.agentrail/` metadata together with the source it describes.
+  The most common agentrail failure is committing the source and
+  forgetting the saga record, which leaves `agentrail audit` with a
+  gap that only shows up later.
+- Never `--no-verify`.
+
+## Hardware context
+
+The boards on hand are Sipeed Tang Nano 1K, 4K, 9K, 20K and 25K. The
+9K (Gowin GW1NR-9) is the primary target. Device figures in
+`docs/plan.md` section 6 are marked UNVERIFIED until saga 1 step 7
+replaces them with values cited from Project Apicula or a Gowin
+datasheet. **Do not quote an unsourced resource count as fact, and do
+not fill an unknown field with a plausible guess** -- the fit model is
+only useful if a later real place-and-route can contradict it
+specifically.

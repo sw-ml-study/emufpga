@@ -41,7 +41,7 @@ Deliverables:
    `.agentrail/sessions/` (session transcripts stay local; steps and
    trajectories stay tracked).
 
-7. `LICENSE` (MIT OR Apache-2.0), `COPYRIGHT`, and a `README.md` that
+7. `LICENSE` (MIT, matching the peer repos), `COPYRIGHT`, and a `README.md` that
    states what emufpga is and is not (docs/plan.md section 1), names
    the Tang Nano 9K as the primary target, and links docs/plan.md and
    docs/research.txt.

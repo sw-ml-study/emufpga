@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Build every component workspace, SEQUENTIALLY.
+#
+#   scripts/build              # debug build of all components
+#   scripts/build --release    # release build
+#
+# Sequential is mandatory, not a preference: all workspaces share one
+# target/ dir (.cargo/config.toml), so concurrent cargo invocations
+# deadlock on the same build lock. scripts/serial.sh enforces it.
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SERIAL="$ROOT/scripts/serial.sh"
+PROFILE_ARGS=()
+
+case "${1:-}" in
+    --release) PROFILE_ARGS=(--release) ;;
+    "") ;;
+    *) echo "unknown flag: $1" >&2; exit 2 ;;
+esac
+
+built=0
+for ws in "$ROOT"/components/*/; do
+    [ -f "$ws/Cargo.toml" ] || continue
+    name="$(basename "$ws")"
+    echo "=== building components/$name ==="
+    (cd "$ws" && "$SERIAL" cargo build --workspace "${PROFILE_ARGS[@]}")
+    built=$((built + 1))
+done
+
+if [ "$built" -eq 0 ]; then
+    echo "no component workspaces yet -- nothing to build"
+else
+    echo "built $built component workspace(s)"
+fi
