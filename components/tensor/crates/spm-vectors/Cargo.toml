@@ -1,0 +1,13 @@
+[package]
+name = "spm-vectors"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-codec = { path = "../../../format/crates/spm-codec" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-numeric = { path = "../spm-numeric" }

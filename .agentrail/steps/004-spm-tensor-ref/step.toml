@@ -1,6 +1,6 @@
 number = 4
 slug = "spm-tensor-ref"
-status = "pending"
+status = "in-progress"
 description = "batched accumulators, multiplier-free ternary GEMV, f32 reference, golden vectors"
 role = "legacy"
 context_files = []

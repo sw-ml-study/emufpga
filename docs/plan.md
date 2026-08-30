@@ -195,14 +195,29 @@ the same byte count over a different time, so the ratio reduces. Above
 1 the scan is storage-bound, which is the regime the architecture
 wants; below 1 the tensor engine has a concrete speedup target.
 
-**`components/tensor/`** -- CPU golden reference
+**`components/tensor/`** -- CPU golden reference (built, saga 1 step 4)
 
 | Crate | Responsibility |
 | --- | --- |
-| `spm-accum` * | accumulator banks, batch lanes |
-| `spm-gemv-ref` * | reference ternary/Q4 GEMV over a `WeightStream` (add / sub / skip, no multiplier) |
-| `spm-numeric` * | f32 reference matmul, error metrics |
-| `spm-vectors` * | golden vector generation and serialization |
+| `spm-accum` * | accumulator banks with a batch dimension |
+| `spm-activations` * | resident activations, and the only multiply |
+| `spm-numeric` * | naive f64 reference matmul, error metrics |
+| `spm-gemv-ref` * | ternary GEMV over a `WeightStream`; add / sub / skip, no multiplier |
+| `spm-vectors` * | reproducible golden case generation |
+| `spm-vectors-text` * | golden case text format |
+
+**Accumulator width is an open question, not a settled one.** The
+`Ternary2F32I32` profile name says `i32`; building the reference showed
+that name had settled something not actually worked out. Scale groups
+run along the stream and the stream is column-major, so a group's
+scale can vary with both output row and input column. Two designs keep
+the inner loop multiplier-free: pre-scale the activation (needs `f32`
+accumulation, exact) or pre-scale into fixed point (allows `i32`,
+cheaper in LUTs, introduces rounding). The reference takes the exact
+one, because an oracle carrying its own quantization error cannot
+adjudicate anyone else's. Saga 2 decides, with the fabric to measure
+against. No format change was needed: the profile discriminant is a
+wire value and nothing on disk depends on accumulator width.
 
 **`components/device/`** -- Gowin device profiles
 

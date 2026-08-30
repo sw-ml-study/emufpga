@@ -1,0 +1,14 @@
+[package]
+name = "spm-numeric"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-codec = { path = "../../../format/crates/spm-codec" }
+
+[dev-dependencies]
+spm-codec = { path = "../../../format/crates/spm-codec" }

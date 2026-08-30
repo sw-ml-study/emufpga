@@ -1,0 +1,26 @@
+[package]
+name = "spm-gemv-ref"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-accum = { path = "../spm-accum" }
+spm-activations = { path = "../spm-activations" }
+spm-codec = { path = "../../../format/crates/spm-codec" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-stream = { path = "../../../stream/crates/spm-stream" }
+spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
+spm-stream-metrics = { path = "../../../stream/crates/spm-stream-metrics" }
+
+[dev-dependencies]
+spm-file = { path = "../../../format/crates/spm-file" }
+spm-numeric = { path = "../spm-numeric" }
+spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
+spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
+spm-vectors = { path = "../spm-vectors" }
+spm-walk = { path = "../../../format/crates/spm-walk" }
+spm-codec = { path = "../../../format/crates/spm-codec" }
