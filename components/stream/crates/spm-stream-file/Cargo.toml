@@ -1,0 +1,14 @@
+[package]
+name = "spm-stream-file"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-stream = { path = "../spm-stream" }
+
+[dev-dependencies]
+spm-stream-mem = { path = "../spm-stream-mem" }

@@ -1,6 +1,6 @@
 number = 3
 slug = "spm-stream"
-status = "pending"
+status = "in-progress"
 description = "seek-free WeightStream trait plus memory and file impls and eta/Ps/Rp metrics"
 role = "legacy"
 context_files = []

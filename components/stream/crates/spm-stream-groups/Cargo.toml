@@ -1,0 +1,20 @@
+[package]
+name = "spm-stream-groups"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-stream = { path = "../spm-stream" }
+spm-codec = { path = "../../../format/crates/spm-codec" }
+spm-header = { path = "../../../format/crates/spm-header" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-walk = { path = "../../../format/crates/spm-walk" }
+
+[dev-dependencies]
+spm-stream-mem = { path = "../spm-stream-mem" }
+spm-file = { path = "../../../format/crates/spm-file" }
+spm-walk = { path = "../../../format/crates/spm-walk" }

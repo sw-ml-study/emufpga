@@ -174,14 +174,26 @@ and the step 003 `WeightStream` all walk the same group sequence, and a
 disagreement between them would surface as plausible wrong numbers
 rather than an error.
 
-**`components/stream/`** -- sequential parameter access
+**`components/stream/`** -- sequential parameter access (built, saga 1 step 3)
 
 | Crate | Responsibility |
 | --- | --- |
-| `spm-stream` * | `WeightStream` trait, block and FIFO types, seek-free by construction |
-| `spm-stream-mem` * | in-memory impl, used by tests |
-| `spm-stream-file` * | buffered/double-buffered file impl |
-| `spm-stream-metrics` * | bandwidth, `eta`, `Ps`, `Rp` accounting |
+| `spm-stream` * | `WeightStream` trait and error; seek-free by construction |
+| `spm-stream-mem` * | in-memory impl; the reference other backends must match |
+| `spm-stream-file` * | file impl over a two-slot buffer pair |
+| `spm-stream-groups` * | scale groups pulled off any `WeightStream` |
+| `spm-stream-metrics` * | bandwidth, `eta`, `Ps`, `Rp` |
+
+`spm-stream-groups` was not in the original sketch. `spm-file`'s
+reader walks a file already in RAM; the streaming path needs the same
+walk over bytes that are still arriving, which is the case the whole
+premise depends on. Its `resident_parameter_bytes` is what makes `Rp`
+a measurement rather than an assertion.
+
+`eta` is defined as `storage_time / compute_time`: both bandwidths are
+the same byte count over a different time, so the ratio reduces. Above
+1 the scan is storage-bound, which is the regime the architecture
+wants; below 1 the tensor engine has a concrete speedup target.
 
 **`components/tensor/`** -- CPU golden reference
 
