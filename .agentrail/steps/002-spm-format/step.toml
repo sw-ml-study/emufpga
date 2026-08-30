@@ -1,11 +1,12 @@
 number = 2
 slug = "spm-format"
-status = "in-progress"
+status = "completed"
 description = """
 Build `components/format/` -- the `.spm` container. Read docs/plan.md
 section..."""
 role = "production"
 context_files = ["docs/plan.md"]
 created_at = "2026-08-30T15:23:07"
+completed_at = "2026-08-30T15:51:44"
 task_type = "rust-crate"
-commits = []
+commits = ["006b3103d8ecc3b9915994f8511ab1c7da89b435"]
