@@ -254,3 +254,75 @@ That last point is the actionable change for the next rung -- and it
 was not followed on the rung this predicted, which is why the addendum
 above exists and why the control is now structural rather than
 advisory.
+
+## Regression guards: turning the table into tests
+
+The table above was a record. A record does not stop a defect coming
+back. Every row has now been checked for whether something automated
+would fail if the defect were reintroduced, and the gaps closed.
+
+| # | defect | guard | where |
+| --- | --- | --- | --- |
+| 1 | `cargo fmt --workspace` | `gate.sh` runs on every check | `scripts/check` |
+| 2 | stream index reported late | `visits_every_group_of_every_stream_in_order` | `spm-walk/tests/cursor.rs` |
+| 3 | accumulators lane-major | **none** -- see below | benchmark only |
+| 4 | alphabetical weight order | order file parsed and asserted against execution order | `spm-order/tests/no_seek.rs` |
+| 5 | one projection per position | the batched form is the only one that compiles | `spm-linear` |
+| 6 | intermediate width 2048 | `assert_eq!(config.intermediate(), 1536, "NOT hidden * expansion = 2048")` | `spm-trm/tests/forward.rs` |
+| 7 | `rms_norm` axis | `defect_7_rms_norm_normalizes_each_position_independently` | `spm-ops/tests/regressions.rs` |
+| 8 | imported matrices transposed | `defect 8: 2-D tensors are transposed into stream order` | `scripts/test-extract` |
+| 9 | HRM injection never performed | `defect_9_the_input_embedding_reaches_the_recursion` | `spm-hrm/tests/regressions.rs` |
+
+Defects 7, 8 and 9 were the ones that had no guard at all, and they
+are the three that were caught only by a manual reference run needing
+torch and hundreds of megabytes of weights. All three guards are now
+hermetic: no checkpoint, no torch, no network. They run in the gate.
+
+### Every guard was checked by reintroducing its defect
+
+A guard that cannot fail is worth less than no guard, because it also
+buys false confidence -- which is lesson one of this document, applied
+to the fix rather than to the code. So each new guard was verified by
+putting the original bug back and confirming a red test:
+
+- Defect 7, `residual_norm` replaced with a whole-state `rms_norm`:
+  `defect_7_rms_norm_normalizes_each_position_independently` FAILED.
+- Defect 9, the injection term dropped from `sweep`: both HRM guards
+  FAILED, reporting `changing the input embedding moved only 0 of 64
+  outputs`.
+- Defect 8, `to_stream_order` returning `raw` unchanged: the extractor
+  guard FAILED with `got [0, 1, 10, 11, 20, 21], expected [0, 10, 20,
+  1, 11, 21]`.
+
+Then the defect was reverted and all three went green again.
+
+The defect 7 file also carries `defect_7_a_global_norm_would_fail_the
+_test_above`, which asserts the wrong implementation produces a result
+the guard rejects. That one is permanent rather than a one-off manual
+check: it keeps the discrimination property under test even if the
+guard is later loosened.
+
+### Defect 3 is deliberately not unit-tested
+
+The accumulator layout is not observable through `AccumulatorBank`'s
+public API -- row-major and lane-major storage compute identical
+values, which is exactly why the value tests missed it. The only
+difference is cache behaviour, and a throughput assertion inside a
+pre-commit gate that runs under a shared build lock would be flaky in
+both directions: it would fail on a loaded machine and pass on a fast
+one with the bug present.
+
+The detector for defect 3 stays the benchmark sweep, read by a person.
+That is a weaker control than a test and is recorded here as such,
+rather than papered over with an assertion that does not really hold.
+
+### What runs where
+
+The Rust guards are ordinary integration tests, so they run when their
+component is gated -- which under the scoping rule means when
+`components/tensor` changes. The extractor guard is different:
+`scripts/extract-checkpoint` belongs to no cargo workspace, so nothing
+would ever have gated it. `scripts/check` now runs `scripts/test-extract`
+unconditionally, in the same always-run band as `check-size` and
+`sw-checklist`, for the reason given there: a gate that goes quiet
+when it has nothing to compile is a gate you stop trusting.

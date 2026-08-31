@@ -70,6 +70,14 @@ else
     done
 fi
 
+echo "=== extractor guards ==="
+# scripts/extract-checkpoint is not in any cargo workspace, so no
+# component gate covers it -- and it is where defect 8 (every imported
+# matrix silently transposed) lived. The importer's byte round-trip
+# test passed throughout, because round-tripping bytes says nothing
+# about how they are read. Run its guards on every gate, always.
+"$SCRIPT_DIR/test-extract"
+
 echo "=== repository size ==="
 # GitHub hard-blocks files over 100 MB and wants repositories under
 # about 1 GB. Weights are the thing that would breach either: a TRM

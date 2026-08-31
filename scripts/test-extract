@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Guards for scripts/extract-checkpoint, per docs/postmortem-1.md.
+
+DEFECT 8 is the one that matters here. PyTorch stores row-major, so
+W[r][c] sits at r*cols + c; .spm stream order is column-major, so index
+k must hold W[k % rows][k / rows]. The extractor originally dumped raw
+storage bytes, and every matrix in the imported file was its own
+transpose.
+
+The round-trip test in spm-import passed the whole time, because
+round-tripping bytes says nothing about how they are interpreted. Only
+a check that knows what the bytes MEAN can catch this -- which is what
+this file is.
+
+Pure standard library, like the extractor itself: builds tiny
+checkpoints by hand rather than depending on torch.
+"""
+
+import json
+import struct
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+EXTRACT = HERE / "extract-checkpoint"
+
+
+def write_safetensors(path, tensors):
+    """Build a .safetensors from {name: (shape, [f32 values])}."""
+    body, header, offset = bytearray(), {}, 0
+    for name, (shape, values) in tensors.items():
+        raw = struct.pack(f"<{len(values)}f", *values)
+        header[name] = {
+            "dtype": "F32",
+            "shape": list(shape),
+            "data_offsets": [offset, offset + len(raw)],
+        }
+        body += raw
+        offset += len(raw)
+    blob = json.dumps(header).encode()
+    path.write_bytes(struct.pack("<Q", len(blob)) + blob + bytes(body))
+
+
+def read_f32(path):
+    raw = path.read_bytes()
+    return list(struct.unpack(f"<{len(raw) // 4}f", raw))
+
+
+def extract(src, dst):
+    subprocess.run(
+        [sys.executable, str(EXTRACT), str(src), str(dst)],
+        check=True,
+        capture_output=True,
+    )
+    rows = {}
+    for line in (dst / "manifest.tsv").read_text().splitlines():
+        if line and not line.startswith("#"):
+            name, shape, _dtype, blob, _n = line.split("\t")
+            rows[name] = ([int(d) for d in shape.split(",")], dst / blob)
+    return rows
+
+
+def check(label, condition, detail=""):
+    if not condition:
+        print(f"FAIL: {label} {detail}", file=sys.stderr)
+        sys.exit(1)
+    print(f"ok: {label}")
+
+
+def main():
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        # W is 3 rows x 2 cols, values chosen so every element is
+        # distinguishable: W[r][c] = 10*r + c.
+        rows, cols = 3, 2
+        matrix = [10 * r + c for r in range(rows) for c in range(cols)]
+        src = tmp / "m.safetensors"
+        write_safetensors(
+            src,
+            {
+                "w": ((rows, cols), matrix),
+                "bias": ((rows,), [1.0, 2.0, 3.0]),
+            },
+        )
+        got = extract(src, tmp / "out")
+
+        # DEFECT 8: stream index k must hold W[k % rows][k / rows].
+        shape, blob = got["w"]
+        values = read_f32(blob)
+        check("shape recorded as written", shape == [rows, cols], f"got {shape}")
+        expected = [10 * (k % rows) + (k // rows) for k in range(rows * cols)]
+        check(
+            "defect 8: 2-D tensors are transposed into stream order",
+            values == expected,
+            f"got {values}, expected {expected}",
+        )
+        # The old, wrong behaviour, kept so the guard is shown to
+        # discriminate rather than merely to pass.
+        check(
+            "defect 8: output is NOT raw row-major",
+            values != matrix,
+            "extractor emitted row-major, which is the original bug",
+        )
+
+        # A 1-D tensor is a single column and streams unchanged.
+        _, bias_blob = got["bias"]
+        check(
+            "1-D tensors pass through unchanged",
+            read_f32(bias_blob) == [1.0, 2.0, 3.0],
+        )
+
+    print("extract-checkpoint guards passed")
+
+
+if __name__ == "__main__":
+    main()
