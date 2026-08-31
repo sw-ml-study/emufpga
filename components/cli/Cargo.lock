@@ -111,6 +111,8 @@ name = "emufpga-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "spm-bench",
+ "spm-bench-report",
  "spm-codec",
  "spm-gemv-ref",
  "spm-numeric",
@@ -161,6 +163,29 @@ version = "0.1.0"
 [[package]]
 name = "spm-activations"
 version = "0.1.0"
+
+[[package]]
+name = "spm-bench"
+version = "0.1.0"
+dependencies = [
+ "spm-activations",
+ "spm-bench-report",
+ "spm-codec",
+ "spm-gemv-ref",
+ "spm-quantize",
+ "spm-stream",
+ "spm-stream-file",
+ "spm-stream-groups",
+ "spm-stream-mem",
+ "spm-stream-metrics",
+]
+
+[[package]]
+name = "spm-bench-report"
+version = "0.1.0"
+dependencies = [
+ "spm-bench",
+]
 
 [[package]]
 name = "spm-bytes"
@@ -227,6 +252,13 @@ dependencies = [
 [[package]]
 name = "spm-stream"
 version = "0.1.0"
+
+[[package]]
+name = "spm-stream-file"
+version = "0.1.0"
+dependencies = [
+ "spm-stream",
+]
 
 [[package]]
 name = "spm-stream-groups"

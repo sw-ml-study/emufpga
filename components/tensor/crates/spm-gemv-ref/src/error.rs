@@ -1,5 +1,6 @@
 //! Errors raised while running a streamed GEMV.
 
+use spm_stream::StreamError;
 use spm_stream_groups::GroupError;
 use std::fmt;
 
@@ -40,5 +41,11 @@ impl std::error::Error for GemvError {}
 impl From<GroupError> for GemvError {
     fn from(value: GroupError) -> Self {
         Self::Group(value)
+    }
+}
+
+impl From<StreamError> for GemvError {
+    fn from(value: StreamError) -> Self {
+        Self::Group(GroupError::Stream(value))
     }
 }

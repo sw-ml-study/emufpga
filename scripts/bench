@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Regenerate docs/results.md's measurement from scratch.
+#
+#   scripts/bench [rows] [cols] [group_size]
+#
+# Builds a release binary, generates a deterministic matrix, packs it,
+# and runs the batch sweep. Defaults match the numbers recorded in
+# docs/results.md so a rerun is comparable.
+#
+# Release build on purpose: the sweep measures the tensor engine, and
+# a debug build measures the absence of optimisation instead.
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROWS="${1:-1024}"
+COLS="${2:-512}"
+GROUP="${3:-1024}"
+WORK="$ROOT/target/bench"
+mkdir -p "$WORK"
+
+echo "=== building release binary ==="
+(cd "$ROOT/components/cli" && "$ROOT/scripts/serial.sh" cargo build --release -p emufpga)
+
+echo "=== generating ${ROWS}x${COLS} matrix ==="
+python3 - "$ROWS" "$COLS" "$WORK/bench.txt" <<'PY'
+import random, sys
+rows, cols, out = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
+# Seeded so the fixture is identical on every machine and every run.
+random.seed(7)
+with open(out, "w") as f:
+    for _ in range(rows):
+        f.write(" ".join(f"{random.gauss(0, 1):.4f}" for _ in range(cols)) + "\n")
+PY
+
+echo "=== packing ==="
+"$ROOT/target/release/emufpga" pack \
+    -i "$WORK/bench.txt" -o "$WORK/bench.spm" -g "$GROUP"
+
+echo "=== sweeping ==="
+"$ROOT/target/release/emufpga" bench \
+    -i "$WORK/bench.spm" -b 1,2,4,8,16,32,64,128 -r 9

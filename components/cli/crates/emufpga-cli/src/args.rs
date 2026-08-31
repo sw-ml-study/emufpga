@@ -108,4 +108,31 @@ pub enum Command {
         #[arg(short, long, default_value_t = 64, value_name = "N")]
         group_size: u32,
     },
+
+    /// Sweep batch sizes over a .spm file and report the scan metrics.
+    ///
+    /// Measures how far weight reuse goes before the tensor engine,
+    /// rather than the parameter store, becomes the limit. Reports
+    /// bandwidth, eta, scan productivity (Ps) and parameter residency
+    /// (Rp) for each batch size, against both an in-memory store and
+    /// a file.
+    Bench {
+        /// The .spm file to scan.
+        #[arg(short, long, value_name = "FILE")]
+        input: PathBuf,
+        /// Batch sizes to sweep, comma separated.
+        #[arg(
+            short,
+            long,
+            value_name = "N,N,...",
+            value_delimiter = ',',
+            default_value = "1,2,4,8,16,32"
+        )]
+        batch: Vec<usize>,
+        /// Passes per point. The fastest is reported and the spread
+        /// shown, because a slow pass on a shared machine measures the
+        /// scheduler rather than the engine.
+        #[arg(short, long, default_value_t = 5, value_name = "N")]
+        repeat: usize,
+    },
 }

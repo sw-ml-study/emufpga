@@ -257,11 +257,19 @@ wire value and nothing on disk depends on accumulator width.
 | Crate | Responsibility |
 | --- | --- |
 | `spm-quantize` * | dense f32 matrix to ternary `.spm`, dependency-free |
+| `spm-bench` * | the batch-amortization sweep |
+| `spm-bench-report` * | rendering a sweep as markdown |
 | `emufpga-cli` * | argument parsing and subcommand dispatch (clap) |
 | `emufpga` * | thin binary: parse, dispatch, print, exit code |
 
-Subcommands: `pack` (step 5), `bench` (step 6), `fit` (step 8), then
+Subcommands: `pack` and `bench` (steps 5-6), `fit` (step 8), then
 `sim` and `verify` in saga 2.
+
+**Step 6 measured the make-or-break experiment; see docs/results.md.**
+The crossover it set out to find does not exist in range: the CPU
+reference is compute-bound at every batch size, roughly **196x too
+slow to saturate even a page-cached file read**. That ratio is the
+concrete target step 008's fit model must be held to.
 
 `clap` is the repository's only external dependency, and
 `sw-checklist` has a check that looks for it specifically.

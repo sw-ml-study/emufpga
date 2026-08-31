@@ -26,6 +26,10 @@ build:
 build-release:
     ./scripts/build --release
 
+# Reproduce the docs/results.md measurement.
+bench:
+    ./scripts/bench
+
 # Repo-wide Cargo.lock consistency sweep.
 locks:
     ./scripts/check-locks.sh

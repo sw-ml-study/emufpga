@@ -84,10 +84,19 @@ just locks        # Cargo.lock consistency sweep
 
 ## Status
 
-Saga 1 (`spm-walking-skeleton`) in progress: `.spm` format, seek-free
-weight stream, ternary GEMV reference, batch-amortization measurement,
-Gowin profiles, fit report. Plan and roadmap:
-[docs/plan.md](docs/plan.md).
+Saga 1 (`spm-walking-skeleton`) in progress. Built so far: the `.spm`
+format, a seek-free weight stream, the multiplier-free ternary GEMV
+reference, and `emufpga pack` / `emufpga bench`. Remaining: Gowin
+device profiles and the fit report.
+
+First measurement is in [docs/results.md](docs/results.md). The
+headline is a negative result with a useful number attached: the CPU
+reference engine is compute-bound at every batch size, about **196x
+too slow to saturate even a page-cached file read**, so the crossover
+this step went looking for lies below the measurable range. That ratio
+is the target the fit model has to close.
+
+Plan and roadmap: [docs/plan.md](docs/plan.md).
 
 ## License
 

@@ -1,6 +1,6 @@
 number = 6
 slug = "batch-amortization-bench"
-status = "pending"
+status = "in-progress"
 description = """
 Add `emufpga bench` and find the crossover where compute, not storage,
 become..."""

@@ -1,7 +1,7 @@
 //! Dispatch, and the failure type the subcommands share.
 
 use crate::args::{Cli, Command};
-use crate::pack::pack;
+use crate::commands::{bench, pack};
 use std::fmt;
 
 /// A subcommand that could not complete its work.
@@ -29,8 +29,8 @@ impl std::error::Error for Failure {}
 
 /// Runs a parsed command, returning the line to print on success.
 ///
-/// Adding a subcommand is a new arm here plus a new module, which is
-/// why `bench` and `fit` will not need this function restructured.
+/// Adding a subcommand is an arm here plus a function in
+/// `commands.rs`, which is why `fit` will not need this restructured.
 ///
 /// # Errors
 /// Returns [`Failure`] if the subcommand's work fails.
@@ -41,5 +41,10 @@ pub fn run(cli: Cli) -> Result<String, Failure> {
             output,
             group_size,
         } => pack(&input, &output, group_size),
+        Command::Bench {
+            input,
+            batch,
+            repeat,
+        } => bench(&input, &batch, repeat),
     }
 }

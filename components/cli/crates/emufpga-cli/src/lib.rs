@@ -13,13 +13,13 @@
 //! | 1    | the work failed (unreadable input, malformed matrix) |
 //! | 2    | the command line itself was wrong (clap's convention) |
 //!
-//! Saga 1 ships `pack`. `bench` arrives in step 006 and `fit` in step
-//! 008, so [`Command`] is an enum with one arm today and dispatch in
-//! [`run`] is a match -- adding a subcommand is a new arm and a new
-//! module, not a rewrite.
+//! Saga 1 ships `pack` and `bench`; `fit` arrives in step 008. Each
+//! subcommand is one function in `commands.rs` returning the text to
+//! print, so adding one is an enum arm, a function, and a match arm --
+//! never a restructure.
 
 mod args;
-mod pack;
+mod commands;
 mod run;
 
 pub use args::{Cli, Command};

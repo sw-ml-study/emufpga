@@ -1,13 +1,16 @@
-//! The `pack` subcommand.
+//! The subcommands' work, one function each.
+//!
+//! Each returns the text to print rather than printing it, so
+//! integration tests can assert on the output without capturing
+//! stdout.
 
 use crate::run::Failure;
+use spm_bench::run_sweep;
+use spm_bench_report::render;
 use spm_quantize::{Quantized, parse_matrix, quantize, write_spm};
 use std::path::Path;
 
 /// Reads a text matrix, quantizes it, and writes a `.spm` file.
-///
-/// Returns a one-line summary for the caller to print, so the work is
-/// testable without capturing stdout.
 ///
 /// # Errors
 /// Returns [`Failure`] if the input cannot be read or parsed, or the
@@ -26,6 +29,23 @@ pub(crate) fn pack(input: &Path, output: &Path, group_size: u32) -> Result<Strin
     std::fs::write(output, &bytes)
         .map_err(|e| Failure::new(format!("cannot write {}: {e}", output.display())))?;
     Ok(summary(&quantized, bytes.len(), output))
+}
+
+/// Sweeps batch sizes against a `.spm` file and reports the metrics.
+///
+/// # Errors
+/// Returns [`Failure`] if the batch list is empty or the file cannot
+/// be read as a `.spm`.
+pub(crate) fn bench(input: &Path, batches: &[usize], repeat: usize) -> Result<String, Failure> {
+    if batches.is_empty() {
+        return Err(Failure::new("--batch needs at least one size"));
+    }
+    if batches.contains(&0) {
+        return Err(Failure::new("--batch sizes must be at least 1"));
+    }
+    let sweep = run_sweep(input, batches, repeat.max(1))
+        .map_err(|e| Failure::new(format!("{}: {e}", input.display())))?;
+    Ok(render(&sweep))
 }
 
 /// The line `pack` prints on success.

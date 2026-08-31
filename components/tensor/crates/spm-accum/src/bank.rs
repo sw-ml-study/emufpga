@@ -2,8 +2,25 @@
 
 /// `lanes` independent banks of `rows` accumulators.
 ///
-/// Stored lane-major so one lane's outputs are contiguous, matching
-/// how a consumer reads results back out.
+/// Stored **row-major**: the `lanes` accumulators for one output row
+/// are adjacent, so applying a weight walks contiguous memory.
+///
+/// The obvious layout is the other one -- lane-major, so a lane's
+/// outputs come back as a slice. Measured, it is much worse. A weight
+/// touches every lane at one row, so lane-major strides by `rows`
+/// between lanes: 4 KiB apart for a 1024-row matrix, one cache line
+/// per lane, defeating the prefetcher. The step 006 sweep showed
+/// useful throughput collapsing from 2113 to 434 million weights per
+/// second going from batch 32 to batch 64, as the working set passed
+/// L1. Row-major turns that inner loop into 64 contiguous floats.
+///
+/// It also matches the hardware. In the fabric the lanes for one row
+/// are adjacent registers, not a stride away, so the reference now
+/// has the same locality the RTL will.
+///
+/// The cost is that reading one lane's results gathers with a stride.
+/// That happens once per operation; accumulation happens once per
+/// nonzero weight per lane.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AccumulatorBank {
     /// Batch lanes. Each holds an independent activation vector.
@@ -38,7 +55,7 @@ impl AccumulatorBank {
     pub fn accumulate(&mut self, row: usize, negative: bool, activations: &[f32]) {
         assert!(row < self.rows, "row {row} out of range");
         for (lane, activation) in activations.iter().take(self.lanes).enumerate() {
-            let slot = &mut self.data[lane * self.rows + row];
+            let slot = &mut self.data[row * self.lanes + lane];
             if negative {
                 *slot -= activation;
             } else {
@@ -47,14 +64,20 @@ impl AccumulatorBank {
         }
     }
 
-    /// The accumulators for one lane.
+    /// The accumulators for one lane, gathered.
+    ///
+    /// Allocates, because the storage layout is row-major (see the
+    /// type docs). Called once per operation, against an inner loop
+    /// that runs once per nonzero weight per lane.
     ///
     /// # Panics
     /// Panics if `lane` is out of range.
     #[must_use]
-    pub fn lane(&self, lane: usize) -> &[f32] {
+    pub fn lane(&self, lane: usize) -> Vec<f32> {
         assert!(lane < self.lanes, "lane {lane} out of range");
-        &self.data[lane * self.rows..(lane + 1) * self.rows]
+        (0..self.rows)
+            .map(|row| self.data[row * self.lanes + lane])
+            .collect()
     }
 
     /// Zeroes every accumulator, ready for the next operation.

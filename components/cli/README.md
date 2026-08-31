@@ -5,6 +5,8 @@ The `emufpga` binary and the quantizer behind `pack`.
 | Crate | Responsibility |
 | --- | --- |
 | `spm-quantize` | dense f32 matrix to ternary `.spm`, dependency-free |
+| `spm-bench` | the batch-amortization sweep |
+| `spm-bench-report` | rendering a sweep as markdown |
 | `emufpga-cli` | argument parsing and subcommand dispatch |
 | `emufpga` | thin binary: parse, dispatch, print, exit code |
 
@@ -54,4 +56,21 @@ only place that transposition happens.
 | 1 | the work failed (unreadable input, malformed matrix) |
 | 2 | the command line itself was wrong (clap's convention) |
 
-Built by saga 1 step 5 (spm-pack-cli).
+## `bench`
+
+Sweeps batch sizes over a `.spm` file and reports bandwidth, `eta`,
+`Ps` and `Rp` against both an in-memory store and a file. Results and
+their caveats: [../../docs/results.md](../../docs/results.md);
+reproduce with `just bench`.
+
+Measurement and presentation are separate crates so they cannot grow
+into each other, and because step 008's `fit` needs its own renderer.
+
+`Crossover` is a three-armed enum -- `AlreadyBelow`, `At`,
+`NotReached` -- because conflating "compute-bound before the sweep
+began" with "compute became the limit at batch 8" would report a
+measurement that was never taken. The CPU reference hits the first
+case, and the report says `NOT MEASURED` rather than naming a batch
+size.
+
+Built by saga 1 steps 5 (spm-pack-cli) and 6 (batch-amortization-bench).

@@ -69,7 +69,7 @@ fn the_engine_reproduces_the_reference_from_the_packed_file() {
     )
     .expect("gemv");
 
-    let error = max_abs_error(outcome.bank.lane(0), &expected);
+    let error = max_abs_error(&outcome.bank.lane(0), &expected);
     assert!(
         error <= 1e-4,
         "max abs error {error}\ngot {:?}",

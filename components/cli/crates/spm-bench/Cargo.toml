@@ -1,0 +1,22 @@
+[package]
+name = "spm-bench"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-activations = { path = "../../../tensor/crates/spm-activations" }
+spm-gemv-ref = { path = "../../../tensor/crates/spm-gemv-ref" }
+spm-stream = { path = "../../../stream/crates/spm-stream" }
+spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
+spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
+spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
+spm-stream-metrics = { path = "../../../stream/crates/spm-stream-metrics" }
+
+[dev-dependencies]
+spm-bench-report = { path = "../spm-bench-report" }
+spm-codec = { path = "../../../format/crates/spm-codec" }
+spm-quantize = { path = "../spm-quantize" }

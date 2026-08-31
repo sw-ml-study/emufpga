@@ -42,7 +42,7 @@ fn matches_the_reference_across_shapes_and_group_sizes() {
             run_gemv(stream, &Activations::broadcast(1, &case.activations)).expect("run gemv");
 
         let actual = outcome.bank.lane(0);
-        let error = max_abs_error(actual, &expected);
+        let error = max_abs_error(&actual, &expected);
         assert!(
             error <= TOLERANCE,
             "{rows}x{cols} group {group}: max abs error {error} exceeds {TOLERANCE}\n\
@@ -56,7 +56,7 @@ fn matches_the_reference_across_shapes_and_group_sizes() {
         // Zero does exactly that. Skipping is correct rather than
         // lenient: max_abs_error above already covers those cases
         // completely, since it compares against zero directly.
-        if let Some(similarity) = cosine_similarity(actual, &expected) {
+        if let Some(similarity) = cosine_similarity(&actual, &expected) {
             assert!(
                 similarity > 0.999_999,
                 "{rows}x{cols} group {group}: direction diverged ({similarity})"
@@ -74,7 +74,7 @@ fn a_single_element_matrix_is_handled() {
         &Activations::broadcast(1, &case.activations),
     )
     .expect("run gemv");
-    assert!(max_abs_error(outcome.bank.lane(0), &expected) <= TOLERANCE);
+    assert!(max_abs_error(&outcome.bank.lane(0), &expected) <= TOLERANCE);
 }
 
 #[test]

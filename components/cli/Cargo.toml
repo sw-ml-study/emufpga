@@ -12,6 +12,8 @@
 [workspace]
 members = [
     "crates/spm-quantize",
+    "crates/spm-bench",
+    "crates/spm-bench-report",
     "crates/emufpga-cli",
     "crates/emufpga",
 ]
