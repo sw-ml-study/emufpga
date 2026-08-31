@@ -1,11 +1,12 @@
 number = 8
 slug = "resource-budget-and-fit"
-status = "pending"
+status = "completed"
 description = """
 Build the resource budget and `emufpga fit`. Read docs/plan.md
 sections 5-7, ..."""
 role = "production"
 context_files = ["docs/plan.md"]
 created_at = "2026-08-30T17:26:14"
+completed_at = "2026-08-30T17:30:12"
 task_type = "rust-model"
-commits = []
+commits = ["eca1418ffe8ad20c67ab08a21d7fafda908d0614"]

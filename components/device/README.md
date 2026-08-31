@@ -6,7 +6,12 @@ Gowin device profiles for the five Tang Nano boards on hand.
 | --- | --- |
 | `gowin-profile` | the five board profiles, every figure cited |
 
-`gowin-budget` and `gowin-timing` arrive in step 8.
+**Nothing imports this crate, deliberately.** Step 8 was going to build
+a resource budget and fit report on top of it; that step was withdrawn
+on a scope correction -- we do not yet want high-fidelity FPGA
+emulation, and a fabric model that could reach for LUT4 counts would
+drift back toward it. This is reference data for saga 6, when real
+place-and-route enters the picture.
 
 ## Provenance is part of the data
 

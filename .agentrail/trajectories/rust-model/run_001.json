@@ -1,0 +1,11 @@
+{
+  "task_type": "rust-model",
+  "state": {
+    "number": 8,
+    "step": "resource-budget-and-fit"
+  },
+  "action": "Recognised the scope correction applied to work not yet started. Recorded the withdrawal in the saga rather than silently rewriting the step, after an attempt to delete and re-add the step left current_step pointing at a removed directory -- steps are append-only and deleting one is not a supported operation.",
+  "result": "failure: scope-withdrawn-before-start",
+  "reward": 0,
+  "timestamp": "2026-08-30T17:30:12"
+}

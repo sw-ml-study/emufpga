@@ -1,8 +1,8 @@
 # emufpga -- implementation plan
 
-Serial Parameter Machine (SPM) research vehicle: a behavioral FPGA
-emulator plus resource budget, calibrated to the Gowin parts on Sipeed
-Tang Nano boards, driving a streaming low-bit tensor engine.
+Serial Parameter Machine (SPM) research vehicle: a conceptual model of
+something FPGA-like, driving a streaming low-bit tensor engine, aimed
+eventually at the Gowin parts on Sipeed Tang Nano boards.
 
 Source: `docs/research.txt`.
 
@@ -22,27 +22,41 @@ front, and an RP2350/PIO front. This repository is the **FPGA front's
 software half**, built so its outputs are also the golden model for the
 other two.
 
-**emufpga is** a cycle-accounting behavioral model of an SPM streaming
-tensor engine, paired with a resource budget checked against real Gowin
-device profiles. It answers two questions for a proposed engine
+**emufpga is** a conceptual, cycle-approximate model of an SPM
+streaming tensor engine. It answers two questions for a proposed engine
 configuration:
 
 1. Is it correct? (bit-exact against a CPU reference over identical
    golden vectors)
-2. Would it fit, and how fast would it run, on the Tang Nano board in
-   my hand?
+2. Where does the pipeline stall -- does the datapath starve waiting on
+   the parameter stream, or does the stream back up waiting on the
+   datapath?
+
+Its knobs are abstract: lanes, FIFO depth, fetch rate. **Cycles are a
+unit, not a duration.** Nothing here converts to seconds, because no
+fabric clock has been measured and inventing one is how a conceptual
+model quietly becomes a fidelity claim.
 
 **emufpga is not** a gate-level or bitstream-accurate Gowin simulator,
-and it does not emit HDL. RTL is written by hand later and validated
-against the golden vectors this repository produces. This boundary is
-deliberate: it keeps the research question (does sequential parameter
-access plus reuse do useful work?) ahead of the toolchain question.
+it does not emit HDL, and it does **not** predict whether a design fits
+a given part. No LUT4 budgets, no utilization percentages, no
+place-and-route predictions. RTL is written by hand later and validated
+against the golden vectors this repository produces.
+
+That boundary is deliberate and was tightened once, in step 8. The
+original plan had a resource-budget and fit report checked against real
+device profiles; it was withdrawn before being written, because
+high-fidelity fit modelling is the opposite of conceptual exploration
+and would also have been unfalsifiable -- the two figures a fit model
+most needs, bulk memory bandwidth and fabric fmax, are `Unknown` for
+every board (section 6). Something FPGA-like that can be refined later
+beats something device-shaped that cannot be checked.
 
 ## 2. Decisions taken
 
 | Question | Decision |
 | --- | --- |
-| Emulator depth | Behavioral cycle model + resource budget. No HDL emission. |
+| Emulator depth | Conceptual cycle-approximate model with abstract knobs. No HDL emission, no fit prediction. Narrowed from "cycle model + resource budget" at step 8. |
 | Primary device | Tang Nano 9K (Gowin GW1NR-9). Other boards are added as profile data, not as new code. |
 | External toolchain | Open source: Yosys, nextpnr-himbaechel, Project Apicula, openFPGALoader. Chosen so a real place-and-route can be scripted and diffed against the emulator's prediction. |
 | First workload | Synthetic ternary GEMV. Research "Phase 0: don't run a model". Real models arrive in saga 2+. |
@@ -227,30 +241,17 @@ wire value and nothing on disk depends on accumulator width.
 | `gowin-budget` * | LUT4/DFF/BSRAM/DSP/IO accounting, `fits()` |
 | `gowin-timing` * | fmax model, cycles -> seconds |
 
-**`components/fabric/`** -- behavioral cycle model (saga 2)
+**`components/fabric/`** -- the conceptual fabric model (step 9)
 
 | Crate | Responsibility |
 | --- | --- |
-| `emufpga-rtl` | behavioral blocks (FIFO, decoder, MAC lane, accumulator bank), each declaring its own resource cost |
-| `emufpga-pipeline` | compose blocks into a pipeline, elaborate |
-| `emufpga-clock` | cycle-driven scheduler |
-| `emufpga-trace` | event/waveform trace for debugging |
+| `fabric-model` | abstract config, execution, cycle accounting |
+| `fabric-report` | rendering a run |
 
-**`components/engine/`** -- SPM engine on the fabric (saga 2)
-
-| Crate | Responsibility |
-| --- | --- |
-| `spm-engine` | streaming ternary GEMV expressed as a fabric pipeline |
-| `spm-engine-config` | lane count, batch width, datapath width, derivation |
-| `spm-verify` | differential test: fabric vs `spm-gemv-ref` |
-
-**`components/report/`** -- reporting (saga 2)
-
-| Crate | Responsibility |
-| --- | --- |
-| `emufpga-fit` | utilization report per device |
-| `emufpga-perf` | throughput and scan-productivity report |
-| `emufpga-render` | text / markdown / TSV rendering |
+Knobs are abstract -- `weight_lanes`, `batch_width`, `fifo_bytes`,
+`fetch_bytes_per_cycle`, `fetch_latency_cycles` -- and none of them is
+tied to a part. Blocks do **not** declare resource costs; that was the
+withdrawn fit model's idea and it is not coming back at this stage.
 
 **`components/cli/`** -- binaries (`pack` built, saga 1 step 5)
 
@@ -283,7 +284,14 @@ every weight `Zero`, keeping a zero scale out of the wire format. The
 transform is lossy by design and the rule is pinned by tests rather
 than left implicit.
 
-## 6. Device profiles
+## 6. Device profiles (reference data, no consumer)
+
+`components/device/` is **cited reference data with nothing built on
+it.** It cost one step, the figures are sourced and tested, and saga 6
+will want them when real place-and-route enters the picture. Until
+then nothing imports `gowin-profile`, deliberately: a fabric model that
+could reach for LUT4 counts would drift back toward the fit modelling
+this project has decided not to do yet.
 
 Target boards, all owned. Figures are **sourced**, not remembered --
 the table this section used to carry was written from memory and is
@@ -352,7 +360,7 @@ is defined properly when its predecessor's measurements land.
 | Saga | Name | Goal |
 | --- | --- | --- |
 | 1 | `spm-walking-skeleton` | `.spm` format, seek-free stream, ternary GEMV reference, batch amortization measurement, Gowin profiles, fit report. One vertical slice on synthetic matrices. |
-| 2 | `fabric-cycle-model` | `components/fabric/` + `components/engine/`: behavioral blocks with declared resource cost, cycle scheduler, differential verification against the saga 1 reference. |
+| 2 | `refine-the-fabric` | Sharpen the step 9 model where measurement justifies it: overlapped fetch, deeper pipelining, multiple concurrent streams. Only where a question needs it -- fidelity is added on demand, not on principle. |
 | 3 | `bitplane-and-q4` | Bit-serial / bitplane weight layout and Q4 datapath alongside ternary. Measure the silicon-area vs clock-cycles tradeoff the research calls out. |
 | 4 | `tiny-model-import` | Import a real tiny model (TRM, ~7M params) to `.spm`. Layer-at-a-time correctness against a conventional implementation. |
 | 5 | `recurrence-and-reuse` | Exploit TRM's recursion for temporal hardware reuse: circulating parameters, one small engine applied repeatedly. |
@@ -427,16 +435,24 @@ green.
    9K profile is complete, and a test asserts no profile field is a
    placeholder for the primary device.
 
-8. **`resource-budget-and-fit`** -- `gowin-budget` and `gowin-timing`;
-   `emufpga fit` reports LUT4 / BSRAM / DSP / IO utilization plus
-   predicted cycles and throughput per board for a given lane and batch
-   configuration.
-   *Accepts when:* `emufpga fit` prints a per-board table for the
-   synthetic engine, correctly refuses configurations that exceed a
-   profile, and its assumptions are written down in `docs/fit-model.md`
-   so a later real place-and-route can contradict them specifically.
+8. **`resource-budget-and-fit`** -- **WITHDRAWN, not performed.**
+   Specified as a per-board utilization and fit report. Withdrawn on a
+   scope correction before any of it was written: we do not yet want
+   high-fidelity FPGA emulation, and the two figures such a model most
+   needs are `Unknown` for every board. Recorded in the saga rather
+   than quietly rewritten.
 
-9. **`saga-1-wrapup`** -- `README.md` results table, `docs/architecture.md`,
+9. **`conceptual-fabric-model`** -- `components/fabric/` and
+   `emufpga sim`: a parameterized model with abstract knobs that
+   executes a real `.spm` file, reports cycles, stalls and occupancy,
+   and is **bit-exact** against `spm-gemv-ref`.
+   *Accepts when:* agreement with the CPU reference is bit-exact (not
+   within-tolerance -- in column-major order consecutive weights land
+   on different accumulators, so summation order per accumulator is
+   unchanged), a starved configuration reports high stalls, and cycle
+   counts are monotone in the obvious directions.
+
+10. **`saga-1-wrapup`** -- `README.md` results table, `docs/architecture.md`,
    `docs/spm-format.md`, final `sw-checklist` counts, saga 2 defined.
    *Accepts when:* `just check` is green, the format is documented well
    enough for the RP2350 and rack-Linux fronts to consume it, and
@@ -478,13 +494,21 @@ and nothing may change after `complete`.
 
 ## 10. Risks and open questions
 
-**The fit model is unfalsifiable until saga 6.** Between now and then,
-`emufpga fit` produces numbers nobody has checked against a real
-place-and-route. Mitigation: `docs/fit-model.md` states every assumption
-explicitly so saga 6 can contradict specific claims rather than shrug at
-the whole model. This is the plan's largest weakness and it is accepted
-deliberately, because the alternative -- building the toolchain
-integration first -- delays the research question by months.
+**Retired: the fit model is unfalsifiable.** This was the plan's
+largest stated weakness -- a fit report producing numbers nobody could
+check. It is retired by not building one. Step 8 was withdrawn and the
+fabric model reports cycles, stalls and occupancy, all of which are
+properties of a configuration rather than claims about a part. Nothing
+in the tree now asserts anything a place-and-route could contradict,
+which also means nothing in the tree is waiting on saga 6 to become
+trustworthy.
+
+**The conceptual model can drift toward false precision.** The failure
+mode that replaces it. A cycle count looks like a measurement, and it
+is easy to start reading occupancy as though it predicted silicon. Two
+guards: cycles are never converted to a duration, and `gowin-profile`
+has no consumer, so there is no path by which a device figure reaches
+the model.
 
 **Tang Nano bulk memory bandwidth may be the real ceiling.** The
 architecture's entire premise is trading random access for cheap

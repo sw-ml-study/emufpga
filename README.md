@@ -22,23 +22,31 @@ Background and the full argument: [docs/research.txt](docs/research.txt).
 
 ## What this is
 
-A cycle-accounting behavioral model of an SPM streaming tensor engine,
-paired with a resource budget checked against real Gowin device
-profiles. It answers two questions about a proposed engine
+A conceptual, cycle-approximate model of an SPM streaming tensor
+engine. It answers two questions about a proposed engine
 configuration:
 
 1. **Is it correct?** Bit-exact against a CPU reference over identical
    golden vectors.
-2. **Would it fit, and how fast would it run** on the Tang Nano board in
-   your hand?
+2. **Where does the pipeline stall?** Does the datapath starve waiting
+   on the parameter stream, or does the stream back up waiting on the
+   datapath?
+
+Its knobs are abstract -- lanes, FIFO depth, fetch rate -- and cycles
+are a unit, not a duration.
 
 ## What this is not
 
-Not a gate-level or bitstream-accurate Gowin simulator, and it emits no
-HDL. RTL is written by hand later and validated against the golden
-vectors this repository produces. That boundary is deliberate: it keeps
-the research question -- does sequential parameter access plus reuse do
-useful work? -- ahead of the toolchain question.
+Not a gate-level or bitstream-accurate Gowin simulator, it emits no
+HDL, and it does **not** predict whether a design fits a given part.
+No LUT4 budgets, no utilization percentages, no place-and-route
+predictions. RTL is written by hand later and validated against the
+golden vectors this repository produces.
+
+Something FPGA-like that can be refined later beats something
+device-shaped that cannot be checked. A resource-budget and fit report
+was planned and withdrawn for exactly that reason -- see docs/plan.md
+section 1.
 
 ## Target hardware
 
