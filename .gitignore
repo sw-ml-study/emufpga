@@ -16,4 +16,11 @@ out/
 # AgentRail session transcripts are local and can grow without bound.
 # Durable saga records -- saga.toml, steps/, trajectories/ -- stay tracked;
 # losing them would break the handoff between sessions.
+#
+# BOTH paths matter. `agentrail archive` moves a whole saga, sessions
+# included, into .agentrail-archive/, where the first pattern no longer
+# matches it. One archived transcript here was 3.1 MB; ../sw-mlpl reports
+# that committing these repeatedly took its .git to 2.2 GB and tripped
+# GitHub's large-file block.
 .agentrail/sessions/
+.agentrail-archive/*/sessions/
