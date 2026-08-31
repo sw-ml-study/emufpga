@@ -1,0 +1,10 @@
+number = 11
+slug = "batched-serving"
+status = "pending"
+description = """
+Amortize one sweep of the weights across N concurrent clients, and
+show it wo..."""
+role = "production"
+context_files = []
+created_at = "2026-08-31T16:23:01"
+commits = []
