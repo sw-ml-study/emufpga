@@ -60,15 +60,19 @@ The fix was a layout file rather than a smarter reader; see
 `layouts/trm-maze-30x30.order` and
 `components/cli/crates/spm-order/tests/no_seek.rs`.
 
-## Where these should live
+## Where these live
 
-`docs/research2.txt` argues sw-mlpl should become the executable
-teaching language for this architecture while emufpga stays the
-research vehicle. These two files are the first lessons of that
-curriculum and are ready to move to `sw-mlpl/demos/` unchanged; they
-are here for now because the defect and the layout file they explain
-live here.
+Here, and they stay here. `docs/research2.txt` floated moving them to
+`sw-mlpl/demos/`; the decision is to keep them beside the defect and
+the layout file they explain, so a change to either is a change to
+both.
 
-Not yet written, from that plan: residency (`Rp`) and pipeline
-occupancy (`eta`) as charts, which want a `dataflow` renderer sw-mlpl
-does not have yet.
+What sw-mlpl would need to make them better is recorded in
+[UPSTREAM.md](UPSTREAM.md) -- written from friction actually hit, not
+from a wish list. The short version: `disp` prints nothing in script
+mode, a length-1 array does not broadcast where a scalar does, there
+is no indexing primitive, and the structural diagrams this material
+wants need a `dataflow` renderer that does not exist yet.
+
+Not yet written, from research2.txt's plan: residency (`Rp`) and
+pipeline occupancy (`eta`), both of which want that renderer.

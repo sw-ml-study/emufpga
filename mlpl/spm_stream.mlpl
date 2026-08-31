@@ -48,7 +48,7 @@ def u:sweep(S, x, i, acc) {
     acc
   } else {
     row = reshape(gather_rows(S, [i]), [3]);
-    a = reduce_add(reshape(gather_rows(x, [i]), [1]), 0);
+    a = reshape(gather_rows(x, [i]), []);
     u:sweep(S, x, i + 1, acc + row * a)
   }
 }
@@ -83,7 +83,7 @@ def u:sweep_ternary(pos, neg, x, i, acc) {
   } else {
     p = reshape(gather_rows(pos, [i]), [3]);
     n = reshape(gather_rows(neg, [i]), [3]);
-    a = reduce_add(reshape(gather_rows(x, [i]), [1]), 0);
+    a = reshape(gather_rows(x, [i]), []);
     u:sweep_ternary(pos, neg, x, i + 1, acc + p * a - n * a)
   }
 }

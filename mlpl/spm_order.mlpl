@@ -30,8 +30,8 @@ def u:steps(order, i, acc) {
   if gt(i, 2) {
     acc
   } else {
-    here = reduce_add(reshape(gather_rows(reshape(order, [4,1]), [i]), [1]), 0);
-    next = reduce_add(reshape(gather_rows(reshape(order, [4,1]), [i + 1]), [1]), 0);
+    here = reshape(gather_rows(reshape(order, [4,1]), [i]), []);
+    next = reshape(gather_rows(reshape(order, [4,1]), [i + 1]), []);
     u:steps(order, i + 1, concat(acc, [next - here]))
   }
 }
