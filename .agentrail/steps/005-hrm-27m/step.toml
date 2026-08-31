@@ -1,0 +1,13 @@
+number = 5
+slug = "hrm-27m"
+status = "pending"
+description = """
+Rung 2 of the model ladder: HRM, 27M parameters, from
+`sapientinc/HRM`.
+
+BUIL..."""
+role = "production"
+context_files = ["docs/postmortem-1.md"]
+created_at = "2026-08-31T11:15:00"
+task_type = "rust-model"
+commits = []

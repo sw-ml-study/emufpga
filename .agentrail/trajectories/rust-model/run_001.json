@@ -1,0 +1,11 @@
+{
+  "task_type": "rust-model",
+  "state": {
+    "number": 4,
+    "step": "trm-forward"
+  },
+  "action": "Bisected the block stage by stage rather than chasing a single end-to-end cosine, which pointed at one function in one run. Read models/layers.py and trm.py for every formula instead of inferring them. Verified the transpose fix against torch ground truth on the real checkpoint. Used uv venv and uv pip per Mike's standing rule.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-08-31T11:15:00"
+}
