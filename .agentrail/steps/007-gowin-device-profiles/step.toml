@@ -1,6 +1,6 @@
 number = 7
 slug = "gowin-device-profiles"
-status = "pending"
+status = "in-progress"
 description = """
 Build `components/device/` -- Gowin device profiles for the five Tang
 Nano bo..."""

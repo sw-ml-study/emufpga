@@ -1,0 +1,18 @@
+# Gowin device profiles for the Tang Nano boards, and (from step 008)
+# the resource budget and timing model built on them.
+#
+# The figures here are DATA, and their provenance is part of the data.
+# Every value carries the document it came from; anything that could
+# not be sourced is Unknown, never a plausible guess.
+
+[workspace]
+members = ["crates/gowin-profile"]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.lints.clippy]
+pedantic = "warn"

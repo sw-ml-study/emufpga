@@ -285,31 +285,64 @@ than left implicit.
 
 ## 6. Device profiles
 
-Target boards, all owned. **These figures are UNVERIFIED starting
-points.** Saga 1 step 7 replaces them with values sourced and cited
-from Project Apicula's device database and the Gowin datasheets; any
-number that cannot be sourced is recorded as unknown rather than
-guessed.
+Target boards, all owned. Figures are **sourced**, not remembered --
+the table this section used to carry was written from memory and is
+gone. Every value below is cited in
+`components/device/crates/gowin-profile/src/boards.rs` with the
+document and retrieval date, and anything that could not be sourced is
+`Unknown` in the type system rather than a plausible number.
 
-| Board | Device | LUT4 | BSRAM | DSP | On-board bulk memory | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Tang Nano 1K | GW1NZ-1 | ~1152 | ~72 Kb | 0 | none | low power; smallest useful fabric |
-| Tang Nano 4K | GW1NSR-4C | ~4608 | ~180 Kb | ~16 | HyperRAM | hard Cortex-M3; can play the stream-controller role on one chip |
-| **Tang Nano 9K** | **GW1NR-9** | **~8640** | **~468 Kb** | **~20** | **PSRAM** | **primary target** |
-| Tang Nano 20K | GW2AR-18 | ~20736 | ~828 Kb | ~48 | SDRAM | most lanes of the pre-25K parts |
-| Tang Nano 25K | GW5A-25 | ~23000 | TBD | TBD | TBD | Arora V; least mature open-toolchain support |
+| Board | Part | LUT4 | FF | B-SRAM | DSP 18x18 | PLL | Bulk memory |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Tang Nano | GW1N-1 | 1,152 | 864 | 72 Kb (4) | unknown | 1 | PSRAM 64 Mb |
+| Tang Nano 4K | GW1NSR-LV4CQN48PC6/I5 | 4,608 | 3,456 | 180 Kb | unknown | 2 | PSRAM in package, size unstated |
+| **Tang Nano 9K** | **GW1NR-LV9QN88PC6/I5** | **8,640** | **6,480** | **468 Kb (26)** | **20** | **2** | **PSRAM 64 Mb** |
+| Tang Nano 20K | GW2AR-LV18QN88C8/I7 | 20,736 | 15,552 | 828 Kb (46) | 48 | 2 | SDR SDRAM 64 Mb, 32-bit |
+| Tang Nano 25K | GW5A-25 | 23,040 | unknown | 1,008 Kb | 28 | 6 | unconfirmed |
 
-A profile records at minimum: LUT4 count, DFF count, BSRAM block count
-and block width, DSP block count and shape, user IO count, achievable
-fmax band, and the type/width/bandwidth of on-board bulk memory. The
-last field matters most -- it sets the parameter-stream bandwidth the
-whole architecture is bottlenecked on.
+Sources: the Sipeed wiki page for each board, retrieved 2026-08-30.
+Gowin's DS117-3.2.5E was retrieved as the family authority for the
+GW1NR parts, but its resource tables are CID-encoded and did not
+extract to text on this machine, so the figures come from the vendor
+pages that restate them.
 
-The 9K is primary because its open-toolchain support is the most
-mature, which is precisely what makes the emulator's fit predictions
-falsifiable: `just fit` can eventually run a real nextpnr place-and-route
-and diff utilization against the emulator's claim. A fit model nobody
-can check is not worth building.
+### The two gaps that matter
+
+**Bulk memory bandwidth is unknown for every board.** This is the most
+consequential gap in the project. The architecture's premise is
+trading random access for cheap sequential bandwidth, and step 6
+measured the CPU reference as roughly 196x too slow to saturate even a
+page-cached read (docs/results.md). Which side of that ratio a board
+lands on is decided by what its PSRAM or SDRAM sustains -- a figure
+board documentation does not state, because it depends on the memory
+controller as much as on the part. Measuring it is hardware work.
+
+**Achievable fabric fmax is unknown for every board.** Datasheets give
+per-primitive timing, not a fabric-wide number. The honest source is a
+real place-and-route, which is saga 6.
+
+Both are load-bearing for step 8. A fit model that quietly assumed
+values for them would produce numbers nobody could check, so
+`gowin-profile` makes them unreadable as numbers and a test asserts
+they stay that way -- if either is ever sourced, that test fails and
+tells you to revisit `docs/fit-model.md`.
+
+### Smaller gaps
+
+The 9K's user I/O count is not stated as a number on its board page;
+it needs Gowin's UG119E package and pinout guide. DSP counts for the
+1K and 4K are likewise unstated. None of these block step 8, which
+needs LUT4, flip-flops, block SRAM and DSP -- complete for the 9K,
+asserted by a test.
+
+**Which 25K board is on hand is unconfirmed.** Sipeed sells both a
+Tang Nano 25K and a Tang Primer 25K. The fabric figures above are the
+GW5A-25's, cited from the Primer 25K page; every board-level field is
+`Unknown` rather than borrowed from the Primer.
+
+The 9K remains primary because its open-toolchain support is the most
+mature, which is what makes the fit predictions falsifiable against a
+real place-and-route.
 
 ## 7. Saga roadmap
 
