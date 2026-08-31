@@ -1,11 +1,12 @@
 number = 10
 slug = "saga-1-wrapup"
-status = "in-progress"
+status = "completed"
 description = """
 Close saga 1. Read docs/plan.md end to end first -- this step is
 partly about..."""
 role = "meta"
 context_files = ["docs/plan.md"]
 created_at = "2026-08-30T17:43:42"
+completed_at = "2026-08-30T17:46:41"
 task_type = "documentation"
-commits = []
+commits = ["0542c04a7c1a8bbcbfaddb4ea91e81884bf79717"]

@@ -1,0 +1,11 @@
+{
+  "task_type": "documentation",
+  "state": {
+    "number": 10,
+    "step": "saga-1-wrapup"
+  },
+  "action": "Compared the plan's crate map against the actual tree rather than trusting it, which is what surfaced the dead scaffolding. Recorded the standing sw-install exception with its reason instead of silently carrying it.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-08-30T17:46:41"
+}
