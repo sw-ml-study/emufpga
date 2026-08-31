@@ -1,0 +1,11 @@
+{
+  "task_type": "rust-import",
+  "state": {
+    "number": 2,
+    "step": "trm-importer"
+  },
+  "action": "Read trm.py after the import landed and found that the extractor's alphabetical sort is the reverse of TRM's per-layer execution order, so a forward sweep of the file just committed would have to seek backward. Recorded it as step 003 rather than patching quietly, because the layout contract deserves its own change.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-08-30T19:03:03"
+}
