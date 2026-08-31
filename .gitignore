@@ -36,10 +36,37 @@ out/
 # about 1 GB, so weights live outside the tree and are fetched or
 # regenerated. docs/ records where each one came from.
 models/
+checkpoints/
+weights/
+
+# Checkpoint and tensor formats. Broad on purpose: the rule is that a
+# large binary does not enter this repository unless Mike asks for it
+# explicitly, so the list errs toward covering formats we do not use
+# yet rather than waiting to be surprised by one.
 *.pt
+*.pth
 *.safetensors
 *.ckpt
 *.gguf
+*.onnx
+*.npz
+*.npy
+*.h5
+*.pkl
+*.pickle
+*.msgpack
+*.parquet
+*.arrow
+
+# Archives. Almost always either a download or a build product.
+*.tar
+*.tar.*
+*.tgz
+*.zip
+*.7z
+*.gz
+*.bz2
+*.xz
 
 # .spm files are derived artifacts too -- EXCEPT the tiny golden
 # fixtures that pin the byte layout, which are the format's contract

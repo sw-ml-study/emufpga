@@ -304,6 +304,39 @@ from the first crate onward. Record counts in a `sw-checklist:` commit
 trailer. A commit that raises either count needs
 `sw-checklist: exception` with a justification.
 
+## Large files never enter git
+
+**A large binary does not enter this repository unless Mike asks for
+it explicitly.** Model checkpoints, tensor dumps, archives, session
+transcripts, anything derived from weights.
+
+The reason is not GitHub's limits, though those are real (100 MB per
+file, ~1 GB per repository). It is that a large blob entering history
+cannot be removed without rewriting it. The useful place to stop one is
+before the commit.
+
+Two mechanisms, and the second is the one that matters:
+
+- `.gitignore` covers `models/`, `checkpoints/`, `weights/`, the
+  checkpoint and tensor formats, archives, and `*.spm` -- with an
+  exception for `**/tests/golden/*.spm`, which are the format's byte
+  contract and measured in bytes.
+- `scripts/check-size` runs in `just check` and fails on any tracked or
+  untracked file over 1 MiB. An ignore rule is only as good as the next
+  `git add -f`; the gate does not depend on anyone remembering.
+
+The limit is far below GitHub's deliberately. The largest tracked file
+is `docs/research.txt` at 44 KB, so anything megabyte-scale is a
+mistake worth stopping even though GitHub would accept it.
+
+**If a large file genuinely belongs here, that is Mike's call, not
+yours.** Ask. If told yes: `git add -f <path>` and raise the limit
+explicitly with `scripts/check-size <bytes>`, saying in the commit
+message why.
+
+Weights are fetched or regenerated instead. Record where each came
+from in `docs/`, so the next session can get it without asking.
+
 ## Markdown
 
 **ASCII only.** `sw-markdown-checker -f "**/*.md"` gates every
