@@ -1,6 +1,6 @@
 number = 10
 slug = "saga-1-wrapup"
-status = "pending"
+status = "in-progress"
 description = """
 Close saga 1. Read docs/plan.md end to end first -- this step is
 partly about..."""

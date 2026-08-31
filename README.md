@@ -97,22 +97,56 @@ emufpga bench -i model.spm -b 1,2,4,8,16,32
 emufpga sim   -i model.spm -l 8 -w 8 -f 256 -F 64
 ```
 
+## Results
+
+Saga 1 measured the make-or-break experiment. The headline is a
+negative result with a usable number attached.
+
+| what | measured |
+| --- | --- |
+| Scan productivity `Ps` | exactly the batch size, 1 to 128 |
+| Storage traffic across batch sizes | unchanged |
+| Parameter residency `Rp` | 0.00195 -- one group buffer, not one model |
+| CPU engine vs a page-cached read | **~196x too slow to saturate it** |
+| Fabric model, 8 lanes | store-bound/compute-bound crossing at 4-16 bytes/cycle |
+
+Batching works: 128x the batch buys 44x aggregate throughput while the
+store does no more work. But the crossover the experiment went looking
+for -- where compute stops keeping up with storage -- **is not in
+range**. The engine is compute-bound at every batch size, so the
+crossing lies below the smallest one measured. The tool reports that
+as `NOT MEASURED` rather than naming a batch size it did not observe.
+
+Both models agree on the direction: arithmetic is the scarce resource,
+not bytes.
+
+**What these numbers do not support:** IO is not overlapped, so `eta`
+measures a serial pipeline rather than anything an FPGA would do; the
+store was warm, making 196x a *lower* bound on the shortfall; the
+engine is unoptimised scalar reference code; and it is one matrix on
+one machine. Fabric cycles are a unit, not a duration -- nothing here
+converts to seconds, because no fabric clock has been measured.
+
+Full numbers, method and caveats: [docs/results.md](docs/results.md).
+Reproduce with `just bench`.
+
 ## Status
 
-Saga 1 (`spm-walking-skeleton`) nearly complete. Built: the `.spm`
-format, a seek-free weight stream, the multiplier-free ternary GEMV
-reference, sourced Gowin device profiles (reference data, no
-consumer), the conceptual fabric model, and `emufpga pack` / `bench` /
-`sim`. Remaining: the saga wrapup.
+Saga 1 (`spm-walking-skeleton`) complete: the `.spm` format, a
+seek-free weight stream, the multiplier-free ternary GEMV reference,
+sourced Gowin device profiles (reference data, no consumer), the
+conceptual fabric model, and `emufpga pack` / `bench` / `sim`.
 
-First measurement is in [docs/results.md](docs/results.md). The
-headline is a negative result with a useful number attached: the CPU
-reference engine is compute-bound at every batch size, about **196x
-too slow to saturate even a page-cached file read**, so the crossover
-this step went looking for lies below the measurable range. That ratio
-is the target the fit model has to close.
+122 tests across six components. One planned step was withdrawn: a
+resource-budget and fit report, dropped on a scope correction because
+device-accurate fit modelling is not what this project wants yet, and
+would have been unfalsifiable anyway.
 
-Plan and roadmap: [docs/plan.md](docs/plan.md).
+- [docs/architecture.md](docs/architecture.md) -- how the pieces fit
+- [docs/plan.md](docs/plan.md) -- decisions, roadmap, risks
+- [docs/spm-format.md](docs/spm-format.md) -- the wire contract
+- [docs/results.md](docs/results.md) -- what was measured
+- [docs/code_metrics.md](docs/code_metrics.md) -- the complexity gates
 
 ## License
 

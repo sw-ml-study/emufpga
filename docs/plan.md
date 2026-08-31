@@ -233,13 +233,17 @@ adjudicate anyone else's. Saga 2 decides, with the fabric to measure
 against. No format change was needed: the profile discriminant is a
 wire value and nothing on disk depends on accumulator width.
 
-**`components/device/`** -- Gowin device profiles
+**`components/device/`** -- Gowin device profiles (built, saga 1 step 7)
 
 | Crate | Responsibility |
 | --- | --- |
 | `gowin-profile` * | profile data types, the Tang Nano board table |
-| `gowin-budget` * | LUT4/DFF/BSRAM/DSP/IO accounting, `fits()` |
-| `gowin-timing` * | fmax model, cycles -> seconds |
+
+**Reference data with no consumer, by design.** `gowin-budget` and
+`gowin-timing` were planned here and are not coming: they existed to
+serve the withdrawn fit report. Nothing in the tree imports
+`gowin-profile`, which is what keeps the fabric model from drifting
+back toward device prediction.
 
 **`components/fabric/`** -- the conceptual fabric model (step 9)
 
@@ -360,13 +364,50 @@ is defined properly when its predecessor's measurements land.
 | Saga | Name | Goal |
 | --- | --- | --- |
 | 1 | `spm-walking-skeleton` | `.spm` format, seek-free stream, ternary GEMV reference, batch amortization measurement, Gowin profiles, fit report. One vertical slice on synthetic matrices. |
-| 2 | `refine-the-fabric` | Sharpen the step 9 model where measurement justifies it: overlapped fetch, deeper pipelining, multiple concurrent streams. Only where a question needs it -- fidelity is added on demand, not on principle. |
+| 2 | `refine-the-fabric` | Three pieces of work, ordered by the evidence rather than by appeal -- see below. |
 | 3 | `bitplane-and-q4` | Bit-serial / bitplane weight layout and Q4 datapath alongside ternary. Measure the silicon-area vs clock-cycles tradeoff the research calls out. |
 | 4 | `tiny-model-import` | Import a real tiny model (TRM, ~7M params) to `.spm`. Layer-at-a-time correctness against a conventional implementation. |
 | 5 | `recurrence-and-reuse` | Exploit TRM's recursion for temporal hardware reuse: circulating parameters, one small engine applied repeatedly. |
 | 6 | `toolchain-crosscheck` | Hand-written RTL for the ternary lane, validated against saga 1 golden vectors; real Yosys/nextpnr fit diffed against the emulator's prediction on a Tang Nano 9K. |
 | 7 | `moe-scheduling` | Parameter-centric (not token-centric) MoE scheduler: queue tokens per expert, scan each expert once. The research's likely killer application. |
 | 8 | `multi-device` | Two-board pipeline and expert partitioning; the `Rp -> 0` claim at a scale that needs more than one part. |
+
+### Saga 2, defined from what saga 1 measured
+
+Three candidates, in the order the evidence supports. Each is sized to
+answer a question saga 1 raised rather than to advance a plan.
+
+**1. Overlapped fetch in `spm-stream-file`.** Its two buffer slots
+refill synchronously, so `storage_time` and `compute_time` partition
+wall clock and `eta` measures a serial pipeline. That is the single
+caveat attached to every number in docs/results.md, and it is the
+cheapest to remove: the seam is already there, and a prefetch thread
+or io_uring backend drops in without touching `WeightStream` or any
+consumer. Do this first because every later measurement inherits the
+fix.
+
+**2. Q4 and bitplane weight layouts.** Everything measured so far
+applies to two-bit ternary alone, so every conclusion is really a
+conclusion about BitNet-style models. Q4 widens that, and bitplane
+layout is the one the research argues hardest for -- it trades silicon
+area for clock cycles in a way that suits a fabric whose MAC array
+only has to keep up with storage. The `.spm` encoding profile already
+has room: it is one discriminant, and adding a value costs no format
+break.
+
+**3. A real tiny model, TRM (~7M parameters).** Synthetic matrices
+have carried the format, the stream and both engines further than
+expected, but they cannot say whether the layout survives contact with
+real weight distributions, real shapes and a real quantization
+pipeline. TRM's recursion also gives the circulating-parameter idea
+something to exploit. Third because it is the largest piece and the
+one that benefits most from the first two landing.
+
+**Explicitly not saga 2: hardware.** The two figures that would
+justify it -- bulk memory bandwidth and fabric fmax -- are still
+`Unknown` for every board (section 6), and a test keeps them that way.
+Buying or wiring anything before those are measured would be spending
+on a guess.
 
 Fronts 1 (rack Linux / DeepSeek-R1 1.58-bit) and 3 (RP2350 PIO) are out
 of scope here, but this repository owns the `.spm` format and the golden
@@ -491,6 +532,23 @@ and nothing may change after `complete`.
   common agentrail failure mode is committing the source and forgetting
   the saga record, which leaves `agentrail audit` with a gap.
 - Never `--no-verify`.
+
+## 9a. Saga 1 final state
+
+122 tests across six components. `sw-checklist`: **141 passed, 0
+failed, 1 warning**, and no `#[allow]` anywhere in the tree -- every
+clippy pedantic finding was retired by restructuring.
+
+The standing warning is `Binary Freshness [emufpga]: emufpga is not
+installed (run sw-install)`. It is not retired here on purpose: the
+checkpoint process forbids running `sw-install` unasked, because it
+would overwrite the stable installed binaries. Retiring it is a
+deliberate act for whoever owns those binaries, not something a build
+should do on its own.
+
+The zero-failure, zero-`#[allow]` state was held from the first crate
+rather than paid down, which was the goal set in
+docs/code_metrics.md: it is far cheaper never to acquire the debt.
 
 ## 10. Risks and open questions
 
