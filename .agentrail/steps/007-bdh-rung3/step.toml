@@ -1,0 +1,10 @@
+number = 7
+slug = "bdh-rung3"
+status = "pending"
+description = """
+Rung 3 of the model ladder: BDH, the Dragon Hatchling, from
+`pathwaycom/bdh` ..."""
+role = "production"
+context_files = []
+created_at = "2026-08-31T12:47:01"
+commits = []
