@@ -1,0 +1,10 @@
+number = 8
+slug = "smollm-rung4"
+status = "pending"
+description = """
+Rung 4: SmolLM2-135M (`HuggingFaceTB/SmolLM2-135M`), a conventional
+Llama-sha..."""
+role = "production"
+context_files = []
+created_at = "2026-08-31T13:48:28"
+commits = []
