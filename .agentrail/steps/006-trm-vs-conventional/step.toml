@@ -1,0 +1,10 @@
+number = 6
+slug = "trm-vs-conventional"
+status = "pending"
+description = """
+The first head-to-head comparison: TRM's forward pass over streamed
+weights a..."""
+role = "production"
+context_files = []
+created_at = "2026-08-31T12:17:45"
+commits = []
