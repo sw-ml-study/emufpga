@@ -15,8 +15,15 @@ pub const DESCRIPTOR_LEN: usize = 32;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Encoding {
     /// Two-bit ternary weights, `f32` group scales, `i32`
-    /// accumulators. The only profile saga 1 implements.
+    /// accumulators. Saga 1's profile.
     Ternary2F32I32,
+    /// Dense `f32` weights, four bytes each, no packing.
+    ///
+    /// The group scale is **inert** for this profile: the weights
+    /// carry their own magnitude, so the writer emits `1.0` and
+    /// readers ignore it. The group structure is kept anyway, because
+    /// it is what makes the stream self-describing.
+    F32,
 }
 
 impl Encoding {
@@ -25,6 +32,23 @@ impl Encoding {
     pub const fn code(self) -> u8 {
         match self {
             Self::Ternary2F32I32 => 1,
+            Self::F32 => 2,
+        }
+    }
+
+    /// Bytes a group of `count` weights occupies on the wire.
+    ///
+    /// The reason this method exists. Every group sizing in the tree
+    /// used to call `spm_codec::packed_len`, which hardcodes ternary's
+    /// two bits per weight -- so the `Encoding` discriminant existed
+    /// to allow a second encoding while nothing consulted it when
+    /// computing bytes. Ask the encoding instead.
+    #[must_use]
+    pub const fn bytes_for(self, count: usize) -> usize {
+        match self {
+            // Four weights to a byte, groups byte-aligned.
+            Self::Ternary2F32I32 => count.div_ceil(4),
+            Self::F32 => count * 4,
         }
     }
 
@@ -36,6 +60,7 @@ impl Encoding {
     pub const fn from_code(code: u8) -> Result<Self, LayoutError> {
         match code {
             1 => Ok(Self::Ternary2F32I32),
+            2 => Ok(Self::F32),
             code => Err(LayoutError::UnknownEncoding { code }),
         }
     }

@@ -36,7 +36,10 @@ impl SpmWriter {
         }
     }
 
-    /// Appends one scale group: the scale, then its packed weights.
+    /// Appends one ternary scale group.
+    ///
+    /// A convenience over [`SpmWriter::write_raw_group`] for the
+    /// encoding saga 1 built. Packs, then frames.
     ///
     /// # Errors
     /// Returns [`FileError::GroupLen`] if `weights` does not match the
@@ -44,23 +47,43 @@ impl SpmWriter {
     /// [`FileError::Incomplete`] if every declared stream is already
     /// written.
     pub fn write_group(&mut self, scale: f32, weights: &[Ternary]) -> Result<(), FileError> {
-        let expected = self
-            .cursor
-            .group_len(&self.descriptors)
-            .ok_or(FileError::Incomplete {
-                written: self.cursor.stream,
-                declared: self.descriptors.len(),
-            })?;
-        if weights.len() != expected as usize {
+        let mut packed = vec![0u8; packed_len(weights.len())];
+        encode_into(weights, &mut packed)?;
+        self.write_raw_group(scale, &packed, weights.len())
+    }
+
+    /// Appends a group whose payload the caller has already encoded.
+    ///
+    /// The encoding-neutral path. Framing -- scale then payload, in
+    /// stream order -- is the writer's job; encoding is not. `count`
+    /// is how many weights those bytes represent, which the layout
+    /// checks and the reader needs to size the group.
+    ///
+    /// # Errors
+    /// Returns [`FileError::GroupLen`] if `count` does not match the
+    /// layout, or `payload` is not the size this stream's encoding
+    /// implies for `count` weights. Returns [`FileError::Incomplete`]
+    /// if every declared stream is already written.
+    pub fn write_raw_group(
+        &mut self,
+        scale: f32,
+        payload: &[u8],
+        count: usize,
+    ) -> Result<(), FileError> {
+        let incomplete = FileError::Incomplete {
+            written: self.cursor.stream,
+            declared: self.descriptors.len(),
+        };
+        let expected = self.cursor.group_len(&self.descriptors).ok_or(incomplete)?;
+        let encoding = self.descriptors[self.cursor.stream].encoding;
+        if count != expected as usize || payload.len() != encoding.bytes_for(count) {
             return Err(FileError::GroupLen {
                 expected,
-                offered: weights.len(),
+                offered: count,
             });
         }
         self.out.extend_from_slice(&scale.to_le_bytes());
-        let at = self.out.len();
-        self.out.resize(at + packed_len(weights.len()), 0);
-        encode_into(weights, &mut self.out[at..])?;
+        self.out.extend_from_slice(payload);
         self.cursor.advance(&self.descriptors);
         Ok(())
     }

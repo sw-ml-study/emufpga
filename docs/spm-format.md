@@ -62,10 +62,24 @@ as ONE value rather than three orthogonal fields, because in practice
 they co-vary: an FPGA is built for one combination, not for a matrix of
 independent choices.
 
-| code | profile |
-|------|---------|
-| 0    | reserved |
-| 1    | `Ternary2F32I32` -- 2-bit ternary weights, `f32` group scales, `i32` accumulators |
+| code | profile | bytes per group of `n` |
+|------|---------|------------------------|
+| 0    | reserved | -- |
+| 1    | `Ternary2F32I32` -- 2-bit ternary weights, `f32` group scales, `i32` accumulators | `ceil(n / 4)` |
+| 2    | `F32` -- dense `f32` weights, four bytes each, no packing | `n * 4` |
+
+**The payload length of a group depends on its stream's encoding**, and
+readers must consult it per stream rather than per file. A file may
+mix encodings: a ternary group of four weights is one byte while an
+f32 group of four is sixteen, and a reader that applied one rule to
+the whole file would misalign on the second stream and return garbage
+rather than an error.
+
+For the `F32` profile the group scale is **inert**. The weights carry
+their own magnitude, so writers emit `1.0` and readers ignore it. The
+field is not removed for this profile on purpose: the group structure
+is what makes the stream self-describing, and an encoding that skipped
+it would need a reader of its own.
 
 `group_size` must be at least 1. A reader MUST reject an unknown
 encoding rather than ignoring it.
@@ -164,6 +178,17 @@ offset  bytes                     meaning
 ```
 
 Total: 74 bytes.
+
+## Extending versus changing
+
+Adding an encoding profile is an **extension**: a new discriminant
+value, no bump to `version_major`, and every existing file still reads
+byte for byte. The `F32` profile was added exactly this way, and the
+ternary golden fixture below was not regenerated.
+
+A reader that meets an unknown discriminant refuses the file, so an
+old build reading a new file fails loudly rather than misparsing it.
+That is what makes extension safe.
 
 ## Changing this format
 

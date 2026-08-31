@@ -2,7 +2,6 @@
 
 use crate::error::GroupError;
 use crate::open::{read_directory, read_header, widest_group};
-use spm_codec::packed_len;
 use spm_header::Header;
 use spm_layout::OpDescriptor;
 use spm_stream::WeightStream;
@@ -77,20 +76,22 @@ impl<S: WeightStream> GroupStream<S> {
     pub fn next_group(&mut self) -> Option<Result<GroupView<'_>, GroupError>> {
         let count = self.cursor.group_len(&self.descriptors)?;
         let stream_index = self.cursor.stream;
+        let bytes = self.descriptors[stream_index]
+            .encoding
+            .bytes_for(count as usize);
         self.cursor.advance(&self.descriptors);
-        Some(self.take(count).map(move |scale| GroupView {
+        Some(self.take(bytes).map(move |scale| GroupView {
             stream: stream_index,
             scale,
             count,
-            packed: &self.buffer[..packed_len(count as usize)],
+            packed: &self.buffer[..bytes],
         }))
     }
 
-    /// Reads one scale then `count` packed weights into the buffer.
-    fn take(&mut self, count: u32) -> Result<f32, GroupError> {
+    /// Reads one scale then `bytes` of payload into the buffer.
+    fn take(&mut self, bytes: usize) -> Result<f32, GroupError> {
         let mut scale = [0u8; SCALE_LEN];
         self.stream.read_exact(&mut scale)?;
-        let bytes = packed_len(count as usize);
         self.stream.read_exact(&mut self.buffer[..bytes])?;
         Ok(f32::from_le_bytes(scale))
     }

@@ -130,6 +130,7 @@ dependencies = [
  "spm-accum",
  "spm-activations",
  "spm-codec",
+ "spm-layout",
  "spm-stream",
  "spm-stream-groups",
  "spm-stream-metrics",

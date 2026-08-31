@@ -4,7 +4,7 @@ use crate::config::{FabricConfig, FabricError, malformed};
 use crate::cycles::{FabricOutcome, Pipeline};
 use spm_accum::AccumulatorBank;
 use spm_activations::Activations;
-use spm_codec::{NEGATIVE_BIT, NONZERO_BIT, code_at, packed_len};
+use spm_codec::{NEGATIVE_BIT, NONZERO_BIT, code_at};
 use spm_stream::WeightStream;
 use spm_stream_groups::GroupStream;
 
@@ -21,12 +21,13 @@ pub fn run_fabric(
 ) -> Result<FabricOutcome, FabricError> {
     config.validate()?;
     let mut groups = GroupStream::open(stream).map_err(malformed)?;
-    let rows = groups
-        .descriptors
-        .first()
-        .ok_or(FabricError::NoStreams)?
-        .rows as usize;
-    scan(&mut groups, activations, (config, rows))
+    let first = *groups.descriptors.first().ok_or(FabricError::NoStreams)?;
+    let (bank, pipeline, weights) = scan(&mut groups, activations, (config, first))?;
+    Ok(FabricOutcome {
+        bank,
+        pipeline,
+        weights,
+    })
 }
 
 /// Accumulators, resident activations, and the scaled-activation
@@ -83,9 +84,10 @@ impl<'a> Datapath<'a> {
 fn scan(
     groups: &mut GroupStream<impl WeightStream>,
     activations: &Activations,
-    shape: (&FabricConfig, usize),
-) -> Result<FabricOutcome, FabricError> {
-    let (config, rows) = shape;
+    shape: (&FabricConfig, spm_layout::OpDescriptor),
+) -> Result<(AccumulatorBank, Pipeline, u64), FabricError> {
+    let (config, descriptor) = shape;
+    let rows = descriptor.rows as usize;
     let mut dp = Datapath::new(activations, rows);
     let mut pipeline = Pipeline::start(config);
     let (mut at, mut weights) = (0usize, 0u64);
@@ -96,12 +98,9 @@ fn scan(
         }
         let count = g.count as usize;
         dp.apply((g.scale, g.packed, count), (at, rows));
-        pipeline.process((count, packed_len(count)), activations.lanes, config);
+        let group = (count, descriptor.encoding.bytes_for(count));
+        pipeline.process(group, activations.lanes, config);
         (at, weights) = (at + count, weights + count as u64);
     }
-    Ok(FabricOutcome {
-        bank: dp.bank,
-        pipeline,
-        weights,
-    })
+    Ok((dp.bank, pipeline, weights))
 }

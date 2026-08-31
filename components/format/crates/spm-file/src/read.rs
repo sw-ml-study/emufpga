@@ -1,7 +1,6 @@
 //! Reading a `.spm` file forward, one scale group at a time.
 
 use crate::error::FileError;
-use spm_codec::packed_len;
 use spm_header::{HEADER_LEN, Header, parse as parse_header};
 use spm_layout::{DESCRIPTOR_LEN, OpDescriptor, parse as parse_descriptor};
 use spm_walk::Cursor;
@@ -73,8 +72,9 @@ impl<'a> SpmReader<'a> {
     pub fn next_group(&mut self) -> Option<Result<Group<'a>, FileError>> {
         let count = self.cursor.group_len(&self.descriptors)?;
         let stream = self.cursor.stream;
+        let encoding = self.descriptors[stream].encoding;
         Some(
-            self.take(count)
+            self.take(encoding.bytes_for(count as usize))
                 .inspect(|_| {
                     self.cursor.advance(&self.descriptors);
                 })
@@ -87,9 +87,9 @@ impl<'a> SpmReader<'a> {
         )
     }
 
-    /// Consumes one scale plus `count` packed weights at the cursor.
-    fn take(&mut self, count: u32) -> Result<(f32, &'a [u8]), FileError> {
-        let needed = SCALE_LEN + packed_len(count as usize);
+    /// Consumes one scale plus `bytes` of payload at the cursor.
+    fn take(&mut self, bytes: usize) -> Result<(f32, &'a [u8]), FileError> {
+        let needed = SCALE_LEN + bytes;
         let available = self.payload.len().saturating_sub(self.at);
         let raw = self
             .payload

@@ -1,7 +1,6 @@
 //! Reading the header and stream directory off the front of a stream.
 
 use crate::error::GroupError;
-use spm_codec::packed_len;
 use spm_header::{HEADER_LEN, Header, parse as parse_header};
 use spm_layout::{DESCRIPTOR_LEN, OpDescriptor, parse as parse_descriptor};
 use spm_stream::WeightStream;
@@ -43,7 +42,7 @@ pub(crate) fn read_directory(
 pub(crate) fn widest_group(descriptors: &[OpDescriptor]) -> usize {
     descriptors
         .iter()
-        .map(|d| packed_len(d.group_size as usize))
+        .map(|d| d.encoding.bytes_for(d.group_size as usize))
         .max()
         .unwrap_or(0)
 }

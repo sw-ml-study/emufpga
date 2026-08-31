@@ -12,7 +12,8 @@ Byte layout and the rules three implementations must agree on:
 | --- | --- |
 | `spm-bytes` | little-endian integer primitives |
 | `spm-header` | magic, version, endianness, stream count |
-| `spm-codec` | 2-bit ternary packing; Q4 arrives in saga 3 |
+| `spm-codec` | 2-bit ternary packing |
+| `spm-codec-dense` | dense f32 weights, four bytes each |
 | `spm-layout` | op descriptors, column-major tiling, scale groups |
 | `spm-walk` | forward-only cursor over the (stream, group) sequence |
 | `spm-file` | reader and writer composing the above |
@@ -24,4 +25,20 @@ allocation-free, so Front 3 (RP2350) can use them unchanged.
 `WeightStream` on top of it and the guarantee has to hold at every
 layer.
 
-Built by saga 1 step 2 (spm-format).
+## Encodings
+
+The `Encoding` discriminant selects both the packing and the byte
+length of a group, and readers consult it **per stream**. A file may
+mix encodings; a ternary group of four weights is one byte while an
+f32 group of four is sixteen.
+
+| code | profile | bytes per group of n |
+| ---: | --- | --- |
+| 1 | `Ternary2F32I32` | `ceil(n / 4)` |
+| 2 | `F32` | `n * 4` |
+
+For `F32` the group scale is inert: the weights carry their own
+magnitude, so writers emit 1.0 and readers ignore it.
+
+Built by saga 1 step 2 (spm-format) and saga 2 step 1
+(encoding-aware-format).

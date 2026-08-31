@@ -1,6 +1,6 @@
 number = 1
 slug = "encoding-aware-format"
-status = "pending"
+status = "in-progress"
 description = """
 Make the `.spm` format encoding-aware, and add an f32 profile.
 

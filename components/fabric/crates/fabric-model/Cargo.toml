@@ -11,6 +11,7 @@ workspace = true
 spm-accum = { path = "../../../tensor/crates/spm-accum" }
 spm-activations = { path = "../../../tensor/crates/spm-activations" }
 spm-codec = { path = "../../../format/crates/spm-codec" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
 spm-stream = { path = "../../../stream/crates/spm-stream" }
 spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
 spm-stream-metrics = { path = "../../../stream/crates/spm-stream-metrics" }
