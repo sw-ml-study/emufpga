@@ -1,0 +1,29 @@
+[package]
+name = "spm-batch"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[[example]]
+name = "serve-demo"
+
+[dependencies]
+spm-kv = { path = "../spm-kv" }
+spm-linear = { path = "../../../tensor/crates/spm-linear" }
+spm-ops = { path = "../../../tensor/crates/spm-ops" }
+spm-smol = { path = "../../../tensor/crates/spm-smol" }
+spm-smol-ops = { path = "../../../tensor/crates/spm-smol-ops" }
+spm-stream = { path = "../../../stream/crates/spm-stream" }
+spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
+
+[dev-dependencies]
+spm-codec-bf16 = { path = "../../../format/crates/spm-codec-bf16" }
+spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
+spm-stream-metrics = { path = "../../../stream/crates/spm-stream-metrics" }
+spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
+spm-file = { path = "../../../format/crates/spm-file" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }

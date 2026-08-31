@@ -1,0 +1,23 @@
+# Serving: session state and the schedule that shares one sweep of the
+# weights across concurrent clients.
+#
+# A separate component from `tensor` because it is a different
+# responsibility. The tensor engine answers "what does this matrix
+# multiply produce"; this answers "whose tokens ride along on this
+# sweep". docs/code_metrics.md prefers promoting a cluster to a new
+# component over growing an existing one past its budget.
+
+[workspace]
+members = [
+    "crates/spm-batch",
+    "crates/spm-kv",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.lints.clippy]
+pedantic = "warn"

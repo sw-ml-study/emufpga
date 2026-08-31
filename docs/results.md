@@ -1077,3 +1077,121 @@ streaming's favour -- which is the honest way to read the whole table.
   `spm-codec-any` refuses it explicitly rather than silently, because
   two-bit codes mean nothing without their group scale and an
   accumulator that adds and subtracts rather than multiplies.
+
+## Serving N clients from one sweep (saga 2 step 11)
+
+The first positive end-to-end result, and the first configuration in
+which one was possible.
+
+### Why nothing before this could win
+
+Nine steps produced no end-to-end win, for four reasons that this step
+removes together:
+
+1. The baseline was the same scalar loop, so "streaming costs 2.5%"
+   was measured where nobody deploys.
+2. The working set fit in RAM every time, so there was nothing to win.
+3. Every measurement was one forward over a fixed prompt. Generation,
+   where the weights are re-read **per token**, was unmeasured.
+4. Arithmetic intensity is `batch / 4` MACs per weight-byte, and
+   "batch" meant positions in one prompt. **During decoding, batch is
+   1 per client.** Concurrent clients are the only place batch > 1
+   arises naturally.
+
+### The result
+
+**Five clients asking five different questions**, with prompts of
+different lengths (1, 2, 3, 4 and 6 tokens), greedy decoding 8 tokens
+each, on the real bf16 SmolLM2-135M:
+
+```
+client 0  MATCH   [30, 198, 198, 504, 808, 2775, 288, 536]
+client 1  MATCH   [100, 28, 284, 260, 198, 79, 100, 79]
+client 2  MATCH   [274, 198, 198, 8031, 29, 8224, 456, 274]
+client 3  MATCH   [198, 198, 504, 808, 2775, 288, 536, 314]
+client 4  MATCH   [198, 198, 504, 1695, 314, 253, 1398, 282]
+```
+
+Every token matches `transformers` decoding the same prompt **alone**.
+The clients were decoded together, off **one sweep of the weights per
+step**.
+
+| | |
+| --- | ---: |
+| weight bytes per sweep | 212,336,640 |
+| clients served per sweep | 5 |
+| **bytes per generated token** | **42.5 MB** |
+| the same, one client | 212.3 MB |
+
+### How different questions share one sweep
+
+A matmul applies the **same** `W` to each client's **own** `x`. The
+weights are identical for everyone; only the activations differ. So
+the activation buffer is `clients x hidden`, one row per client, and
+when a weight arrives off the stream it is applied to every row before
+being discarded and never fetched again. Client 0's row and client 4's
+row are different rows of the output and never mix.
+
+A client's question lives entirely in three per-client things: its
+activation row, its KV cache, and its position. The **only** place
+clients could interact is attention -- and attention runs per client
+against that client's own cache, and carries no weights at all.
+
+Different prompt lengths work because each client tracks its own
+position and its own cache prefix. In the run above, client 3 (one
+token) is generating while client 4 (six tokens) is still prefilling.
+
+### Why the architecture forces this schedule
+
+There is no seek. A weight that has gone past cannot be fetched again
+within a step, so **every client that wants that weight must be served
+while it is here**. Serving concurrently is not an optimisation bolted
+on top; it is the only way to read the model once.
+
+The two halves of a decode step scale in opposite directions, and the
+split falls exactly along the line docs/plan.md section 3 draws:
+
+| | scales with clients? | carries weights? |
+| --- | --- | --- |
+| the seven streamed matmuls | **no** -- one sweep serves all | yes |
+| attention and its KV cache | yes, linearly | no |
+
+That asymmetry has been asserted since saga 1 and is finally carrying
+load.
+
+### Correctness is the claim, not speed
+
+`a_client_batched_with_others_gets_what_it_would_have_got_alone`
+asserts that five clients decoded together produce **bit-identical**
+tokens to the same clients decoded alone. If that fails the sweep is
+not serving them independently and the amortization means nothing.
+
+`weight_traffic_is_independent_of_the_client_count` asserts the other
+half structurally: one sweep costs the same bytes whether it serves
+one client or ten. Measured from the descriptors rather than from
+arithmetic, which is postmortem 2 defect 11's mistake exactly.
+
+### What these numbers do not support
+
+- **No throughput claim.** The engine is still scalar reference code,
+  ~196x too slow. What amortizes is the **traffic**, which is a
+  property of the schedule, not of the arithmetic. Three clients did
+  not get their tokens faster; they got them for a third of the weight
+  reads.
+- **Five clients, one machine, one model.** The 1/N is structural and
+  the test asserts it to ten, but only five were run end to end
+  against a reference.
+- **Clients step in lockstep.** One token each per sweep. A client
+  with a long prompt burns its early slots prefilling, and a client
+  that finishes early wastes its slot until the batch ends. Joining or
+  leaving mid-flight -- continuous batching -- is not implemented.
+- **The KV cache is the bill, and it is small only because the
+  prompts are.** At 0.6 MB per client here the context is 12
+  positions. At 512 positions it is 23.6 MB per client, so five
+  clients hold 118 MB against 212 MB of weights -- the BDH lesson
+  again: what streaming saves on parameters, serving spends on state.
+- **Prefill is done one token at a time**, which is correct but wasteful:
+  a prompt's tokens could be processed together. Nothing here measures
+  prefill cost.
+- **No tokenizer, no sampling, no server.** Greedy decoding of token
+  ids. Connecting real agents over HTTP is a separate step.

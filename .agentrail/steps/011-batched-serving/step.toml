@@ -1,6 +1,6 @@
 number = 11
 slug = "batched-serving"
-status = "pending"
+status = "in-progress"
 description = """
 Amortize one sweep of the weights across N concurrent clients, and
 show it wo..."""
