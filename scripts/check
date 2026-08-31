@@ -70,6 +70,16 @@ else
     done
 fi
 
+echo "=== repository size ==="
+# GitHub hard-blocks files over 100 MB and wants repositories under
+# about 1 GB. Weights are the thing that would breach either: a TRM
+# checkpoint is 27 MB and the DeepSeek R1 1.58-bit quant is ~300 GB.
+# .gitignore keeps them out, but an ignore rule is only as good as the
+# next person's `git add -f`, and by the time a large blob is in
+# history removing it means a rewrite. Catch it while it is still a
+# staged file.
+"$SCRIPT_DIR/check-size"
+
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"
 

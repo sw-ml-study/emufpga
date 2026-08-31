@@ -89,6 +89,7 @@ just check-all    # ... over every component
 just build        # build all components, serially
 just bench        # reproduce the docs/results.md measurement
 just locks        # Cargo.lock consistency sweep
+just size         # fail on files too large for git history
 ```
 
 ```

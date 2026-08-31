@@ -30,6 +30,10 @@ build-release:
 bench:
     ./scripts/bench
 
+# Fail if any file is large enough to be a problem for git history.
+size:
+    ./scripts/check-size
+
 # Repo-wide Cargo.lock consistency sweep.
 locks:
     ./scripts/check-locks.sh

@@ -29,3 +29,20 @@ out/
 # directory layout; this one does not. A session transcript is a .jsonl
 # and no .jsonl under any agentrail path is ever worth tracking.
 .agentrail*/**/*.jsonl
+
+# Model checkpoints and the .spm files derived from them. A TRM
+# checkpoint is 27 MB; the DeepSeek R1 1.58-bit quant is ~300 GB.
+# GitHub hard-blocks files over 100 MB and wants repositories under
+# about 1 GB, so weights live outside the tree and are fetched or
+# regenerated. docs/ records where each one came from.
+models/
+*.pt
+*.safetensors
+*.ckpt
+*.gguf
+
+# .spm files are derived artifacts too -- EXCEPT the tiny golden
+# fixtures that pin the byte layout, which are the format's contract
+# and measured in bytes rather than megabytes.
+*.spm
+!**/tests/golden/*.spm

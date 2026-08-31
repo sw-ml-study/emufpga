@@ -499,6 +499,29 @@ green.
    enough for the RP2350 and rack-Linux fronts to consume it, and
    `agentrail complete --done` closes the saga.
 
+## 8a. Weights never enter git
+
+GitHub hard-blocks a single file over 100 MB and wants a repository
+under about 1 GB. Neither limit is the real danger: a large blob
+entering history cannot be removed without rewriting it.
+
+So model weights and everything derived from them stay out of the
+tree. `.gitignore` covers `models/`, `*.pt`, `*.safetensors`, `*.ckpt`,
+`*.gguf` and `*.spm` -- with an exception for the tiny golden fixtures
+under `tests/golden/`, which are the format's byte contract and are
+measured in bytes.
+
+`scripts/check-size` enforces it as part of `just check`, failing on
+any tracked or untracked file over 1 MiB. The limit is far below
+GitHub's on purpose: nothing here has any business being megabytes,
+and the useful place to stop a large file is before the commit rather
+than after. Agentrail session transcripts are ignored for the same
+reason -- one archived session was 3.1 MB, and ../sw-mlpl reports that
+committing them repeatedly took its `.git` to 2.2 GB.
+
+Weights are fetched or regenerated instead; `docs/` records where each
+came from.
+
 ## 9. Build and gate process
 
 All build entry points live in `./scripts`; the `justfile` only

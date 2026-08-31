@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Fail if any tracked or staged file is large enough to be a problem.
+#
+#   scripts/check-size [limit-bytes]
+#
+# GitHub hard-blocks a single file over 100 MB and recommends keeping a
+# repository under about 1 GB. Neither limit is the real danger: the
+# danger is that a large blob entering history cannot be removed
+# without rewriting it, so the useful place to stop one is before the
+# commit.
+#
+# The default limit is deliberately far below GitHub's. Nothing in this
+# repository has any business being megabytes -- the largest tracked
+# file is docs/research.txt at 44 KB, and model weights are ignored by
+# design and fetched or regenerated instead.
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LIMIT="${1:-1048576}"   # 1 MiB
+cd "$ROOT"
+
+offenders=0
+while IFS= read -r path; do
+    [ -f "$path" ] || continue
+    size=$(wc -c < "$path" | tr -d ' ')
+    if [ "$size" -gt "$LIMIT" ]; then
+        printf 'TOO LARGE: %s (%s bytes, limit %s)\n' "$path" "$size" "$LIMIT" >&2
+        offenders=$((offenders + 1))
+    fi
+done < <(git ls-files --cached --others --exclude-standard)
+
+if [ "$offenders" -ne 0 ]; then
+    cat >&2 <<'MSG'
+
+Large files must not enter git history -- removing one later means a
+history rewrite. If this file is model weights or a derived artifact,
+add it to .gitignore. If it genuinely belongs in the repository, raise
+the limit deliberately: scripts/check-size <bytes>.
+MSG
+    exit 1
+fi
+
+echo "no tracked or untracked file exceeds $LIMIT bytes"
