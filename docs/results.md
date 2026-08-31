@@ -193,3 +193,53 @@ resource, not the bytes.
 **Cycles are a unit, not a duration.** None of this converts to
 seconds, and none of it says anything about whether such a datapath
 fits any part. Both questions need measurements nobody has taken.
+
+## TRM import (saga 2 step 2)
+
+`yagizdevre/trm-maze-30x30` imported end to end. Verified manually
+against the real checkpoint; the automated tests are hermetic and use
+synthetic checkpoints, because weights never enter this repository.
+
+```
+scripts/extract-checkpoint model.pt extracted/
+emufpga import -i extracted/ -o trm-maze.spm
+```
+
+| | |
+| --- | ---: |
+| Tensors | 15 |
+| Parameters | 6,824,450 |
+| `.spm` size | 27,324,980 bytes |
+| Scale groups | 6,667 |
+| Byte mismatches on round trip | **0** |
+
+The byte accounting closes exactly:
+
+```
+  32               header
++ 480              directory, 15 descriptors x 32
++ 27,297,800       weights, 6,824,450 x 4
++ 26,668           inert scales, 6,667 groups x 4
+= 27,324,980       observed file size
+```
+
+Round trip: every stream was read back group by group, rejoined, and
+compared against the extractor's blobs. All 15 matched byte for byte,
+and the payload was consumed exactly -- no trailing bytes, none
+missing. Every stream carries the f32 profile and every scale is the
+inert 1.0.
+
+Scale overhead is 26,668 bytes on 27.3 MB, or **0.098%**, which is the
+cost of the 1024-weight group size. The group buffer a reader must
+hold is 4 KiB.
+
+### What this does and does not establish
+
+It establishes that a real trained checkpoint survives the path into
+`.spm` unaltered. Nothing is quantized, reordered or rounded: the
+extractor's blobs are already little-endian f32, which is exactly the
+f32 encoding's wire format, so the importer is pure framing.
+
+It establishes nothing about inference. No forward pass has been run
+against this file -- that is the next step, and until it exists the
+only claim here is that the bytes are intact.

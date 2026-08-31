@@ -5,6 +5,7 @@ The `emufpga` binary and the quantizer behind `pack`.
 | Crate | Responsibility |
 | --- | --- |
 | `spm-quantize` | dense f32 matrix to ternary `.spm`, dependency-free |
+| `spm-import` | an extracted checkpoint to `.spm` plus a sidecar name table |
 | `spm-bench` | the batch-amortization sweep |
 | `spm-bench-report` | rendering a sweep as markdown |
 | `emufpga-cli` | argument parsing and subcommand dispatch |
@@ -73,4 +74,25 @@ measurement that was never taken. The CPU reference hits the first
 case, and the report says `NOT MEASURED` rather than naming a batch
 size.
 
-Built by saga 1 steps 5 (spm-pack-cli) and 6 (batch-amortization-bench).
+## `import`
+
+Converts a real checkpoint. Input is what
+`scripts/extract-checkpoint` produces -- raw little-endian f32 blobs
+and a `manifest.tsv` naming them. Those bytes are already the f32
+encoding's wire format, so the importer is **pure framing**: it never
+reads, reorders or rounds a weight.
+
+The split is at the pickle boundary. A `.pt` is a ZIP holding a Python
+pickle, and reading one in Rust means a ZIP reader plus a pickle VM of
+roughly 25 opcodes -- written once and then retired, since the
+DeepSeek R1 quant this project builds toward is GGUF rather than
+pickle. The extractor is Python (standard library only, torch not
+required); everything after it is Rust.
+
+Names go in a **sidecar**, not the container. `.spm` has no name field
+and is not getting one: the FPGA streams bytes in the order the
+directory declares and never needs them, so putting names in the
+container would make every consumer carry metadata one of them uses.
+The sidecar is written beside the `.spm` and the two belong together.
+
+Built by saga 1 steps 5-6 and saga 2 step 2 (trm-importer).

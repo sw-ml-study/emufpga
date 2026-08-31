@@ -1,0 +1,16 @@
+[package]
+name = "spm-import"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-file = { path = "../../../format/crates/spm-file" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-walk = { path = "../../../format/crates/spm-walk" }
+
+[dev-dependencies]
+spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }

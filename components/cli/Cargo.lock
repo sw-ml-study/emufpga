@@ -118,6 +118,7 @@ dependencies = [
  "spm-bench-report",
  "spm-codec",
  "spm-gemv-ref",
+ "spm-import",
  "spm-numeric",
  "spm-quantize",
  "spm-stream-mem",
@@ -219,6 +220,10 @@ name = "spm-codec"
 version = "0.1.0"
 
 [[package]]
+name = "spm-codec-dense"
+version = "0.1.0"
+
+[[package]]
 name = "spm-file"
 version = "0.1.0"
 dependencies = [
@@ -246,6 +251,16 @@ name = "spm-header"
 version = "0.1.0"
 dependencies = [
  "spm-bytes",
+]
+
+[[package]]
+name = "spm-import"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-dense",
+ "spm-file",
+ "spm-layout",
+ "spm-walk",
 ]
 
 [[package]]

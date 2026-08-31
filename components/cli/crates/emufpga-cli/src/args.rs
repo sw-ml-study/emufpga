@@ -146,6 +146,26 @@ pub enum Command {
     /// been measured. This is conceptual exploration, not an FPGA
     /// simulator, and it says nothing about whether a design fits.
     Sim(SimArgs),
+
+    /// Convert an extracted checkpoint into a .spm file.
+    ///
+    /// Input is what `scripts/extract-checkpoint` produces: a
+    /// directory of raw little-endian f32 blobs and a manifest.tsv
+    /// naming them. Those bytes are already the f32 encoding's wire
+    /// format, so this is pure framing -- no weight value is read,
+    /// reordered or rounded.
+    ///
+    /// Writes the .spm plus a sidecar name table beside it. The two
+    /// belong together: .spm carries no names because the FPGA streams
+    /// bytes in directory order and never needs them.
+    Import {
+        /// Directory holding manifest.tsv and the blobs.
+        #[arg(short, long, value_name = "DIR")]
+        input: PathBuf,
+        /// Where to write the .spm file.
+        #[arg(short, long, value_name = "FILE")]
+        output: PathBuf,
+    },
 }
 
 /// Knobs for `sim`.

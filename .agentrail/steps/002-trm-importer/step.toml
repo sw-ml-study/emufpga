@@ -1,6 +1,6 @@
 number = 2
 slug = "trm-importer"
-status = "pending"
+status = "in-progress"
 description = """
 Build the TRM importer: a real checkpoint in, a `.spm` file out.
 

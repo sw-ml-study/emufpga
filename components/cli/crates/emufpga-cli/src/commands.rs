@@ -10,7 +10,8 @@ use fabric_report::render as render_run;
 use spm_activations::Activations;
 use spm_bench::run_sweep;
 use spm_bench_report::render;
-use spm_quantize::{Quantized, parse_matrix, quantize, write_spm};
+use spm_import::{assemble, parse_manifest, render_sidecar, total_weights};
+use spm_quantize::{parse_matrix, quantize, write_spm};
 use spm_stream_mem::MemoryWeightStream;
 use std::path::Path;
 
@@ -32,7 +33,16 @@ pub(crate) fn pack(input: &Path, output: &Path, group_size: u32) -> Result<Strin
         write_spm(&quantized).map_err(|e| Failure::new(format!("cannot build .spm: {e}")))?;
     std::fs::write(output, &bytes)
         .map_err(|e| Failure::new(format!("cannot write {}: {e}", output.display())))?;
-    Ok(summary(&quantized, bytes.len(), output))
+    let d = &quantized.descriptor;
+    Ok(format!(
+        "packed {}x{} matrix, group size {}, {} groups, {} bytes -> {}",
+        d.rows,
+        d.cols,
+        d.group_size,
+        quantized.scales.len(),
+        bytes.len(),
+        output.display()
+    ))
 }
 
 /// Sweeps batch sizes against a `.spm` file and reports the metrics.
@@ -72,15 +82,30 @@ pub(crate) fn sim(input: &Path, config: &FabricConfig, batch: usize) -> Result<S
     Ok(render_run(config, &outcome))
 }
 
-/// The line `pack` prints on success.
-fn summary(quantized: &Quantized, bytes: usize, output: &Path) -> String {
-    let d = &quantized.descriptor;
-    format!(
-        "packed {}x{} matrix, group size {}, {} groups, {bytes} bytes -> {}",
-        d.rows,
-        d.cols,
-        d.group_size,
-        quantized.scales.len(),
-        output.display()
-    )
+/// Converts an extracted checkpoint into a `.spm` plus its sidecar.
+///
+/// # Errors
+/// Returns [`Failure`] if the manifest or a blob cannot be read, a
+/// blob does not match its declared shape, or the output cannot be
+/// written.
+pub(crate) fn import(input: &Path, output: &Path) -> Result<String, Failure> {
+    let manifest = input.join("manifest.tsv");
+    let text = std::fs::read_to_string(&manifest)
+        .map_err(|e| Failure::new(format!("cannot read {}: {e}", manifest.display())))?;
+    let tensors = parse_manifest(&text).map_err(|e| Failure::new(e.to_string()))?;
+    let bytes = assemble(&tensors, input).map_err(|e| Failure::new(e.to_string()))?;
+    std::fs::write(output, &bytes)
+        .map_err(|e| Failure::new(format!("cannot write {}: {e}", output.display())))?;
+    let sidecar = output.with_extension("names.tsv");
+    let name = output.file_name().unwrap_or_default().to_string_lossy();
+    std::fs::write(&sidecar, render_sidecar(&tensors, &name))
+        .map_err(|e| Failure::new(format!("cannot write {}: {e}", sidecar.display())))?;
+    Ok(format!(
+        "imported {} tensors, {} weights, {} bytes -> {} (+ {})",
+        tensors.len(),
+        total_weights(&tensors),
+        bytes.len(),
+        output.display(),
+        sidecar.display()
+    ))
 }

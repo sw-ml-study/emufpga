@@ -1,7 +1,7 @@
 //! Dispatch, and the failure type the subcommands share.
 
 use crate::args::{Cli, Command};
-use crate::commands::{bench, pack, sim};
+use crate::commands::{bench, import, pack, sim};
 use std::fmt;
 
 /// A subcommand that could not complete its work.
@@ -47,5 +47,6 @@ pub fn run(cli: Cli) -> Result<String, Failure> {
             repeat,
         } => bench(&input, &batch, repeat),
         Command::Sim(args) => sim(&args.input, &args.config(), args.batch),
+        Command::Import { input, output } => import(&input, &output),
     }
 }

@@ -11,6 +11,7 @@
 
 [workspace]
 members = [
+    "crates/spm-import",
     "crates/spm-quantize",
     "crates/spm-bench",
     "crates/spm-bench-report",
