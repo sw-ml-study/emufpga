@@ -25,7 +25,7 @@ Then frame the dumped weights and compare:
 
 ```
 emufpga import -i <out-dir> -o ref.spm
-cargo run -p spm-hrm --example xcheck -- <out-dir> ref.spm
+cargo run -p spm-hrm --example hrm-xcheck -- <out-dir> ref.spm
 ```
 
 ## On the stand-in

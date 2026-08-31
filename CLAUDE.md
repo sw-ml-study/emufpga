@@ -274,6 +274,16 @@ producing no output while wall-clock burns.
 manifest there is no repo-wide package namespace. `scripts/gate.sh`
 takes the workspace directory as its first argument for this reason.
 
+**Example and binary names must be unique across the whole repo,
+not just their crate.** The shared `target/` gives every workspace one
+`target/debug/examples/` directory, so two crates with an example of
+the same name silently overwrite each other and `cargo run --example`
+runs whichever built last. Cargo reports this as an output filename
+collision warning, and it is a correctness bug, not a tidiness one --
+`spm-trm` and `spm-hrm` both had an `xcheck`, so a TRM cross-check
+could run HRM's binary. Prefix with the crate's model: `trm-xcheck`,
+`hrm-xcheck`.
+
 **A stale `Cargo.lock` is a real failure, not noise.** A manifest change
 in one component strands the locks of every workspace that
 path-depends on it until someone builds there. Run
