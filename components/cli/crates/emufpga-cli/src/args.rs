@@ -165,6 +165,15 @@ pub enum Command {
         /// Where to write the .spm file.
         #[arg(short, long, value_name = "FILE")]
         output: PathBuf,
+        /// Consumption order specification.
+        ///
+        /// Without it the streams land in whatever order the manifest
+        /// lists them, which for the extractor is alphabetical -- and
+        /// alphabetical is NOT consumption order. A forward pass over
+        /// such a file would have to seek backward, which this
+        /// architecture forbids. See layouts/ for the shipped orders.
+        #[arg(long, value_name = "FILE")]
+        order: Option<PathBuf>,
     },
 }
 

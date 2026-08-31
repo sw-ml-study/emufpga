@@ -243,3 +243,50 @@ f32 encoding's wire format, so the importer is pure framing.
 It establishes nothing about inference. No forward pass has been run
 against this file -- that is the next step, and until it exists the
 only claim here is that the bytes are intact.
+
+## Consumption order (saga 2 step 3)
+
+Step 2's importer laid the weights out alphabetically, because the
+extractor uses `sorted()`. Reading TRM's own `trm.py` afterwards showed
+that is the reverse of execution order:
+
+| | per-layer order |
+| --- | --- |
+| Execution (from `trm.py`) | `qkv_proj, o_proj, gate_up_proj, down_proj` |
+| Alphabetical (what shipped) | `down_proj, gate_up_proj, o_proj, qkv_proj` |
+
+A forward sweep of that file would have to seek backward -- the one
+thing this architecture forbids, and the exact opposite of
+docs/research.txt's "arrange weights physically in exactly the order
+the tensor engine consumes them".
+
+`layouts/trm-maze-30x30.order` now specifies the order, in two
+sections:
+
+| section | streams | weights | share |
+| --- | ---: | ---: | ---: |
+| `[rotating]` | 8 | 6,815,744 | 99.87% |
+| `[resident]` | 7 | 8,706 | 0.13% |
+
+The rotating region must come first because `rewind` returns to the
+start of the stream -- there is no seek to offer it an offset -- so
+anything ahead of it would be re-read on every sweep for nothing.
+
+The resident tensors are embeddings, init vectors and output heads.
+Streaming 8,706 weights would be silly; docs/plan.md section 3 puts
+small state in ordinary memory on purpose, and only the parameter bulk
+is restricted.
+
+### The property that is now tested
+
+A forward pass is 15 `L_level` calls, each sweeping the 8-stream
+rotating region once: 120 weight-matrix demands, 15 sweeps, 14
+rewinds. The test walks that demand sequence and asserts the stream
+index never decreases except at a rewind, and that every rewind
+happens only after the sweep finished. It runs against the real
+tracked order file with no checkpoint download -- the weights would be
+needed to test values, not layout.
+
+A second test pins the mistake itself: sorting the rotating names
+alphabetically puts `o_proj` before `qkv_proj`, so a sweep seeks back.
+It exists so the regression cannot quietly return.

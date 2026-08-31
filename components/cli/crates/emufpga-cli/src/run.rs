@@ -47,6 +47,10 @@ pub fn run(cli: Cli) -> Result<String, Failure> {
             repeat,
         } => bench(&input, &batch, repeat),
         Command::Sim(args) => sim(&args.input, &args.config(), args.batch),
-        Command::Import { input, output } => import(&input, &output),
+        Command::Import {
+            input,
+            output,
+            order,
+        } => import(&input, &output, order.as_deref()),
     }
 }

@@ -147,7 +147,7 @@ fn the_manifest_and_sidecar_agree_on_shapes() {
     assert_eq!(tensors[1].stream_shape(), (2, 1));
     assert_eq!(total_weights(&tensors), 3074);
 
-    let sidecar = render_sidecar(&tensors, "model.spm");
+    let sidecar = render_sidecar(&tensors, "model.spm", 1);
     assert!(sidecar.contains("model.spm"));
     assert!(sidecar.contains("0\tm.w\t6\t512\t3072"), "{sidecar}");
     assert!(sidecar.contains("1\tm.b\t2\t1\t2"), "{sidecar}");

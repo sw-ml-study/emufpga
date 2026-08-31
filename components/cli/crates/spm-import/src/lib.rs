@@ -26,9 +26,9 @@
 //! tensor name; it costs you nothing about the weights.
 
 mod assemble;
+mod layout;
 mod manifest;
-mod sidecar;
 
 pub use assemble::{GROUP_SIZE, assemble, descriptors};
+pub use layout::{render_sidecar, total_weights};
 pub use manifest::{ImportError, Tensor, parse_manifest};
-pub use sidecar::{render_sidecar, total_weights};

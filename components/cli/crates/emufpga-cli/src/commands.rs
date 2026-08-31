@@ -11,6 +11,7 @@ use spm_activations::Activations;
 use spm_bench::run_sweep;
 use spm_bench_report::render;
 use spm_import::{assemble, parse_manifest, render_sidecar, total_weights};
+use spm_order::apply_order;
 use spm_quantize::{parse_matrix, quantize, write_spm};
 use spm_stream_mem::MemoryWeightStream;
 use std::path::Path;
@@ -88,20 +89,22 @@ pub(crate) fn sim(input: &Path, config: &FabricConfig, batch: usize) -> Result<S
 /// Returns [`Failure`] if the manifest or a blob cannot be read, a
 /// blob does not match its declared shape, or the output cannot be
 /// written.
-pub(crate) fn import(input: &Path, output: &Path) -> Result<String, Failure> {
+pub(crate) fn import(input: &Path, output: &Path, order: Option<&Path>) -> Result<String, Failure> {
     let manifest = input.join("manifest.tsv");
     let text = std::fs::read_to_string(&manifest)
         .map_err(|e| Failure::new(format!("cannot read {}: {e}", manifest.display())))?;
-    let tensors = parse_manifest(&text).map_err(|e| Failure::new(e.to_string()))?;
+    let listed = parse_manifest(&text).map_err(|e| Failure::new(e.to_string()))?;
+    let (tensors, rotating) =
+        apply_order(listed, order).map_err(|e| Failure::new(e.to_string()))?;
     let bytes = assemble(&tensors, input).map_err(|e| Failure::new(e.to_string()))?;
     std::fs::write(output, &bytes)
         .map_err(|e| Failure::new(format!("cannot write {}: {e}", output.display())))?;
     let sidecar = output.with_extension("names.tsv");
     let name = output.file_name().unwrap_or_default().to_string_lossy();
-    std::fs::write(&sidecar, render_sidecar(&tensors, &name))
+    std::fs::write(&sidecar, render_sidecar(&tensors, &name, rotating))
         .map_err(|e| Failure::new(format!("cannot write {}: {e}", sidecar.display())))?;
     Ok(format!(
-        "imported {} tensors, {} weights, {} bytes -> {} (+ {})",
+        "imported {} tensors ({rotating} rotating), {} weights, {} bytes -> {} (+ {})",
         tensors.len(),
         total_weights(&tensors),
         bytes.len(),

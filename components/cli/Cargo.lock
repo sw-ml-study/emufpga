@@ -120,6 +120,7 @@ dependencies = [
  "spm-gemv-ref",
  "spm-import",
  "spm-numeric",
+ "spm-order",
  "spm-quantize",
  "spm-stream-mem",
 ]
@@ -275,6 +276,13 @@ name = "spm-numeric"
 version = "0.1.0"
 dependencies = [
  "spm-codec",
+]
+
+[[package]]
+name = "spm-order"
+version = "0.1.0"
+dependencies = [
+ "spm-import",
 ]
 
 [[package]]

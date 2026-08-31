@@ -15,6 +15,7 @@ spm-bench = { path = "../spm-bench" }
 spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
 spm-bench-report = { path = "../spm-bench-report" }
 spm-import = { path = "../spm-import" }
+spm-order = { path = "../spm-order" }
 spm-quantize = { path = "../spm-quantize" }
 clap = { version = "4.5.51", features = ["derive"] }
 

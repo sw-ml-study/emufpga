@@ -1,6 +1,6 @@
 number = 3
 slug = "consumption-order-layout"
-status = "pending"
+status = "in-progress"
 description = """
 Lay the TRM weights out in CONSUMPTION ORDER, and prove a forward
 sweep never..."""

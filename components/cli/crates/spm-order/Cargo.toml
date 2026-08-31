@@ -1,0 +1,11 @@
+[package]
+name = "spm-order"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-import = { path = "../spm-import" }

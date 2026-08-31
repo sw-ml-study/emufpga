@@ -67,6 +67,13 @@ pub enum ImportError {
         /// The underlying message.
         detail: String,
     },
+    /// The order file and the checkpoint disagree.
+    BadLayout {
+        /// The tensor at fault.
+        name: String,
+        /// How they disagree.
+        why: &'static str,
+    },
     /// The `.spm` writer rejected the file.
     Format {
         /// The underlying message.
@@ -87,6 +94,7 @@ impl fmt::Display for ImportError {
                 "{name}: shape implies {expected} bytes, blob has {found}"
             ),
             Self::Io { path, detail } => write!(f, "{path}: {detail}"),
+            Self::BadLayout { name, why } => write!(f, "layout: {name} is {why}"),
             Self::Format { detail } => write!(f, "cannot build .spm: {detail}"),
         }
     }
