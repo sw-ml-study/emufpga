@@ -20,8 +20,9 @@ recur on the next rung if nobody writes them down.
 | 6 | `SwiGLU` intermediate width 2048 instead of 1536 | comparing against the reference | **no** -- see "self-confirming tests" |
 | 7 | `rms_norm` normalized the whole state, not each position | bisecting against the reference | **no** |
 | 8 | Every imported matrix transposed | comparing against the reference | **no** -- see "bytes versus meaning" |
+| 9 | HRM's input injection never performed | comparing against the official implementation | **no** |
 
-Five of eight were invisible to a test suite that was, at the time,
+Six of nine were invisible to a test suite that was, at the time,
 passing 150 assertions.
 
 ## The three lessons that generalize
@@ -84,6 +85,72 @@ test existed.
 
 *Rule: for anything layout-shaped, assert the layout directly. "It ran
 and looked reasonable" is not evidence.*
+
+## Addendum: the rules did not hold on the next rung
+
+This document was written, committed, and then defect 9 landed two
+commits later. That is worth recording plainly, because it says
+something the rest of the document does not.
+
+HRM's `ReasoningModule` adds an injection to its hidden state before
+its layers run, and the recursion supplies a different one each time --
+`z_high + input` for the low module, `z_low` for the high. The
+implementation here computed `low(z_L)` where HRM computes
+`low(z_L, z_H + input)`. It ran, stayed finite, produced plausible
+numbers, and was not HRM. The tests checked sweep counts, rewind
+counts and finiteness, and every one of them passed.
+
+Two failures, not one:
+
+**The actionable conclusion was written and not followed.** The last
+line of this document said: build the reference comparison BEFORE the
+streaming path. On the very next rung it was built second. It found
+the defect on its first run, exactly as predicted, having sat unwritten
+while the rest of the rung was built on top of the bug.
+
+**"It cannot be verified" was accepted too early.** The first version
+of the HRM results said the recursion could not be checked, because
+`transformers` does not recognise `model_type: hrm` and the checkpoint
+ships no modeling code. Both facts were true and the conclusion was
+wrong: `sapientinc/HRM` *is* the modeling code, and the ported
+checkpoint differs from it only in tensor names. Mike asked whether I
+had considered that repository. I had read files from it and stopped at
+the first obstacle -- `flash_attn` is CUDA-only -- without asking
+whether the obstacle was essential. It was not: flash attention is a
+performance kernel, and a stand-in on `scaled_dot_product_attention`
+computes the same function.
+
+*Rule: when concluding that something cannot be verified, name the
+specific obstacle and ask whether it is essential or merely
+inconvenient. "The published loader does not work" is not the same as
+"the published implementation is unavailable."*
+
+### Why a written rule was not enough
+
+The rule was correct, prominent, and recent, and it still did not fire.
+Rules that depend on remembering them at the right moment are the
+weakest kind of control -- the same reasoning that put `WeightStream`'s
+no-seek property in the type system and the file-size limit in a gate
+rather than in a convention.
+
+So the fix is structural, not exhortative. **A step that ports a model
+does not begin until its reference comparison runs.** Written into the
+step prompt as the first deliverable, with the streaming work
+explicitly second. The comparison is cheap -- an afternoon on TRM, an
+hour on HRM once the pattern existed -- and it has now found four
+defects that nothing else did.
+
+### The sharper statement
+
+Defects 4, 7, 8 and 9 share one signature: *the code runs and produces
+plausible output while implementing a different function than
+intended.* Wrong layout, wrong normalization axis, transposed matrices,
+missing injection. None crashed. None produced NaN. Every one passed a
+test asserting the output was finite and had changed.
+
+For a model port, an independent reference implementation is not
+quality assurance applied after the fact. It is the **primary**
+correctness mechanism, and every other test is secondary to it.
 
 ## What worked, and is worth keeping
 
@@ -183,4 +250,7 @@ architecture family. The failure modes above transfer directly:
    an afternoon; every hour before that was spent on code that was
    quietly wrong.
 
-That last point is the actionable change for the next rung.
+That last point is the actionable change for the next rung -- and it
+was not followed on the rung this predicted, which is why the addendum
+above exists and why the control is now structural rather than
+advisory.

@@ -522,6 +522,70 @@ committing them repeatedly took its `.git` to 2.2 GB.
 Weights are fetched or regenerated instead; `docs/` records where each
 came from.
 
+## 8b. What needs CUDA, and what does not
+
+Nothing in this repository needs a GPU. `emufpga` is pure Rust with
+one dependency (`clap`), the extractor is standard-library Python, and
+the reference comparisons run on CPU or MPS. The Mac is sufficient for
+the whole model ladder.
+
+Three things do need CUDA, and they are worth cloning onto a
+Linux/NVIDIA box rather than fighting on macOS.
+
+### Runs fine without CUDA (done here)
+
+| task | note |
+| --- | --- |
+| Everything in `components/` | pure Rust, no GPU path at all |
+| `scripts/extract-checkpoint` | stdlib Python; torch not imported |
+| TRM reference comparison | torch CPU; verified at cosine 1.0 |
+| HRM reference comparison | needs a `flash_attn` stand-in -- see below |
+
+### Needs CUDA
+
+**`flash-attn`, for running `sapientinc/HRM` unmodified.** Its
+`models/layers.py` imports `flash_attn_func` at module scope with no
+fallback, so the package must exist to import anything. Installing it
+needs the CUDA toolkit and `nvcc`.
+
+On the Mac this was worked around with a stand-in built on torch's
+`scaled_dot_product_attention`. That substitution is sound for a
+forward pass -- flash attention is a performance kernel computing
+standard scaled dot-product attention, not a different function -- and
+the comparison it enabled agreed at cosine 1.000000000000. It is
+**not** a substitute for training, where flash-attn's memory behaviour
+is the reason it exists.
+
+**`adam-atan2`**, in HRM's requirements, is a CUDA extension. Only
+training needs it.
+
+**Training either model from scratch.** From the HRM repository's own
+README: Sudoku-Extreme under 20 hours on one L40S, Maze-Hard under 24
+hours on four L40S, ARC-AGI roughly three days on four H100. None of
+that is reachable here, and a partially trained checkpoint would be
+enough to exercise the streaming path anyway -- weight *distributions*
+are what matter to it, not accuracy.
+
+**A GPU baseline for the eventual comparison.** Measuring streamed
+against conventional inference needs a real GPU on the conventional
+side. That is rack work, not Mac work.
+
+### If cloning onto Linux/NVIDIA
+
+```
+git clone https://github.com/sapientinc/HRM
+pip install -r requirements.txt        # flash-attn, adam-atan2 need nvcc
+```
+
+Then `scratchpad/hrm/official.py` in this session runs unchanged with
+the stand-in removed -- it only needs `sys.path` to stop pointing at
+`shim/`. Worth re-running there once, to confirm the stand-in and the
+real kernel agree; that closes the last assumption in the HRM
+verification.
+
+Checkpoints do not need CUDA to download or convert. The extractor
+reads `.pt` and `.safetensors` with no torch at all.
+
 ## 9. Build and gate process
 
 All build entry points live in `./scripts`; the `justfile` only
