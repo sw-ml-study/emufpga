@@ -1,10 +1,11 @@
 number = 12
 slug = "mlpl-spm-lessons"
-status = "in-progress"
+status = "completed"
 description = """
 Write the SPM's central claim as an executable MLPL program, per
 docs/researc..."""
 role = "production"
 context_files = []
 created_at = "2026-08-31T16:43:10"
-commits = []
+completed_at = "2026-08-31T16:43:37"
+commits = ["2192dc069eb4c9925215815e901ef115f9747f6c"]
