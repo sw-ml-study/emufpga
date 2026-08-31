@@ -1,0 +1,134 @@
+# The Serial Parameter Machine, executable in one file.
+#
+# The whole thesis of ../emufpga in about 80 lines of MLPL:
+#
+#   conventional:  compute asks memory for weights
+#   SPM:           weights flow past compute, forward only
+#
+# The arithmetic does not change. The memory contract does. This file
+# proves that by computing the same answer both ways.
+#
+#   mlpl-repl -f mlpl/spm_stream.mlpl
+
+# ---------------------------------------------------------------- 1
+# What ordinary inference computes.
+#
+# W is [output, input]: the mathematical view, and the one every
+# framework stores. Getting y needs the whole matrix addressable at
+# once.
+
+W = reshape([1,0,-1,1,  0,1,1,-1,  -1,1,0,1], [3, 4])
+x = reshape([4,7,2,3], [4, 1])
+
+print("W : [output=3, input=4]")
+print(W)
+print("x : [input=4]")
+print(reshape(x, [4]))
+print("y = W x  (conventional, random access)")
+y_ram = reshape(matmul(W, x), [3])
+print(y_ram)
+
+# ---------------------------------------------------------------- 2
+# Consumption order. One transpose IS the architectural change.
+#
+# S is [input, output]. Row i holds every weight that activation i
+# touches -- so an engine can consume the whole matrix by walking
+# rows forward, never asking for an address.
+
+S = transpose(W)
+print("S = transpose(W) : [input=4, output=3]  -- consumption order")
+print(S)
+
+# ---------------------------------------------------------------- 3
+# The streamed sweep: forward only, one row at a time, never back.
+
+def u:sweep(S, x, i, acc) {
+  "Fold row `i` of the stream into `acc`, scaled by activation `i`, then move to row i+1. The only motion is forward: no row is revisited and no address is computed, which is the whole restriction the architecture imposes."
+  if gt(i, 3) {
+    acc
+  } else {
+    row = reshape(gather_rows(S, [i]), [3]);
+    a = reduce_add(reshape(gather_rows(x, [i]), [1]), 0);
+    u:sweep(S, x, i + 1, acc + row * a)
+  }
+}
+
+y_spm = u:sweep(S, x, 0, [0,0,0])
+print("y from a forward-only sweep")
+print(y_spm)
+print("difference (must be all zero)")
+print(y_ram - y_spm)
+
+# ---------------------------------------------------------------- 4
+# Ternary: the parameter stream becomes an instruction stream.
+#
+#   +1 -> ADD the activation
+#    0 -> BYPASS
+#   -1 -> SUBTRACT the activation
+#
+# No multiplier is involved. This is why the target fabric is
+# decode -> add/sub -> accumulate rather than a multiplier array.
+
+pos = eq(S, 1)
+neg = eq(S, -1)
+print("ADD mask (+1 weights)")
+print(pos)
+print("SUB mask (-1 weights)")
+print(neg)
+
+def u:sweep_ternary(pos, neg, x, i, acc) {
+  "The same sweep with no multiply at all: each arriving weight either adds the activation, subtracts it, or is skipped. `pos` and `neg` are the decoded add and subtract masks, so the arithmetic is a select between + and - rather than a product."
+  if gt(i, 3) {
+    acc
+  } else {
+    p = reshape(gather_rows(pos, [i]), [3]);
+    n = reshape(gather_rows(neg, [i]), [3]);
+    a = reduce_add(reshape(gather_rows(x, [i]), [1]), 0);
+    u:sweep_ternary(pos, neg, x, i + 1, acc + p * a - n * a)
+  }
+}
+
+y_tern = u:sweep_ternary(pos, neg, x, 0, [0,0,0])
+print("y from add/subtract only -- no multiplier")
+print(y_tern)
+print("difference from the conventional answer (must be all zero)")
+print(y_ram - y_tern)
+
+# ---------------------------------------------------------------- 5
+# Batch reuse: one weight read, many useful applications.
+#
+# Scan productivity Ps = applications / weights read. The stream does
+# not grow with the batch; only the arithmetic does. This is the
+# economic argument for the whole architecture, and it is why a
+# serial store can keep up at all.
+
+X = reshape([4,7,2,3,  1,0,2,1,  9,9,9,9], [3, 4])
+print("X : [batch=3, input=4] -- three activation vectors")
+print(X)
+
+def u:sweep_batch(S, Xt, i, acc) {
+  "Fold row `i` of the stream into every batch element at once. `Xt` is the batch transposed to [input, batch], so row `i` of the stream meets row `i` of the activations and the outer product applies one fetched weight vector to the whole batch. The stream is read exactly once no matter how large the batch is."
+  if gt(i, 3) {
+    acc
+  } else {
+    row = reshape(gather_rows(S, [i]), [1, 3]);
+    col = reshape(gather_rows(Xt, [i]), [3, 1]);
+    u:sweep_batch(S, Xt, i + 1, acc + matmul(col, row))
+  }
+}
+
+Y_spm = u:sweep_batch(S, transpose(X), 0, reshape([0,0,0,0,0,0,0,0,0], [3,3]))
+print("Y from ONE sweep serving all three -- [batch=3, output=3]")
+print(Y_spm)
+print("conventional batched answer")
+Y_ram = matmul(X, transpose(W))
+print(Y_ram)
+print("difference (must be all zero)")
+print(Y_ram - Y_spm)
+
+# The stream was read once for both. Ps rose from 1 to 3; the bytes
+# read did not move.
+print("weights read (unchanged by batch)")
+print(reduce_add(reshape(eq(S, S), [12]), 0))
+print("useful applications at batch 1, then batch 3")
+print([12, 36])

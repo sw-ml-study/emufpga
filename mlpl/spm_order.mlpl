@@ -1,0 +1,58 @@
+# Why consumption order is not a filing preference.
+#
+# A real mistake from ../emufpga, made executable. The first TRM
+# importer laid weights out with Python's sorted(), which is
+# alphabetical. TRM's forward pass consumes them in a different order
+# entirely, so a sweep of that file would have to seek backward -- the
+# one thing this architecture forbids.
+#
+#   mlpl-repl -f mlpl/spm_order.mlpl
+
+# TRM consumes one block's four matrices in this order, read from its
+# own trm.py:
+#
+#   0 qkv_proj   1 o_proj   2 gate_up_proj   3 down_proj
+#
+# Alphabetical order puts them at these execution indices instead:
+#
+#   down_proj(3)  gate_up_proj(2)  o_proj(1)  qkv_proj(0)
+
+execution = [0, 1, 2, 3]
+alphabetical = [3, 2, 1, 0]
+
+print("execution order, as positions in the file")
+print(execution)
+print("alphabetical order, as positions in the file")
+print(alphabetical)
+
+def u:steps(order, i, acc) {
+  "Collect the jump taken at each hop of `order` as the reader walks it front to back. A negative entry is a backward seek, which the parameter stream cannot express: rewind returns to zero and there is no offset to give it."
+  if gt(i, 2) {
+    acc
+  } else {
+    here = reduce_add(reshape(gather_rows(reshape(order, [4,1]), [i]), [1]), 0);
+    next = reduce_add(reshape(gather_rows(reshape(order, [4,1]), [i + 1]), [1]), 0);
+    u:steps(order, i + 1, concat(acc, [next - here]))
+  }
+}
+
+good = u:steps(execution, 0, [])
+bad = u:steps(alphabetical, 0, [])
+
+print("jumps while sweeping execution order")
+print(good)
+print("jumps while sweeping alphabetical order")
+print(bad)
+
+# A legal sweep never moves backward. Count the violations.
+print("backward seeks in execution order")
+print(reduce_add(relu(good * -1), 0))
+print("backward seeks in alphabetical order")
+print(reduce_add(relu(bad * -1), 0))
+
+# The fix is a layout file, not a smarter reader: the bytes are put on
+# disk in the order the engine will ask for them, and a test asserts
+# the stream index never decreases except at a rewind.
+#
+# emufpga/layouts/trm-maze-30x30.order carries that order, and
+# components/cli/crates/spm-order/tests/no_seek.rs is the test.
