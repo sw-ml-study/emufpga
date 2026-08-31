@@ -25,4 +25,4 @@ mod norm;
 
 pub use attention::{attend, multi_head, rope};
 pub use nonlinear::{silu, swiglu, swiglu_batch};
-pub use norm::{residual_norm, rms_norm};
+pub use norm::{layer_norm, residual_layer_norm, residual_norm, rms_norm};

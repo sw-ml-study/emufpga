@@ -1,6 +1,6 @@
 number = 7
 slug = "bdh-rung3"
-status = "pending"
+status = "in-progress"
 description = """
 Rung 3 of the model ladder: BDH, the Dragon Hatchling, from
 `pathwaycom/bdh` ..."""

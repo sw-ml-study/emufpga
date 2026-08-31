@@ -11,6 +11,25 @@ name = "spm-activations"
 version = "0.1.0"
 
 [[package]]
+name = "spm-bdh"
+version = "0.1.0"
+dependencies = [
+ "spm-bdh-ops",
+ "spm-codec-dense",
+ "spm-file",
+ "spm-layout",
+ "spm-linear",
+ "spm-ops",
+ "spm-stream",
+ "spm-stream-groups",
+ "spm-stream-mem",
+]
+
+[[package]]
+name = "spm-bdh-ops"
+version = "0.1.0"
+
+[[package]]
 name = "spm-bytes"
 version = "0.1.0"
 

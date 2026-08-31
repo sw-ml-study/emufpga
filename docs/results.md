@@ -676,3 +676,148 @@ why the ladder goes on rather than stopping at a favourable number.
 - **One machine, one model, one precision.** Every standing caveat
   from the batch-amortization measurement still applies: no IO
   overlap, scalar engine, warm cache.
+
+## BDH, rung 3 (saga 2 step 7)
+
+`pathwaycom/bdh`, the Dragon Hatchling (arXiv 2509.26507). The first
+rung whose result **contradicts** an assumption the plan rests on.
+
+### What BDH is, structurally
+
+Reference defaults: `n_layer` 6, `D` 256, `nh` 4,
+`mlp_internal_dim_multiplier` 128, `vocab` 256, so the sparse latent
+is `N = 128 * 256 / 4 = 8192` -- thirty-two times the model width.
+
+| tensor | shape | weights |
+| --- | --- | ---: |
+| `encoder` | (nh, D, N) | 8,388,608 |
+| `encoder_v` | (nh, D, N) | 8,388,608 |
+| `decoder` | (nh*N, D) | 8,388,608 |
+| `lm_head` | (D, vocab) | 65,536 |
+| `embed` | (vocab, D) | 65,536 |
+
+**The loop body carries no layer index.** BDH applies one parameter
+set `n_layer` times, so it is a rotating parameter store by
+construction -- the property that made TRM a good first rung, arriving
+here for free rather than by design. 9 rotating streams, 5 rewinds per
+forward, 604 MB of traffic for a 101 MB model.
+
+`lm_head` is read exactly once, after the last level, so it sits
+**after** the rotating region: the final `decoder` sweep leaves the
+cursor exactly where `lm_head` begins, and the logits are produced by
+reading on rather than by seeking back. Same structure as HRM's
+`[low][high]`, and verified rather than assumed
+(`lm_head_sits_after_the_rotating_region`).
+
+Attention carries no learned parameters at all. Its RoPE frequencies
+are computed, and it rotates over the sparse latent `N`, not over a
+head dimension of the model width -- a different operator wearing a
+familiar name.
+
+### Verified against the reference
+
+`pathwaycom/bdh` ships architecture and training code but no trained
+checkpoint, so the comparison uses seeded random weights exported from
+torch. That still checks every formula exactly, which is what caught
+the bugs on TRM and HRM.
+
+| stage | cosine | relative |
+| --- | ---: | ---: |
+| `x_embedded` | 1.000000000000 | 1.86e-7 |
+| `x_after_0` | 1.000000000000 | 1.32e-6 |
+| `x_after_5` | 0.999999999998 | 2.39e-6 |
+| `logits` | 0.999999999998 | 2.52e-6 |
+
+Residual f32 accumulation noise, nothing more.
+
+**This is the first rung that worked on the first run.** No bisection
+was needed because none of the stages disagreed. The difference from
+TRM and HRM is not luck: the reference forward pass was read *before*
+any code was written, which is the actionable change postmortem 1
+prescribed and which the HRM rung followed only partly. Three details
+would each have been a silent bug if guessed -- `get_freqs` quantizes
+the index in pairs so a rotation pair shares a frequency;
+`.tril(diagonal=-1)` is **strictly** lower triangular, so a position
+never attends to itself; and `nn.LayerNorm` subtracts the mean, where
+TRM and HRM use RMS norm and do not.
+
+### The transpose is not universal
+
+`scripts/extract-checkpoint` transposes every 2-D tensor, because a
+torch `Linear` stores `(out, in)` while `.spm` wants column-major
+stream order. **BDH stores every parameter as `(in, out)` instead**,
+so its raw row-major bytes already *are* stream order and the declared
+shape is simply reversed. Running the generic extractor over BDH would
+have reintroduced postmortem defect 8 in mirror image.
+
+The transform is a property of the source framework's storage
+convention for a given tensor, not a universal rule -- which is the
+"bytes versus meaning" lesson recurring in a new place. BDH gets its
+own exporter for this reason.
+
+### The finding: the sparse latent overtakes the weights
+
+docs/plan.md section 3 keeps activations in ordinary memory on the
+grounds that they are kilobytes while the weights are megabytes. For
+BDH that is true only at short sequences, and it does not merely
+weaken with length -- it inverts.
+
+Resident activation bytes against a fixed 100,925,440-byte weight set:
+
+| positions | activations | as % of weights |
+| ---: | ---: | ---: |
+| 16 | 3.3 MB | 3.2% |
+| 64 | 13.0 MB | 12.9% |
+| 128 | 26.0 MB | 25.7% |
+| 256 | 51.9 MB | 51.5% |
+| 512 | 103.8 MB | **102.9%** |
+
+At 512 positions the engine holds more activation than model. The
+crossover is near 498 positions, and it is inevitable rather than
+incidental: the latent is `positions * heads * latent` and grows
+linearly, while the weight set does not grow at all. `budget()`
+reports both, and `the_sparse_latent_overtakes_the_whole_weight_set`
+asserts the inversion so it cannot be quietly lost.
+
+This engine already spends half of what the reference would. Folding
+the second `relu` into an in-place gate lets one buffer serve as both
+`x_sparse` and `xy_sparse`, where the reference holds both at once.
+The inversion above is *after* that saving.
+
+### What it means for the FPGA target
+
+On the Tang Nano 9K the scarce resource is BRAM, and it is measured in
+kilobytes. An architecture whose working set is tens of megabytes and
+grows with sequence length does not fit the "static parameters
+outside, dynamic state inside" partition that docs/research.txt
+proposed for BDH -- not because the parameters are too big, which is
+the problem the Serial Parameter Machine solves, but because the
+*state* is. Streaming the weights perfectly would not help.
+
+That is a real negative result for BDH-on-FPGA at these
+hyperparameters, and it is specific: `mlp_internal_dim_multiplier` is
+what drives it. At 128 the latent is 32x the model width. A smaller
+multiplier would move the crossover, and nothing measured here says
+what BDH's quality does when it moves.
+
+### What these numbers do not support
+
+- **Random weights, not a trained model.** Every formula is verified,
+  and nothing about BDH's behaviour or quality is. `pathwaycom/bdh`
+  ships no checkpoint; if one appears, the comparison should be rerun
+  against it.
+- **One configuration.** The residency inversion is a property of
+  `mlp_internal_dim_multiplier = 128` and the reference `D` and `nh`.
+  It is arithmetic, so it will move predictably, but no other setting
+  was measured.
+- **No timing is reported.** This rung establishes structure and
+  residency. The streamed-versus-resident comparison that step 6 did
+  for TRM has not been done for BDH.
+- **`embed` is excluded from the streamed path deliberately.** A
+  lookup table gathered by token id cannot be swept to serve one
+  token. At 65,536 weights, 0.26% of the model, it stays resident --
+  plan section 3 working as intended rather than an exception to it.
+- **The attention cost is not addressed here.** Scores are
+  `positions^2` per head and the engine computes them without
+  materialising the matrix, but nothing measures whether that is the
+  right trade at long sequences.

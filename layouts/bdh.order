@@ -1,0 +1,50 @@
+# Consumption order for pathwaycom/bdh (the Dragon Hatchling).
+#
+# Read from the reference forward pass in bdh.py, not guessed:
+#
+#   for level in range(n_layer):              # 6 of them
+#       x_sparse = relu(x @ encoder)          # per head
+#       yKV      = ln(attn(x_sparse, x_sparse, V=x))
+#       y_sparse = relu(yKV @ encoder_v)      # per head
+#       xy       = x_sparse * y_sparse
+#       x        = ln(x + ln(reshape(xy) @ decoder))
+#   logits = x @ lm_head
+#
+# THE LOOP BODY CARRIES NO LAYER INDEX. BDH applies one parameter set
+# n_layer times, so it is a rotating store by construction -- the same
+# property TRM has, arriving for the same reason. 25,165,824 weights
+# are read six times per forward, 604 MB of traffic for a 101 MB model.
+#
+# [rotating] MUST COME FIRST, because rewind() returns to stream zero.
+#
+# `lm_head` is read exactly ONCE, after the final level, so it belongs
+# after the rotating region: the last decoder sweep of the last level
+# leaves the cursor exactly where lm_head begins, and it is reached by
+# reading on rather than by seeking. This is the same structure that
+# let HRM's [low][high] share one region, and it is verified rather
+# than assumed -- see components/tensor/crates/spm-bdh.
+#
+# `encoder` and `encoder_v` are (nh, D, N): nh independent (D, N)
+# matrices, one per head, and all nh of the first are needed before
+# attention can run. They are listed per head, in head order, which is
+# the order the batched matmul consumes them.
+#
+# NOT LISTED, AND DELIBERATELY SO: `embed` is a gather by token id,
+# not a sweep. Streaming a lookup table to serve one token would mean
+# reading all of it. At 65,536 weights (0.26% of the model) it stays
+# resident, which is docs/plan.md section 3 working as intended rather
+# than an exception to it.
+
+[rotating]
+encoder.0
+encoder.1
+encoder.2
+encoder.3
+encoder_v.0
+encoder_v.1
+encoder_v.2
+encoder_v.3
+decoder
+
+[resident]
+lm_head

@@ -91,6 +91,23 @@ random-access memory. The rule is enforced in the type system -- there
 is no seek method to call -- so the architecture cannot quietly erode
 back into a memory controller as the code grows.
 
+**The permission granted to activations is not free, and BDH is where
+that showed.** Letting activations use ordinary memory is justified by
+an asymmetry -- weights are megabytes, activations are kilobytes -- and
+that asymmetry is a property of the architecture being run, not a law.
+BDH's sparse latent is `positions * heads * latent` floats and grows
+linearly with sequence length while its weight set does not grow at
+all. At 512 positions it holds more activation than model (103.8 MB
+against 100.9 MB); see docs/results.md, saga 2 step 7.
+
+The rule above still stands, because it is about the weight stream and
+nothing here touches it. What does not stand is the assumption that
+obeying it is sufficient. **For any new rung, the resident working set
+is a number to measure before the rung is planned, not a detail to
+discover afterwards** -- and for a target whose fast memory is BRAM
+measured in kilobytes, it can disqualify an architecture whose weights
+would have streamed perfectly.
+
 The `.spm` container is a **physical execution layout**, not another
 model interchange format. Weights are stored in exactly the order the
 engine consumes them; opening a stream and reading to the end IS the

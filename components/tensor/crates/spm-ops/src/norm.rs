@@ -50,3 +50,39 @@ pub fn residual_norm(state: &mut [f32], delta: &[f32], epsilon: f32, width: usiz
         rms_norm(row, epsilon);
     }
 }
+
+/// `LayerNorm` with no affine parameters, over each `width` chunk.
+///
+/// Distinct from [`rms_norm`], and the difference is the mean. RMS
+/// norm divides by the root-mean-square and leaves the centre where it
+/// is; this subtracts the mean first. TRM and HRM use the former, BDH
+/// uses the latter -- `nn.LayerNorm(D, elementwise_affine=False)` --
+/// and substituting one for the other is a silent accuracy bug of
+/// exactly the kind postmortem defect 7 was.
+///
+/// The variance is biased (divided by `width`, not `width - 1`),
+/// matching torch.
+pub fn layer_norm(values: &mut [f32], epsilon: f32, width: usize) {
+    for row in values.chunks_mut(width.max(1)) {
+        let count = f32::from(u16::try_from(row.len()).unwrap_or(u16::MAX));
+        let mean = row.iter().sum::<f32>() / count;
+        let variance = row.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / count;
+        let scale = 1.0 / (variance + epsilon).sqrt();
+        for slot in row.iter_mut() {
+            *slot = (*slot - mean) * scale;
+        }
+    }
+}
+
+/// `state = layer_norm(state + delta)`, per `width` chunk.
+///
+/// The [`layer_norm`] counterpart to [`residual_norm`], and it exists
+/// for the same reason: a post-norm residual is one operation in every
+/// architecture that uses it, and writing it out at each call site is
+/// where an axis or an ordering quietly goes wrong.
+pub fn residual_layer_norm(state: &mut [f32], delta: &[f32], epsilon: f32, width: usize) {
+    for (slot, value) in state.iter_mut().zip(delta) {
+        *slot += value;
+    }
+    layer_norm(state, epsilon, width);
+}

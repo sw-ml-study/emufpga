@@ -1,0 +1,8 @@
+[package]
+name = "spm-bdh-ops"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
