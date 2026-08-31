@@ -1,10 +1,11 @@
 number = 7
 slug = "bdh-rung3"
-status = "in-progress"
+status = "completed"
 description = """
 Rung 3 of the model ladder: BDH, the Dragon Hatchling, from
 `pathwaycom/bdh` ..."""
 role = "production"
 context_files = []
 created_at = "2026-08-31T12:47:01"
-commits = []
+completed_at = "2026-08-31T13:02:10"
+commits = ["dfcbfcca35b1479e40fe002a8e246b31efb89671"]
