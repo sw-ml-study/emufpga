@@ -91,6 +91,19 @@ random-access memory. The rule is enforced in the type system -- there
 is no seek method to call -- so the architecture cannot quietly erode
 back into a memory controller as the code grows.
 
+**Streaming is a demonstration rather than a win whenever the working
+set fits in memory anyway.** Rung 4 made this unavoidable. Arithmetic
+intensity is `batch / 4` MACs per weight-byte for any f32 model read
+once, recursion or not -- so recursion does not buy reuse, it buys a
+small working set. TRM's 27 MB rotating region fits in any machine's
+RAM, and caching it beats streaming it. The first three rungs were all
+in that regime, and the architecture looked good there for a reason
+that does not generalise.
+
+The case for a serial parameter store is a model too big to hold, read
+once, in order. SmolLM2-135M is the first rung that is actually that,
+and it is the one to reason from. See docs/results.md, saga 2 step 8.
+
 **The permission granted to activations is not free, and BDH is where
 that showed.** Letting activations use ordinary memory is justified by
 an asymmetry -- weights are megabytes, activations are kilobytes -- and

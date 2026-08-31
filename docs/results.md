@@ -821,3 +821,144 @@ what BDH's quality does when it moves.
   `positions^2` per head and the engine computes them without
   materialising the matrix, but nothing measures whether that is the
   right trade at long sequences.
+
+## SmolLM2-135M, rung 4 (saga 2 step 8)
+
+`HuggingFaceTB/SmolLM2-135M`, a Llama-shaped transformer:
+134,515,008 parameters, 30 distinct layers, grouped-query attention,
+tied embeddings. **The first non-recursive rung**, and the one that
+decides whether this is a general approach or an accelerator for
+unusual research architectures.
+
+### Verified against `transformers`
+
+| stage | cosine | relative |
+| --- | ---: | ---: |
+| `hidden_0` (embedding) | 1.000000000000 | 0.0 |
+| `hidden_1` | 1.000000000000 | 7.37e-7 |
+| `hidden_2` | 1.000000000000 | 6.25e-7 |
+| `hidden_30` (normed) | 0.999999999999 | 1.39e-6 |
+| `logits` | 0.999999999999 | 2.37e-6 |
+
+Verified at sequence lengths 1, 4, 8, 16 and 32. f32 accumulation
+noise throughout.
+
+Two things that looked like bugs and were not, both found by comparing
+against the reference rather than reasoning:
+
+- `transformers` applies `model.norm` to its **last** hidden state but
+  not to the intermediate ones, so `hidden_30` is
+  `norm(layer_30(...))`. Comparing the raw state reports cosine 0.32.
+- `hidden_0` disagreed completely at first. Cause below.
+
+### The same tensor needs two layouts
+
+`scripts/extract-checkpoint` writes every 2-D tensor in column-major
+stream order, which is what a streamed matmul wants. `embed_tokens` is
+not streamed: it is **gathered by token id**, and the tied output
+projection also needs row `v` contiguous. Both uses want row-major,
+and the extractor can only commit to one.
+
+That is not a bug in the extractor. It is the first time a tensor's
+layout has depended on how it is *read* rather than on what it is, and
+it is the same "bytes versus meaning" lesson as postmortem defect 8
+arriving from a third direction -- after TRM (needed the transpose)
+and BDH (needed it skipped), SmolLM needs it **both ways for one
+tensor**.
+
+### Recursion buys a working set, not reuse
+
+The earlier rungs made recursion look like free amortization. Work out
+the arithmetic intensity and it is not:
+
+```
+MACs per weight-byte = batch / 4     for ANY f32 model read once
+```
+
+TRM re-reads 6,815,744 weights fifteen times and does
+`6,815,744 * 15 * batch` MACs on 409 MB of traffic. SmolLM reads
+106,168,320 weights once and does `106,168,320 * batch` MACs on 425 MB.
+**Both are `batch / 4` MACs per byte.** Recursion changes nothing about
+how much arithmetic each fetched byte buys.
+
+What recursion actually buys is a small **working set**. TRM's rotating
+region is 27 MB; if it fits in fast memory it can be read from storage
+once and re-read from cache fifteen times. This engine does not do that
+-- a rewind goes back to the file -- so it pays 409 MB where 27 would
+do.
+
+That has an uncomfortable implication the earlier rungs hid:
+**streaming is a demonstration rather than a win whenever the working
+set fits in memory anyway.** For a 27 MB rotating region on a 64 GB
+machine, caching it beats streaming it, and the first three rungs were
+all in that regime.
+
+SmolLM is the first that is not. 425 MB read once per forward, strictly
+in order, with no re-reads to cache and nothing to gain by trying. It
+is the workload a serial parameter store is actually for.
+
+### Measured, and the curves are nearly identical
+
+Best-effort timing, M1 Max, release, f32:
+
+| positions | forward | store MB/s demanded |
+| ---: | ---: | ---: |
+| 1 | 164 ms | 2585 |
+| 4 | 449 ms | 946 |
+| 8 | 810 ms | 524 |
+| 16 | 1.518 s | 280 |
+| 32 | 2.979 s | 143 |
+
+Beside TRM's from step 6 -- 2854 MB/s at batch 1, 637 at 8, 166 at 32
+-- these are the same curve. A 6.8M recursive model and a 135M
+conventional one demand nearly the same bandwidth at the same batch,
+which is exactly what `batch / 4` predicts and is the strongest
+confirmation of the reframing above.
+
+At batch 32, 143 MB/s: a single SAS drive keeps a 135M-parameter model
+fed. The standing caveat from step 6 applies unchanged and matters
+more here -- the rate is low partly because the compute is slow.
+
+### The cost: a fifth of the model cannot be streamed
+
+| model | resident | share |
+| --- | ---: | ---: |
+| TRM | 8,706 | 0.13% |
+| HRM | 13,826 | 0.05% |
+| **SmolLM2-135M** | **28,346,688** | **21.1%** |
+
+SmolLM ties its embeddings, and `embed_tokens` is 28,311,552 weights
+against 134,515,008. An embedding is gathered by token id, so a sweep
+would read all 49,152 rows to serve one token.
+
+**A research model with a tiny vocabulary flatters this architecture.**
+TRM's vocabulary is a maze alphabet and HRM's is sudoku digits;
+SmolLM's is 49,152 tokens, and that single tensor is a fifth of the
+model. Any real language model carries this, and it grows with
+vocabulary rather than with depth.
+
+The alternative is real and was not taken: a sweep that *selects* the
+rows it wants keeps residency at one group, at the cost of reading
+28 MB per forward -- 6.7% more traffic to remove 21% of residency.
+Which wins depends on whether RAM or bandwidth is scarcer, and on the
+target device that is not obvious. It is left as a measured choice
+rather than a silent default.
+
+### What these numbers do not support
+
+- **No generation, no KV cache.** One forward over a fixed prompt.
+  Autoregressive decoding re-reads the whole model per token, which is
+  the regime where streaming is hardest and it is not measured here.
+- **No quality claim.** The formulas match `transformers` to 1e-6.
+  Nothing here says the model generates good text, and no tokenizer
+  was involved.
+- **f32 throughout.** The checkpoint is bf16 and was widened on
+  import, doubling both file size and traffic. A bf16 or ternary
+  encoding profile would halve or quarter the numbers above, and the
+  `.spm` format already has the room -- but that is a different step.
+- **The timing is one run per point, not best-of-N.** Step 6's
+  measurements were best of five; these are single runs and the ~1%
+  noise floor recorded there applies at least as strongly.
+- **Attention is O(positions^2)** and unoptimised, so the forward
+  timings above mix a growing attention cost with the fixed streaming
+  cost. The demanded-bandwidth column inherits that.

@@ -142,6 +142,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-smol"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-dense",
+ "spm-file",
+ "spm-layout",
+ "spm-linear",
+ "spm-ops",
+ "spm-smol-ops",
+ "spm-stream",
+ "spm-stream-file",
+ "spm-stream-groups",
+ "spm-stream-mem",
+ "spm-stream-metrics",
+]
+
+[[package]]
+name = "spm-smol-ops"
+version = "0.1.0"
+dependencies = [
+ "spm-ops",
+]
+
+[[package]]
 name = "spm-stream"
 version = "0.1.0"
 

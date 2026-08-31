@@ -1,0 +1,11 @@
+[package]
+name = "spm-smol-ops"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-ops = { path = "../spm-ops" }

@@ -1,6 +1,6 @@
 number = 8
 slug = "smollm-rung4"
-status = "pending"
+status = "in-progress"
 description = """
 Rung 4: SmolLM2-135M (`HuggingFaceTB/SmolLM2-135M`), a conventional
 Llama-sha..."""
