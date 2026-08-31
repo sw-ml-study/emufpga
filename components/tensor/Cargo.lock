@@ -172,6 +172,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-trm-resident"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-dense",
+ "spm-file",
+ "spm-layout",
+ "spm-linear",
+ "spm-ops",
+ "spm-stream",
+ "spm-stream-file",
+ "spm-stream-groups",
+ "spm-stream-mem",
+ "spm-stream-metrics",
+ "spm-trm",
+]
+
+[[package]]
 name = "spm-vectors"
 version = "0.1.0"
 dependencies = [

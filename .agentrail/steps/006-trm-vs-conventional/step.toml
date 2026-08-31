@@ -1,6 +1,6 @@
 number = 6
 slug = "trm-vs-conventional"
-status = "pending"
+status = "in-progress"
 description = """
 The first head-to-head comparison: TRM's forward pass over streamed
 weights a..."""

@@ -1,0 +1,26 @@
+[package]
+name = "spm-trm-resident"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
+spm-linear = { path = "../spm-linear" }
+spm-ops = { path = "../spm-ops" }
+spm-stream = { path = "../../../stream/crates/spm-stream" }
+spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
+spm-trm = { path = "../spm-trm" }
+
+[dev-dependencies]
+spm-file = { path = "../../../format/crates/spm-file" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
+spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
+spm-stream-metrics = { path = "../../../stream/crates/spm-stream-metrics" }
+
+[[example]]
+name = "trm-compare"

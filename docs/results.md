@@ -526,3 +526,153 @@ records for TRM's layout bugs, repeated one rung later for semantics
 rather than layout -- which is a reasonable argument that the
 postmortem's rules are not yet strong enough, since they were written
 down and the bug still landed.
+
+## Streamed against conventional resident (saga 2 step 6)
+
+The first head-to-head. Plan item 5, deferred past the HRM rung: two
+rungs of the ladder had been built and nothing had yet compared the
+streamed path against the conventional one it claims to replace.
+
+### What was measured
+
+TRM's full forward pass -- 15 `L_level` calls over 2 layers, on the
+real 6,824,450-parameter checkpoint -- in three configurations:
+
+| | weights live | reached by |
+| --- | --- | --- |
+| resident | all in RAM | subscript |
+| streamed (memory) | one group at a time | arrival |
+| streamed (file) | one group at a time | arrival, off disk |
+
+Three rather than two on purpose. A file-versus-resident number alone
+conflates the cost of streaming with the cost of storage; the
+memory-backed stream keeps the streaming discipline and removes the
+IO, so the two costs can be told apart.
+
+`components/tensor/crates/spm-trm-resident` is the conventional path.
+It is a separate crate rather than a generic parameter on `spm-trm`,
+because abstracting over "weight source" would require a trait that
+admits random access, and the streamed path's guarantee is that random
+access is **not expressible in its types**. The contrast is the point;
+hiding it behind a generic would erase it.
+
+### Correctness first
+
+All three configurations agree **bit for bit** on the real checkpoint,
+at every batch size measured: 0 mismatched floats out of 8 x 512. Both
+paths apply weights in the same order and both use `mul_add`, so there
+is no rounding difference left for a tolerance to absorb.
+
+This is a precondition, not a result. A performance comparison between
+two implementations that compute different answers is not a
+comparison, and `spm-trm-resident/tests/agreement.rs` asserts it
+hermetically on synthetic weights so it cannot quietly rot.
+
+### The numbers
+
+M1 Max, release build, best of 5. Times are milliseconds per forward.
+
+| batch | resident | streamed (mem) | streamed (file) | store MB/s demanded |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 102 | 116 (+13.9%) | 143 (+40.7%) | 2854 |
+| 4 | 308 | 341 (+10.7%) | 364 (+18.3%) | 1123 |
+| 8 | 590 | 610 (+3.5%) | 642 (+8.9%) | 637 |
+| 16 | 1136 | 1163 (+2.4%) | 1194 (+5.1%) | 342 |
+| 32 | 2402 | 2438 (+1.5%) | 2461 (+2.5%) | 166 |
+
+Parameter bytes held in random-access memory, unchanged across every
+row:
+
+| | bytes |
+| --- | ---: |
+| resident | 27,297,800 |
+| streamed, either backing | 4,096 |
+| ratio | 1.50e-4, or 6,664x |
+
+Repeating the whole sweep moves these by about 1%: two batch-32 runs
+gave 2402/2438/2461 and 2400/2411/2443 ms. **The +1.5% memory-stream
+overhead at batch 32 is therefore at the noise floor**, and should be
+read as "no longer measurable on this machine" rather than as a
+precise figure. The batch-1 and batch-4 overheads are many times the
+spread and are real.
+
+### Finding 1: streaming costs little, and less the more you batch
+
+The overhead falls monotonically with batch, from 41% at batch 1 to
+2.5% at batch 32. That is the amortization the architecture is built
+on, measured end to end for the first time: a weight is fetched once
+and applied `positions` times, so the fixed cost of getting it there
+is divided by the batch.
+
+Splitting file from memory attributes it. At batch 32 the streaming
+mechanism itself costs 1.5% and the file adds a further 1.0%. At batch
+1 the mechanism costs 13.9% and the file adds 26.8% -- the same
+per-group overhead, spread over a thirty-second of the work.
+
+### Finding 2: the demanded store bandwidth falls with batch
+
+The rotating region is 27,262,976 bytes and is re-read once per
+`L_level` call, so a forward pass pulls 408,944,640 bytes regardless
+of batch. The **rate** that traffic must arrive at is what changes:
+2.9 GB/s at batch 1, 166 MB/s at batch 32.
+
+This is the number the thesis turns on. At batch 1 the store must be
+RAM or NVMe. At batch 32 a single SAS drive would keep the engine fed
+with room to spare, which is the substitution the project exists to
+test: cheap sequential capacity in place of expensive fast memory.
+
+**The honest caveat is large and cuts the other way.** The demanded
+rate is low partly because the compute is slow. This is scalar
+reference code; a 10x faster engine at batch 32 would demand 1.7 GB/s
+and put the disk back on the critical path. The rate is a property of
+the ratio between this engine and this store, not a property of the
+architecture. It bounds nothing on its own.
+
+### Finding 3: the memory win is real, and not yet load-bearing
+
+6,664x fewer resident parameter bytes is the largest number in this
+document, and at this rung it buys nothing. 27 MB fits in any device
+made this century. The streamed path's residency is also **O(1) in
+model size** -- the buffer is sized by the widest group, not by the
+model, so a 300 GB model streams through the same 4 KiB.
+
+Where it starts to matter, at f32:
+
+| VRAM | parameters held resident | TRM as a fraction |
+| --- | ---: | ---: |
+| 8 GB | 2.00 G | 0.34% |
+| 12 GB | 3.00 G | 0.23% |
+| 24 GB | 6.00 G | 0.11% |
+
+So the resident path stops fitting an 8 GB card somewhere around 2
+billion f32 parameters, roughly 300x up the ladder from here. That is
+the rung at which this comparison stops being an academic 2.5% and
+becomes the difference between running and not running -- and it is
+why the ladder goes on rather than stopping at a favourable number.
+
+### What these numbers do not support
+
+- **The resident path is not an optimised GEMM.** It is the same
+  scalar loop with the weights already in RAM, chosen deliberately so
+  the arithmetic is held fixed and the difference is attributable to
+  the mechanism. A real inference engine using BLAS would beat both
+  columns by a wide margin. Nothing here says the Serial Parameter
+  Machine is faster than conventional inference; it says streaming
+  costs 2.5% against the same arithmetic.
+- **The file was page-cached.** 27 MB re-read fifteen times on a
+  64 GB machine never touched a disk. The file column measures syscall
+  and copy overhead, not storage. A cold store is exactly what Finding
+  2's demanded-rate column is for, and that column is a requirement,
+  not a measurement of any real device.
+- **The memory axis measures parameters, not RSS.** Activations,
+  buffers and the allocator are excluded on both sides. The claim is
+  about where the weights are, which is the claim the architecture
+  makes.
+- **Streaming from a page-cached file does not reduce system-wide
+  memory.** The kernel still holds those pages. The 4 KiB figure is
+  process-resident parameter bytes; the win becomes a real system-wide
+  win only when the store is a device you are not caching, which is
+  the configuration this machine cannot produce.
+- **One machine, one model, one precision.** Every standing caveat
+  from the batch-amortization measurement still applies: no IO
+  overlap, scalar engine, warm cache.

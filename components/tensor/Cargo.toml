@@ -12,6 +12,7 @@ members = [
     "crates/spm-activations",
     "crates/spm-gemv-ref",
     "crates/spm-trm",
+    "crates/spm-trm-resident",
     "crates/spm-vectors",
     "crates/spm-vectors-text",
 ]
