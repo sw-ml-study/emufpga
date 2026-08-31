@@ -3,7 +3,7 @@
 use crate::error::GroupError;
 use crate::open::{read_directory, read_header, read_payload, widest_group};
 use spm_header::{HEADER_LEN, Header};
-use spm_layout::{DESCRIPTOR_LEN, OpDescriptor};
+use spm_layout::{DESCRIPTOR_LEN, Encoding, OpDescriptor};
 use spm_stream::WeightStream;
 use spm_walk::Cursor;
 
@@ -19,6 +19,14 @@ pub struct GroupView<'a> {
     pub scale: f32,
     /// Weights in the group. Short for a stream's final group.
     pub count: u32,
+    /// How `packed` is encoded.
+    ///
+    /// Carried on the view so a consumer cannot decode a group with
+    /// the wrong codec. Before this existed the discriminant was
+    /// written into every descriptor and read by nobody: a bf16
+    /// stream would have been decoded as f32 and produced plausible
+    /// garbage rather than an error.
+    pub encoding: Encoding,
     /// The packed weight bytes.
     pub packed: &'a [u8],
 }
@@ -77,15 +85,15 @@ impl<S: WeightStream> GroupStream<S> {
     pub fn next_group(&mut self) -> Option<Result<GroupView<'_>, GroupError>> {
         let count = self.cursor.group_len(&self.descriptors)?;
         let stream_index = self.cursor.stream;
-        let bytes = self.descriptors[stream_index]
-            .encoding
-            .bytes_for(count as usize);
+        let encoding = self.descriptors[stream_index].encoding;
+        let bytes = encoding.bytes_for(count as usize);
         self.cursor.advance(&self.descriptors);
         let payload = read_payload(&mut self.stream, &mut self.buffer[..bytes]);
         Some(payload.map(move |scale| GroupView {
             stream: stream_index,
             scale,
             count,
+            encoding,
             packed: &self.buffer[..bytes],
         }))
     }

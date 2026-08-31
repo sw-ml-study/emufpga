@@ -8,7 +8,10 @@
 
 use spm_codec_dense::decode_into;
 use spm_file::SpmReader;
-use spm_import::{GROUP_SIZE, Tensor, assemble, parse_manifest, render_sidecar, total_weights};
+use spm_import::{
+    GROUP_SIZE, Tensor, assemble, descriptors, parse_manifest, render_sidecar, total_weights,
+};
+use spm_layout::Encoding;
 use std::path::PathBuf;
 
 /// The value this test expects at stream `index`, element `i`.
@@ -44,6 +47,7 @@ fn tensor(name: &str, shape: &[u32], blob: &str) -> Tensor {
         name: name.into(),
         shape: shape.to_vec(),
         blob: blob.into(),
+        encoding: Encoding::F32,
     }
 }
 
@@ -138,8 +142,8 @@ fn a_blob_that_disagrees_with_its_shape_is_refused() {
 #[test]
 fn the_manifest_and_sidecar_agree_on_shapes() {
     let text = "# name\tshape\tdtype\tblob\telements\n\
-                m.w\t6,512\tFloatStorage\t000.bin\t3072\n\
-                m.b\t2\tFloatStorage\t001.bin\t2\n";
+                m.w\t6,512\tf32\t000.bin\t3072\n\
+                m.b\t2\tf32\t001.bin\t2\n";
     let tensors = parse_manifest(text).expect("parse");
     assert_eq!(tensors.len(), 2);
     assert_eq!(tensors[0].stream_shape(), (6, 512));
@@ -160,4 +164,29 @@ fn malformed_manifest_lines_are_refused() {
     assert!(parse_manifest("n\t0,4\tf\tb\n").is_err());
     // Comments and blanks are skipped rather than rejected.
     assert_eq!(parse_manifest("# header\n\n").expect("parse").len(), 0);
+}
+
+#[test]
+fn a_manifest_dtype_the_importer_does_not_know_is_refused() {
+    // Deliberately strict. The extractor writes the dtype of the blob
+    // it actually produced, and every stage downstream depends on
+    // agreeing with it -- a bf16 blob framed as f32 would be read as
+    // garbage with no error anywhere. A legacy or unrecognised name
+    // must stop the import rather than fall back to a guess.
+    let text = "m.w\t4,4\tBFloat16Storage\t000.bin\t16\n";
+    let error = parse_manifest(text).expect_err("legacy dtype must be refused");
+    assert!(
+        format!("{error}").contains("f32 or bf16"),
+        "the error should say what is accepted, got: {error}"
+    );
+}
+
+#[test]
+fn a_bf16_manifest_stamps_the_bf16_encoding_on_its_descriptors() {
+    let text = "m.w\t4,4\tbf16\t000.bin\t16\n";
+    let tensors = parse_manifest(text).expect("parse");
+    assert_eq!(tensors[0].encoding, Encoding::Bf16);
+    assert_eq!(descriptors(&tensors)[0].encoding, Encoding::Bf16);
+    // And the size check must expect two bytes per weight, not four.
+    assert_eq!(Encoding::Bf16.bytes_for(16), 32);
 }

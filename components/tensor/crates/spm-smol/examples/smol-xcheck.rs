@@ -60,7 +60,20 @@ fn resident_blob(dir: &str, manifest: &str, name: &str) -> Vec<f32> {
     for line in manifest.lines().filter(|l| !l.starts_with('#')) {
         let fields: Vec<&str> = line.split('\t').collect();
         if fields.len() >= 4 && fields[0] == name {
-            return read_f32(&format!("{dir}/{}", fields[3]));
+            let path = format!("{dir}/{}", fields[3]);
+            // The resident tensors carry the same encoding as the
+            // streamed ones. Reading a bf16 blob as f32 would halve
+            // the count and produce garbage, so consult the manifest
+            // rather than assuming -- the whole point of this step.
+            return match fields[2] {
+                "bf16" => {
+                    let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+                    let mut out = vec![0.0f32; bytes.len() / 2];
+                    spm_codec_bf16::decode_into(&bytes, &mut out).expect("bf16");
+                    out
+                }
+                _ => read_f32(&path),
+            };
         }
     }
     panic!("{name} not in manifest");
@@ -87,6 +100,40 @@ fn to_row_major(blob: &[f32], rows: usize, cols: usize) -> Vec<f32> {
     out
 }
 
+/// Reads every resident tensor: the embedding table and the norms.
+///
+/// Returned rather than loaded inline so `main` stays readable. The
+/// embedding is transposed back to row-major here, which is the one
+/// place that conversion belongs.
+type Residents = (Vec<f32>, Vec<f32>, Vec<(Vec<f32>, Vec<f32>)>);
+
+fn load_resident(extracted: &str, config: &SmolConfig) -> Residents {
+    let manifest = std::fs::read_to_string(format!("{extracted}/manifest.tsv")).expect("manifest");
+    let embed = to_row_major(
+        &resident_blob(extracted, &manifest, "model.embed_tokens.weight"),
+        config.vocab,
+        config.hidden,
+    );
+    let final_norm = resident_blob(extracted, &manifest, "model.norm.weight");
+    let norms = (0..config.layers)
+        .map(|i| {
+            (
+                resident_blob(
+                    extracted,
+                    &manifest,
+                    &format!("model.layers.{i}.input_layernorm.weight"),
+                ),
+                resident_blob(
+                    extracted,
+                    &manifest,
+                    &format!("model.layers.{i}.post_attention_layernorm.weight"),
+                ),
+            )
+        })
+        .collect();
+    (embed, final_norm, norms)
+}
+
 fn main() {
     let mut args = std::env::args().skip(1);
     let dir = args
@@ -96,30 +143,8 @@ fn main() {
     let extracted = args.next().expect("extracted");
     let config = SmolConfig::default();
 
-    let manifest = std::fs::read_to_string(format!("{extracted}/manifest.tsv")).expect("manifest");
-    let embed = to_row_major(
-        &resident_blob(&extracted, &manifest, "model.embed_tokens.weight"),
-        config.vocab,
-        config.hidden,
-    );
-    let final_norm = resident_blob(&extracted, &manifest, "model.norm.weight");
-    let norms: Vec<(Vec<f32>, Vec<f32>)> = (0..config.layers)
-        .map(|i| {
-            (
-                resident_blob(
-                    &extracted,
-                    &manifest,
-                    &format!("model.layers.{i}.input_layernorm.weight"),
-                ),
-                resident_blob(
-                    &extracted,
-                    &manifest,
-                    &format!("model.layers.{i}.post_attention_layernorm.weight"),
-                ),
-            )
-        })
-        .collect();
-
+    let resident = load_resident(&extracted, &config);
+    let (embed, final_norm, norms) = (&resident.0, &resident.1, &resident.2);
     let tokens = read_u32(&format!("{dir}/tokens.u32"));
     let positions = tokens.len();
     let d = config.hidden;
@@ -152,7 +177,7 @@ fn main() {
     // Verified against the checkpoint rather than assumed: comparing
     // the raw state here reports cosine 0.32 and looks like a bug.
     let mut normed = state.clone();
-    scaled_rms_norm(&mut normed, &final_norm, config.eps, d);
+    scaled_rms_norm(&mut normed, final_norm, config.eps, d);
     let want = read_f32(&format!("{dir}/stage_hidden_{}.f32", config.layers));
     report(
         &format!("hidden_{} (normed)", config.layers),
@@ -166,9 +191,9 @@ fn main() {
     let mut driven = vec![0.0f32; positions * d];
     let mut logits = vec![0.0f32; positions * config.vocab];
     let resident = Resident {
-        embed: &embed,
-        norms: &norms,
-        final_norm: &final_norm,
+        embed,
+        norms,
+        final_norm,
     };
     let io = (&tokens[..], &mut driven[..], &mut logits[..]);
     let started = std::time::Instant::now();
@@ -187,13 +212,25 @@ fn main() {
     // every earlier rung this is the model read ONCE -- there is no
     // rotating region to re-read, so the traffic is the streamed
     // weight set exactly.
-    let streamed = config.layers
-        * (2 * config.hidden * config.hidden
-            + 2 * config.kv_width() * config.hidden
-            + 3 * config.intermediate * config.hidden);
-    let bytes = streamed * size_of::<f32>();
+    // Traffic from the DESCRIPTORS, not from a weight count times four.
+    // Assuming f32 here would report bf16's traffic as double what it
+    // is and hide the whole point of the encoding.
+    let streamed: usize = groups
+        .descriptors
+        .iter()
+        .take(config.streams())
+        .map(|d| d.rows as usize * d.cols as usize)
+        .sum();
+    let bytes: usize = groups
+        .descriptors
+        .iter()
+        .take(config.streams())
+        .map(|d| d.encoding.bytes_for(d.rows as usize * d.cols as usize))
+        .sum();
+    let encoding = groups.descriptors[0].encoding;
     let seconds = took.as_secs_f64();
     println!("positions      {positions}");
+    println!("encoding       {encoding:?}");
     println!("streamed       {streamed} weights, {bytes} bytes, read once");
     println!("forward        {took:.3?}");
     println!(

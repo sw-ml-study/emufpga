@@ -48,9 +48,9 @@ def read_f32(path):
     return list(struct.unpack(f"<{len(raw) // 4}f", raw))
 
 
-def extract(src, dst):
+def extract(src, dst, *flags):
     subprocess.run(
-        [sys.executable, str(EXTRACT), str(src), str(dst)],
+        [sys.executable, str(EXTRACT), *flags, str(src), str(dst)],
         check=True,
         capture_output=True,
     )
@@ -109,6 +109,31 @@ def main():
         check(
             "1-D tensors pass through unchanged",
             read_f32(bias_blob) == [1.0, 2.0, 3.0],
+        )
+
+        # bf16 mode: same values, half the bytes, and the dtype
+        # column must describe the BLOB rather than the source.
+        got = extract(src, tmp / "bf16", "--bf16")
+        _, blob = got["w"]
+        raw = blob.read_bytes()
+        check(
+            "bf16 blobs are half the size",
+            len(raw) == rows * cols * 2,
+            f"got {len(raw)} bytes for {rows * cols} weights",
+        )
+        widened = [
+            struct.unpack("<f", b"\x00\x00" + raw[i : i + 2])[0]
+            for i in range(0, len(raw), 2)
+        ]
+        check(
+            "bf16 preserves these exactly representable values",
+            widened == expected,
+            f"got {widened}, expected {expected}",
+        )
+        manifest = (tmp / "bf16" / "manifest.tsv").read_text()
+        check(
+            "manifest dtype describes the blob, not the source",
+            "\tbf16\t" in manifest and "\tf32\t" not in manifest,
         )
 
     print("extract-checkpoint guards passed")

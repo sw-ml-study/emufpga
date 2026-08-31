@@ -146,10 +146,38 @@ def to_f32(raw, stype):
     raise SystemExit(f"unsupported storage type {stype}")
 
 
+def to_bf16(raw):
+    """Round little-endian f32 bytes to little-endian bf16.
+
+    Round-to-nearest-EVEN, matching spm-codec-bf16. Truncating -- just
+    keeping the high two bytes -- is the obvious implementation and is
+    biased toward zero, so the two sides of the pipeline would disagree
+    on values exactly halfway between two bf16s.
+    """
+    values = array.array("I")
+    values.frombytes(raw)
+    out = array.array("H", bytes(2 * len(values)))
+    for i, bits in enumerate(values):
+        exponent = (bits >> 23) & 0xFF
+        mantissa = bits & 0x7FFFFF
+        if exponent == 0xFF and mantissa:  # NaN stays NaN
+            out[i] = (bits >> 16) | 0x0040
+            continue
+        lsb = (bits >> 16) & 1
+        out[i] = ((bits + 0x7FFF + lsb) >> 16) & 0xFFFF
+    if sys.byteorder != "little":
+        out.byteswap()
+    return out.tobytes()
+
+
 def main():
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: extract-checkpoint <model.pt> <out-dir>")
-    src, dst = Path(sys.argv[1]), Path(sys.argv[2])
+    args = [a for a in sys.argv[1:] if a != "--bf16"]
+    as_bf16 = "--bf16" in sys.argv[1:]
+    if len(args) != 2:
+        raise SystemExit(
+            "usage: extract-checkpoint [--bf16] <model.pt|.safetensors> <out-dir>"
+        )
+    src, dst = Path(args[0]), Path(args[1])
     dst.mkdir(parents=True, exist_ok=True)
     if src.suffix == ".safetensors":
         index = {
@@ -169,16 +197,30 @@ def main():
         if stype not in WIDTHS:
             raise SystemExit(f"{name}: unsupported storage {stype}")
         blob = f"{i:03d}.bin"
-        (dst / blob).write_bytes(to_stream_order(to_f32(raw, stype), shape))
+        # Widen, reorder, then narrow. The transpose works on f32
+        # regardless, and bf16 -> f32 -> bf16 is exact, so going
+        # through f32 costs nothing and keeps one reorder path.
+        ordered = to_stream_order(to_f32(raw, stype), shape)
+        (dst / blob).write_bytes(to_bf16(ordered) if as_bf16 else ordered)
         elements = 1
         for d in shape:
             elements *= d
         total += elements
         lines.append(
-            "\t".join([name, ",".join(str(d) for d in shape), stype, blob, str(elements)])
+            "\t".join(
+                [
+                    name,
+                    ",".join(str(d) for d in shape),
+                    "bf16" if as_bf16 else "f32",
+                    blob,
+                    str(elements),
+                ]
+            )
         )
     (dst / "manifest.tsv").write_text("\n".join(lines) + "\n")
-    print(f"{len(index)} tensors, {total} parameters -> {dst}")
+    width = 2 if as_bf16 else 4
+    print(f"{len(index)} tensors, {total} parameters, "
+          f"{total * width} bytes ({'bf16' if as_bf16 else 'f32'}) -> {dst}")
 
 
 if __name__ == "__main__":

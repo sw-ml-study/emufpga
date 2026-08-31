@@ -1,5 +1,6 @@
 //! Reading the extractor's `manifest.tsv`.
 
+use spm_layout::Encoding;
 use std::fmt;
 
 /// One tensor as the extractor described it.
@@ -9,8 +10,15 @@ pub struct Tensor {
     pub name: String,
     /// Dimensions, outermost first.
     pub shape: Vec<u32>,
-    /// File holding its little-endian `f32` bytes.
+    /// File holding its little-endian bytes.
     pub blob: String,
+    /// How those bytes are encoded, from the manifest's dtype column.
+    ///
+    /// Read rather than assumed. The extractor knows what it wrote,
+    /// and every stage downstream needs to agree with it -- a blob
+    /// written as bf16 and framed as f32 would be read as garbage
+    /// with no error anywhere.
+    pub encoding: Encoding,
 }
 
 impl Tensor {
@@ -136,9 +144,12 @@ fn parse_line(line: &str, number: usize) -> Result<Tensor, ImportError> {
     if shape.is_empty() || shape.contains(&0) {
         return Err(bad("shape must be non-empty and nonzero"));
     }
+    let encoding = Encoding::from_dtype(fields[2])
+        .ok_or_else(|| bad("dtype must be f32 or bf16 -- re-run scripts/extract-checkpoint"))?;
     Ok(Tensor {
         name: fields[0].to_string(),
         shape,
         blob: fields[3].to_string(),
+        encoding,
     })
 }

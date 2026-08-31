@@ -283,6 +283,7 @@ name = "spm-order"
 version = "0.1.0"
 dependencies = [
  "spm-import",
+ "spm-layout",
 ]
 
 [[package]]

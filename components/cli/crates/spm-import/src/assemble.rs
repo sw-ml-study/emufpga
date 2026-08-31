@@ -2,7 +2,7 @@
 
 use crate::manifest::{ImportError, Tensor};
 use spm_file::SpmWriter;
-use spm_layout::{Encoding, OpDescriptor};
+use spm_layout::OpDescriptor;
 use spm_walk::Cursor;
 use std::path::Path;
 
@@ -33,7 +33,7 @@ pub fn descriptors(tensors: &[Tensor]) -> Vec<OpDescriptor> {
                 rows,
                 cols,
                 group_size: GROUP_SIZE,
-                encoding: Encoding::F32,
+                encoding: t.encoding,
                 lane_count: 1,
             }
         })
@@ -70,7 +70,8 @@ pub fn assemble(tensors: &[Tensor], dir: &Path) -> Result<Vec<u8>, ImportError> 
 /// Rejects a blob that does not match its declared shape.
 fn check_size(tensor: &Tensor, found: usize) -> Result<(), ImportError> {
     let (rows, cols) = tensor.stream_shape();
-    let expected = rows as usize * cols as usize * 4;
+    let weights = rows as usize * cols as usize;
+    let expected = tensor.encoding.bytes_for(weights);
     if found == expected {
         return Ok(());
     }
@@ -82,6 +83,12 @@ fn check_size(tensor: &Tensor, found: usize) -> Result<(), ImportError> {
 }
 
 /// Writes one tensor's blob as a run of groups.
+///
+/// The group width comes from the encoding, never from an assumed
+/// four bytes -- that assumption was the last place the discriminant
+/// was written and ignored, and it produced a truncated bf16 file.
+/// The scale is inert for f32 and bf16; 1.0 is written so a reader
+/// that multiplies by it unconditionally still gets the weights back.
 fn emit(
     writer: &mut SpmWriter,
     cursor: &mut Cursor,
@@ -90,9 +97,8 @@ fn emit(
 ) -> Result<(), ImportError> {
     let mut at = 0usize;
     while let Some(count) = cursor.group_len(descriptors) {
-        let width = count as usize * 4;
-        // The scale is inert for f32; 1.0 is written so a reader that
-        // multiplies by it unconditionally still gets the weights back.
+        let encoding = descriptors[cursor.stream].encoding;
+        let width = encoding.bytes_for(count as usize);
         writer
             .write_raw_group(1.0, &bytes[at..at + width], count as usize)
             .map_err(|e| ImportError::Format {

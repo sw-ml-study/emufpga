@@ -962,3 +962,108 @@ rather than a silent default.
 - **Attention is O(positions^2)** and unoptimised, so the forward
   timings above mix a growing attention cost with the fixed streaming
   cost. The demanded-bandwidth column inherits that.
+
+## A bf16 encoding profile (saga 2 step 9)
+
+Four rungs were verified and every one streamed f32 -- while
+SmolLM2-135M's checkpoint is bf16 and `scripts/extract-checkpoint`
+widened it on the way in. Every traffic and bandwidth number above was
+twice what it needed to be, on the one axis this project exists to
+improve.
+
+### The discriminant was written and never read
+
+`.spm` was made encoding-aware in saga 2 step 1 so a second profile
+could be added. Nothing had exercised it, and the encoding was stamped
+and ignored in **three** separate places:
+
+| where | what it did |
+| --- | --- |
+| `scripts/extract-checkpoint` | widened bf16 to f32 unconditionally |
+| `spm_import::descriptors` | stamped `Encoding::F32` on every stream |
+| `spm_import::emit` | sliced blobs at a hardcoded four bytes |
+| `spm_linear::stream::take` | called the f32 codec without looking |
+
+The last is the dangerous one: a bf16 stream would have been decoded as
+f32 and produced **plausible garbage with no error anywhere**. The
+`Encoding` doc comment already warned about exactly this shape of bug
+-- a discriminant that exists, is written, and is consulted by nobody
+-- and it was still true one layer down.
+
+`GroupView` now carries its encoding, and `spm-codec-any` is the one
+place that knows every profile. A reader cannot pick a codec by habit
+any more; it has to ask.
+
+### Measured, on SmolLM2-135M
+
+| | f32 | bf16 |
+| --- | ---: | ---: |
+| `.spm` file | 538,594,324 B | 269,564,308 B |
+| streamed per forward | 424,673,280 B | 212,336,640 B |
+| store demand, 8 positions | 505 MB/s | **257 MB/s** |
+| store demand, 32 positions | 143 MB/s | **70.6 MB/s** |
+| logits vs `transformers` | cosine 0.999999999999 | cosine 0.999999999999 |
+
+Exactly half, on every traffic row.
+
+### The accuracy cost is zero, and that is not a rounding artefact
+
+The step prompt predicted an accuracy cost and said that agreement to
+twelve places would mean something was wrong. It happened anyway, and
+the reason is better than the prediction: **the checkpoint is natively
+bf16**. Widening it to f32 and rounding back is lossless -- checked
+directly rather than inferred, by comparing a layer's f32 blob against
+its bf16 blob widened: **0 of 576 values differ**.
+
+So the f32 profile was never buying precision. It was storing bf16 data
+in twice the space. This is not a size-versus-accuracy trade; it is
+waste removed.
+
+Guarded against the obvious way to be fooled. The bf16 file's
+descriptors carry discriminant 3 on disk, and
+`bf16_really_is_narrower_and_the_two_files_differ` asserts that values
+needing more than 8 mantissa bits *do* come back rounded -- if the
+bf16 path were secretly still f32, that test fails.
+
+### Rounding, not truncation
+
+`bf16` conversion is written as round-to-nearest-**even** on both
+sides of the pipeline, in Rust and in the Python extractor. Truncating
+-- keeping the high two bytes -- is the obvious implementation, is one
+line shorter, and is biased toward zero, so a long accumulation
+drifts. `rounding_beats_truncation_on_a_long_sum` measures that rather
+than asserting it.
+
+Both sides must agree on ties or the extractor and the codec would
+disagree on values exactly halfway between two `bf16`s, which is the
+kind of difference that shows up as a tiny unexplained error much
+later.
+
+### What this changes about the ladder
+
+At batch 32 a bf16 SmolLM2-135M demands **70.6 MB/s**. That is not a
+SAS drive any more; it is a spinning disk, or a fraction of a 1 GbE
+link. The demanded-rate column has moved from "needs a fast SSD" to
+"needs almost nothing" for a 135M model.
+
+The standing caveat still applies and still cuts the other way: the
+rate is low partly because the compute is slow. Halving traffic does
+not change the compute, so the ratio between them just doubled in
+streaming's favour -- which is the honest way to read the whole table.
+
+### What these numbers do not support
+
+- **Nothing was quantized.** bf16 is the checkpoint's own format. No
+  weight was approximated, and this says nothing about what a real
+  quantization -- int8, or the ternary profile that has existed since
+  saga 1 and is still unexercised on a real model -- would cost in
+  accuracy.
+- **f32 is still the right default for a model that ships in f32.**
+  The win here is specific to checkpoints stored in bf16, which is
+  most of them, but not a universal 2x.
+- **The timings are single runs.** Traffic and file sizes are exact;
+  the forward times carry the ~1% noise floor from step 6.
+- **Ternary remains unimplemented in the streamed path.**
+  `spm-codec-any` refuses it explicitly rather than silently, because
+  two-bit codes mean nothing without their group scale and an
+  accumulator that adds and subtracts rather than multiplies.

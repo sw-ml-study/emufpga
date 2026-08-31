@@ -18,7 +18,10 @@ curl -sLO https://huggingface.co/HuggingFaceTB/SmolLM2-135M/resolve/main/config.
 ```sh
 uv venv && source .venv/bin/activate && uv pip install torch transformers
 python reference.py . out 8
-scripts/extract-checkpoint model.safetensors extracted/
+
+# bf16 is the checkpoint's own format and halves the file. Drop the
+# flag for the f32 profile.
+scripts/extract-checkpoint --bf16 model.safetensors extracted/
 emufpga import -i extracted/ -o smollm.spm --order layouts/smollm2-135m.order
 cargo run --release -p spm-smol --example smol-xcheck -- out smollm.spm extracted
 ```

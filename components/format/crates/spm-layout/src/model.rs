@@ -1,7 +1,5 @@
 //! The operation descriptor and the datapath profile it names.
 
-use core::fmt;
-
 /// Each descriptor occupies a fixed 32 bytes.
 pub const DESCRIPTOR_LEN: usize = 32;
 
@@ -24,6 +22,16 @@ pub enum Encoding {
     /// readers ignore it. The group structure is kept anyway, because
     /// it is what makes the stream self-describing.
     F32,
+    /// `bfloat16` weights, two bytes each, no packing.
+    ///
+    /// The top 16 bits of an `f32`: same 8-bit exponent, 8 fewer
+    /// mantissa bits. Chosen over `f16` because it is what checkpoints
+    /// are actually stored in, so importing one is a truncation rather
+    /// than a range conversion, and nothing can overflow.
+    ///
+    /// The group scale is **inert**, as for [`Self::F32`]: the weights
+    /// carry their own magnitude.
+    Bf16,
 }
 
 impl Encoding {
@@ -33,6 +41,7 @@ impl Encoding {
         match self {
             Self::Ternary2F32I32 => 1,
             Self::F32 => 2,
+            Self::Bf16 => 3,
         }
     }
 
@@ -49,6 +58,23 @@ impl Encoding {
             // Four weights to a byte, groups byte-aligned.
             Self::Ternary2F32I32 => count.div_ceil(4),
             Self::F32 => count * 4,
+            Self::Bf16 => count * 2,
+        }
+    }
+
+    /// Decodes a manifest `dtype` name.
+    ///
+    /// The extractor writes the dtype of the blob it produced, and
+    /// every stage downstream must agree with it: a bf16 blob framed
+    /// as f32 is read as garbage with no error anywhere. Deliberately
+    /// strict -- an unrecognised name is refused rather than guessed
+    /// at, because the guess would be silent.
+    #[must_use]
+    pub fn from_dtype(name: &str) -> Option<Self> {
+        match name {
+            "f32" => Some(Self::F32),
+            "bf16" => Some(Self::Bf16),
+            _ => None,
         }
     }
 
@@ -61,6 +87,7 @@ impl Encoding {
         match code {
             1 => Ok(Self::Ternary2F32I32),
             2 => Ok(Self::F32),
+            3 => Ok(Self::Bf16),
             code => Err(LayoutError::UnknownEncoding { code }),
         }
     }
@@ -99,19 +126,3 @@ pub enum LayoutError {
     /// counting groups.
     ZeroGroupSize,
 }
-
-impl fmt::Display for LayoutError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::TooShort { available } => {
-                write!(f, "descriptor truncated: {available} bytes, need 32")
-            }
-            Self::UnknownEncoding { code } => {
-                write!(f, "unknown .spm encoding profile {code}")
-            }
-            Self::ZeroGroupSize => write!(f, "group_size must be at least 1"),
-        }
-    }
-}
-
-impl core::error::Error for LayoutError {}

@@ -5,6 +5,7 @@
 //! weights would be needed to test the values, but not the layout.
 
 use spm_import::Tensor;
+use spm_layout::Encoding;
 use spm_order::{apply_order, parse_order, reorder};
 use std::path::Path;
 
@@ -20,6 +21,7 @@ fn tensor(name: &str) -> Tensor {
         name: name.into(),
         shape: vec![4, 4],
         blob: "x.bin".into(),
+        encoding: Encoding::F32,
     }
 }
 

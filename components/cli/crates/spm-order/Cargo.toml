@@ -9,3 +9,6 @@ workspace = true
 
 [dependencies]
 spm-import = { path = "../spm-import" }
+
+[dev-dependencies]
+spm-layout = { path = "../../../format/crates/spm-layout" }

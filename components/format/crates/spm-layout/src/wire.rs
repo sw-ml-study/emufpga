@@ -1,6 +1,7 @@
 //! Reading and writing the fixed 32-byte operation descriptor.
 
 use crate::model::{DESCRIPTOR_LEN, Encoding, LayoutError, OpDescriptor};
+use core::fmt;
 use spm_bytes::{read_u16, read_u32, write_u16, write_u32};
 
 /// Parses the descriptor at the start of `src`.
@@ -39,3 +40,24 @@ pub fn render(descriptor: &OpDescriptor) -> [u8; DESCRIPTOR_LEN] {
     write_u16(&mut out, 14, descriptor.lane_count);
     out
 }
+
+// LayoutError is a wire-decoding error, so its rendering lives beside
+// the wire code rather than beside the type it reports on. That also
+// keeps model.rs inside the four-function module budget, and
+// docs/code_metrics.md prefers splitting by responsibility over
+// splitting mechanically.
+impl fmt::Display for LayoutError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TooShort { available } => {
+                write!(f, "descriptor truncated: {available} bytes, need 32")
+            }
+            Self::UnknownEncoding { code } => {
+                write!(f, "unknown .spm encoding profile {code}")
+            }
+            Self::ZeroGroupSize => write!(f, "group_size must be at least 1"),
+        }
+    }
+}
+
+impl core::error::Error for LayoutError {}

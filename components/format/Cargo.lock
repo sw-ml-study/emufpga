@@ -11,6 +11,22 @@ name = "spm-codec"
 version = "0.1.0"
 
 [[package]]
+name = "spm-codec-any"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-bf16",
+ "spm-codec-dense",
+ "spm-layout",
+]
+
+[[package]]
+name = "spm-codec-bf16"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-dense",
+]
+
+[[package]]
 name = "spm-codec-dense"
 version = "0.1.0"
 

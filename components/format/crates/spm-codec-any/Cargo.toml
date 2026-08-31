@@ -1,0 +1,13 @@
+[package]
+name = "spm-codec-any"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-codec-bf16 = { path = "../spm-codec-bf16" }
+spm-codec-dense = { path = "../spm-codec-dense" }
+spm-layout = { path = "../spm-layout" }

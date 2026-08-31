@@ -1,6 +1,6 @@
 number = 9
 slug = "bf16-encoding"
-status = "pending"
+status = "in-progress"
 description = """
 Halve the traffic: a bf16 encoding profile, end to end, on a real
 model.

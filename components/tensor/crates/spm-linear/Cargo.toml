@@ -8,12 +8,14 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
-spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-codec-any = { path = "../../../format/crates/spm-codec-any" }
 spm-stream = { path = "../../../stream/crates/spm-stream" }
 spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
 
 [dev-dependencies]
+spm-codec-bf16 = { path = "../../../format/crates/spm-codec-bf16" }
+spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
 spm-file = { path = "../../../format/crates/spm-file" }
 spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
 spm-walk = { path = "../../../format/crates/spm-walk" }

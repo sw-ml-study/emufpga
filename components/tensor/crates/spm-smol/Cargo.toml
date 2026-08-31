@@ -10,11 +10,13 @@ workspace = true
 [dependencies]
 spm-linear = { path = "../spm-linear" }
 spm-ops = { path = "../spm-ops" }
+spm-codec-bf16 = { path = "../../../format/crates/spm-codec-bf16" }
 spm-smol-ops = { path = "../spm-smol-ops" }
 spm-stream = { path = "../../../stream/crates/spm-stream" }
 spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
 
 [dev-dependencies]
+spm-codec-bf16 = { path = "../../../format/crates/spm-codec-bf16" }
 spm-smol-ops = { path = "../spm-smol-ops" }
 spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
 spm-file = { path = "../../../format/crates/spm-file" }

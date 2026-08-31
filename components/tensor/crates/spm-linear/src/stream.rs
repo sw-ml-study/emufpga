@@ -1,7 +1,7 @@
 //! The same matmul, with `W` arriving off a stream.
 
 use crate::resident::{LinearError, apply_weight};
-use spm_codec_dense::decode_into;
+use spm_codec_any::{DecodeError, decode_into};
 use spm_stream::WeightStream;
 use spm_stream_groups::GroupStream;
 
@@ -86,9 +86,15 @@ fn take<S: WeightStream>(
     })?;
     let count = group.count as usize;
     buffer.resize(count, 0.0);
-    decode_into(group.packed, buffer).map_err(|needed| LinearError::Truncated {
-        expected: needed,
-        found: group.packed.len(),
+    // Dispatch on the descriptor, never on an assumption.
+    decode_into(group.encoding, group.packed, buffer).map_err(|e| match e {
+        DecodeError::Short(needed) => LinearError::Truncated {
+            expected: needed,
+            found: group.packed.len(),
+        },
+        DecodeError::Unsupported(_) => LinearError::Stream {
+            detail: e.to_string(),
+        },
     })?;
     Ok(Some((group.stream, count)))
 }

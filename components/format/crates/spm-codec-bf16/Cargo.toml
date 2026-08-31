@@ -1,0 +1,11 @@
+[package]
+name = "spm-codec-bf16"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+spm-codec-dense = { path = "../spm-codec-dense" }
