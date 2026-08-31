@@ -1,6 +1,6 @@
 number = 4
 slug = "trm-forward"
-status = "pending"
+status = "in-progress"
 description = """
 Run TRM's forward pass over the streamed weights.
 
