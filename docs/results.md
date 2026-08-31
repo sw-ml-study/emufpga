@@ -320,6 +320,16 @@ and need nothing but to arrive in order.
 
 ### `Ps` under-reports recursion by 15x
 
+> **CORRECTED by saga 2 step 8. Read this section with the
+> correction.** What follows is right about the counting and wrong
+> about what the counting means. Re-reading a rotating region is
+> **traffic, not reuse**: arithmetic intensity is `batch / 4` MACs per
+> weight-byte for any f32 model read once, recursive or not, and TRM
+> and SmolLM come out identical. What recursion buys is a small
+> *working set*, not more work per fetched byte -- which also means
+> streaming is a demonstration rather than a win whenever that working
+> set fits in memory anyway. See "SmolLM2-135M, rung 4" below.
+
 Scan productivity as `spm-stream-metrics` defines it counts
 applications per weight read, and a scan-level view sees batch reuse
 only. For a recursive model that is badly wrong: TRM re-reads its

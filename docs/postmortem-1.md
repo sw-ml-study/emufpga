@@ -8,6 +8,12 @@ This is deliberately not a summary of what was built -- `plan.md` and
 were more instructive than the successes and several of them will
 recur on the next rung if nobody writes them down.
 
+**Continued in docs/postmortem-2.md**, which covers steps 6 through 9
+-- the first head-to-head comparison, the BDH and SmolLM rungs, and
+the encoding profile. It also records the return on this document:
+the "read the reference first" rule below was followed properly on
+BDH, which then verified on the first run with no bisection at all.
+
 ## The defects, and what found each
 
 | # | defect | found by | could the tests have caught it? |

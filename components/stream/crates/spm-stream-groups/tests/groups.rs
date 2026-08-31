@@ -113,3 +113,75 @@ fn a_truncated_payload_is_reported_not_read_past() {
     let error = groups.next_group().expect("second").expect_err("truncated");
     assert!(format!("{error}").contains("truncated"), "got {error}");
 }
+
+#[test]
+fn declared_widths_account_for_every_payload_byte() {
+    // POSTMORTEM 2, DEFECT 11. `smol-xcheck` computed a forward pass's
+    // traffic as `weights * size_of::<f32>()`, which is right at f32
+    // and reports double at bf16 -- erasing the whole result of the
+    // step that added the profile.
+    //
+    // The general form of that bug is a width taken from anywhere but
+    // the descriptor. This asserts the descriptors are the authority:
+    // what they declare must be exactly what the file holds, for every
+    // profile, so a traffic figure derived from them is derived from
+    // the truth.
+    for encoding in [Encoding::F32, Encoding::Bf16, Encoding::Ternary2F32I32] {
+        let descriptors = vec![
+            OpDescriptor {
+                rows: 7,
+                cols: 5,
+                group_size: 8,
+                encoding,
+                lane_count: 1,
+            },
+            OpDescriptor {
+                rows: 4,
+                cols: 4,
+                group_size: 8,
+                encoding,
+                lane_count: 1,
+            },
+        ];
+        // A width test needs no values, only correctly sized groups.
+        // `build` above writes ternary packing regardless of the
+        // descriptor, so it cannot construct an f32 or bf16 file.
+        let bytes = {
+            let mut writer = SpmWriter::new(descriptors.clone());
+            let mut cursor = spm_walk::Cursor::new(&descriptors);
+            while let Some(len) = cursor.group_len(&descriptors) {
+                let width = encoding.bytes_for(len as usize);
+                writer
+                    .write_raw_group(1.0, &vec![0u8; width], len as usize)
+                    .expect("write raw group");
+                cursor.advance(&descriptors);
+            }
+            writer.finish().expect("finish")
+        };
+        let declared: usize = descriptors
+            .iter()
+            .map(|d| encoding.bytes_for(d.rows as usize * d.cols as usize))
+            .sum();
+
+        let mut groups = GroupStream::open(MemoryWeightStream::new(bytes)).expect("open");
+        let mut seen = 0usize;
+        let mut weights = 0usize;
+        while let Some(group) = groups.next_group() {
+            let group = group.expect("group");
+            assert_eq!(group.encoding, encoding, "view lost the encoding");
+            assert_eq!(
+                group.packed.len(),
+                encoding.bytes_for(group.count as usize),
+                "a group's bytes must match what its encoding declares"
+            );
+            seen += group.packed.len();
+            weights += group.count as usize;
+        }
+        assert_eq!(weights, 7 * 5 + 4 * 4, "{encoding:?}: weight count");
+        assert_eq!(
+            seen, declared,
+            "{encoding:?}: payload bytes ({seen}) must equal what the \
+             descriptors declare ({declared})"
+        );
+    }
+}

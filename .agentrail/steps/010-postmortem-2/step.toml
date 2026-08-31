@@ -1,6 +1,6 @@
 number = 10
 slug = "postmortem-2"
-status = "pending"
+status = "in-progress"
 description = """
 Write docs/postmortem-2.md, covering saga 2 steps 6 through 9, and
 correct a ..."""
