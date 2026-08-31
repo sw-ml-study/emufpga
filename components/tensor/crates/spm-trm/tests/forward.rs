@@ -40,7 +40,7 @@ fn draw(seed: u64, count: usize) -> Vec<f32> {
 /// The eight rotating matrices, in consumption order.
 fn rotating(config: &TrmConfig) -> Vec<(u32, u32)> {
     let w = u32::try_from(config.hidden).expect("fits");
-    let inter = w * u32::try_from(config.expansion).expect("fits");
+    let inter = u32::try_from(config.intermediate()).expect("fits");
     (0..config.layers)
         .flat_map(|_| [(w * 3, w), (w, w), (inter * 2, w), (w, inter)])
         .collect()
@@ -161,4 +161,43 @@ fn the_stream_is_consumed_exactly_and_rewinds_land_on_stream_zero() {
     forward(&mut groups, &config, &mut state, &mut layers).expect("forward");
     assert!(state.iter().all(|v| v.is_finite()));
     assert_ne!(state, before, "the forward pass must actually change state");
+}
+
+#[test]
+fn the_config_reproduces_the_real_checkpoints_shapes() {
+    // The test that would have caught the intermediate-width bug, and
+    // the reason it is written against PUBLISHED numbers rather than
+    // generated ones. The earlier tests derived their shapes from the
+    // same formula they were checking, so they agreed with a wrong
+    // answer perfectly.
+    //
+    // yagizdevre/trm-maze-30x30, from its state dict:
+    //
+    //   self_attn.qkv_proj   (1536, 512)
+    //   self_attn.o_proj     ( 512, 512)
+    //   mlp.gate_up_proj     (3072, 512)
+    //   mlp.down_proj        ( 512, 1536)
+    let config = TrmConfig::default();
+    assert_eq!(config.hidden, 512);
+    assert_eq!(config.head_dim(), 64, "512 / 8 heads");
+
+    // round(4 * 512 * 2/3) = 1365, aligned up to a multiple of 256.
+    assert_eq!(config.intermediate(), 1536, "NOT hidden * expansion = 2048");
+
+    let width = config.hidden;
+    let inter = config.intermediate();
+    assert_eq!((width * 3, width), (1536, 512), "qkv_proj");
+    assert_eq!((width, width), (512, 512), "o_proj");
+    assert_eq!((inter * 2, width), (3072, 512), "gate_up_proj");
+    assert_eq!((width, inter), (512, 1536), "down_proj");
+}
+
+#[test]
+fn a_forward_pass_reads_the_checkpoints_weight_count() {
+    // 6,815,744 rotating weights, from the real state dict. If the
+    // shape formulas drift, this catches it without a download.
+    let config = TrmConfig::default();
+    let (width, inter) = (config.hidden, config.intermediate());
+    let per_layer = width * 3 * width + width * width + inter * 2 * width + width * inter;
+    assert_eq!(per_layer * config.layers, 6_815_744);
 }

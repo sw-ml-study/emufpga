@@ -11,7 +11,8 @@ pub struct TrmConfig {
     pub hidden: usize,
     /// Attention heads. `hidden / heads` is the head dimension.
     pub heads: usize,
-    /// `MLP` intermediate width multiplier.
+    /// `MLP` expansion factor. See [`TrmConfig::intermediate`] -- the
+    /// intermediate width is NOT `hidden * expansion`.
     pub expansion: usize,
     /// Transformer blocks inside one `L_level` call.
     pub layers: usize,
@@ -50,15 +51,32 @@ impl TrmConfig {
         self.h_cycles * (self.l_cycles + 1)
     }
 
-    /// Streams swept per `L_level` call: four projections per layer.
-    #[must_use]
-    pub const fn streams_per_call(&self) -> usize {
-        self.layers * 4
-    }
-
     /// Head dimension.
     #[must_use]
     pub const fn head_dim(&self) -> usize {
         self.hidden / self.heads
+    }
+
+    /// `MLP` intermediate width, the way TRM actually computes it.
+    ///
+    /// `round(expansion * hidden * 2/3)`, aligned **up** to a multiple
+    /// of 256. Not `hidden * expansion`, which is what this crate
+    /// assumed until the reference implementation was read: for TRM
+    /// that gives 2048 where the true value is 1536.
+    ///
+    /// The checkpoint settles it. `gate_up_proj` is `(3072, 512)` and
+    /// 3072 is 2 x 1536, while `down_proj` is `(512, 1536)`. The
+    /// earlier tests missed it because they generated their shapes
+    /// from the same wrong formula they were checking -- self
+    /// consistent, and self confirming.
+    ///
+    /// Integer arithmetic throughout: `(n + d/2) / d` rounds to
+    /// nearest without a float ever appearing, so there is no
+    /// platform-dependent rounding in a shape calculation.
+    #[must_use]
+    pub const fn intermediate(&self) -> usize {
+        let numerator = self.expansion * self.hidden * 2;
+        let rounded = (numerator + 1) / 3;
+        rounded.div_ceil(256) * 256
     }
 }

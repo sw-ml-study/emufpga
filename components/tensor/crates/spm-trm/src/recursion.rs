@@ -97,7 +97,7 @@ fn distinct_weights<S: WeightStream>(config: &TrmConfig, groups: &GroupStream<S>
     groups
         .descriptors
         .iter()
-        .take(config.streams_per_call())
+        .take(config.layers * 4)
         .map(|d| u64::from(d.rows) * u64::from(d.cols))
         .sum()
 }

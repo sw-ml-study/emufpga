@@ -353,3 +353,76 @@ taken as 10000 because the published value is not in the config we
 have, and attention is unmasked because TRM sees a whole maze at once
 rather than generating left to right. Both get confirmed against the
 reference.
+
+## Verified against the reference (saga 2 step 4)
+
+The block now agrees with the published implementation, and getting
+there found two bugs that every test written so far had missed.
+
+Method: a torch script builds one TRM block from `models/layers.py`'s
+formulas, runs it on fixed random weights, and dumps every
+intermediate. The Rust side imports the same weights and reproduces
+each stage. Manual, because it needs torch and 13 MB of weights, and
+weights never enter this repository.
+
+| stage | max abs error | relative | cosine |
+| --- | ---: | ---: | ---: |
+| qkv projection | **0.0** | 0.0 | 1.0000000000 |
+| RoPE + attention | 5.96e-8 | 2.1e-7 | 1.0000000000 |
+| o_proj + residual + norm | 9.54e-7 | 2.7e-7 | 1.0000000000 |
+| MLP + residual + norm | 9.54e-7 | 2.7e-7 | 1.0000000000 |
+
+Tolerance, not bit-exactness, and the distinction is deliberate.
+Bit-exactness is claimed only between this project's own streamed and
+resident paths, where the summation order is identical by
+construction. Against torch it cannot hold: its GEMM and fused
+attention accumulate differently. What agreement at 1e-7 shows is that
+the **formulas** match.
+
+### Bug 1: the intermediate width
+
+`SwiGLU`'s intermediate is `round(expansion * hidden * 2/3)` aligned up
+to a multiple of 256 -- **1536** for TRM, not `hidden * expansion` =
+2048 as this crate assumed. The checkpoint proves it: `gate_up_proj`
+is `(3072, 512)` and 3072 is 2 x 1536.
+
+The tests missed it because they generated their shapes from the same
+wrong formula they were checking. Self consistent, and self
+confirming. The fix ships with a test written against the published
+numbers instead.
+
+### Bug 2: rms_norm normalized the wrong axis
+
+The reference computes `hidden_states.pow(2).mean(-1, keepdim=True)`
+-- a mean over the last axis, so **every position is normalized by its
+own RMS**. This crate normalized the whole state as a single vector.
+
+That is wrong in a way that is easy to miss. With a handful of
+positions the scales are similar, the output stays finite and
+plausible, and nothing about it looks broken. It cost a cosine of
+0.9993 while the stages either side were exact -- which is exactly why
+the bisection existed rather than a single end-to-end number.
+
+### Bug 3: every imported matrix was transposed
+
+The worst of the three, and the one the existing tests were least able
+to see. PyTorch stores row-major, so `W[r][c]` sits at `r*cols + c`.
+`.spm` stream order is column-major: index `k` holds
+`W[k % rows][k / rows]`. `scripts/extract-checkpoint` dumped raw
+storage bytes, so every matrix in the imported file was its own
+transpose.
+
+The round-trip test passed throughout, because **round-tripping bytes
+says nothing about how they are interpreted**. Only a numerical
+comparison against a reference could show it.
+
+The conversion now happens in the extractor, which is the boundary
+between a framework's conventions and the format's. Verified against
+torch ground truth: `got[k] == W[k % rows][k / rows]` for the real
+checkpoint's `qkv_proj`, and the old row-major layout no longer
+matches.
+
+That keeps the Rust importer pure framing -- it still never touches a
+value. The earlier claim that it was "pure framing" was true of the
+code and false of the pipeline, because the bytes it framed did not
+yet mean what the format said they meant.

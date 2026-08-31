@@ -16,11 +16,26 @@ already has a pickle implementation.
     scripts/extract-checkpoint <model.pt> <out-dir>
 
 Writes <out-dir>/manifest.tsv and one <out-dir>/<index>.bin per
-tensor, little-endian f32. bf16 storages are widened to f32 on the way
-out, because the .spm f32 profile is what consumes these and widening
-bf16 to f32 is exact.
+tensor, little-endian f32, in .spm STREAM ORDER.
+
+Two conversions happen here, and both are this script's job because
+this is the boundary between a framework's conventions and the
+format's:
+
+  * bf16 storages are widened to f32. Widening bf16 to f32 is exact.
+  * 2-D tensors are TRANSPOSED. PyTorch stores row-major, so W[r][c]
+    sits at r*cols + c; .spm stream order is column-major, so index k
+    must hold W[k % rows][k / rows]. Without this every matrix in the
+    file is its own transpose -- and the bytes still round-trip
+    perfectly, because round-tripping bytes says nothing about how
+    they are interpreted. It took a numerical comparison against the
+    reference implementation to see it.
+
+Doing it here keeps the Rust importer pure framing: it never touches a
+value, only frames bytes that already mean what the format says.
 """
 
+import array
 import struct
 import sys
 import zipfile
@@ -68,6 +83,27 @@ def read_index(path):
     return z, root, out
 
 
+def to_stream_order(raw, shape):
+    """Reorder row-major bytes into column-major stream order.
+
+    `raw` is little-endian f32. A 1-D tensor is already in order: a
+    single column streams in its natural sequence.
+    """
+    if len(shape) < 2:
+        return raw
+    rows = 1
+    for d in shape[:-1]:
+        rows *= d
+    cols = shape[-1]
+    src = array.array("f")
+    src.frombytes(raw)
+    dst = array.array("f", [0.0]) * (rows * cols)
+    # src[c::cols] is column c, strided in C rather than in Python.
+    for c in range(cols):
+        dst[c * rows : (c + 1) * rows] = src[c::cols]
+    return dst.tobytes()
+
+
 def to_f32(raw, stype):
     """Widen a storage's bytes to little-endian f32 bytes."""
     if stype == "FloatStorage":
@@ -99,7 +135,7 @@ def main():
             raise SystemExit(f"{name}: unsupported storage {stype}")
         raw = z.read(f"{root}/data/{key}")
         blob = f"{i:03d}.bin"
-        (dst / blob).write_bytes(to_f32(raw, stype))
+        (dst / blob).write_bytes(to_stream_order(to_f32(raw, stype), shape))
         elements = 1
         for d in shape:
             elements *= d

@@ -25,14 +25,28 @@ pub fn rms_norm(values: &mut [f32], epsilon: f32) {
     }
 }
 
-/// TRM's post-norm residual: `state = rms_norm(state + delta)`.
+/// TRM's post-norm residual: `state = rms_norm(state + delta)`, with
+/// the norm taken **per position**.
 ///
 /// Post-norm rather than pre-norm, matching `trm.py`, which normalizes
-/// *after* adding the sublayer output rather than before feeding it.
-/// The two are not interchangeable and produce different models.
-pub fn residual_norm(state: &mut [f32], delta: &[f32], epsilon: f32) {
+/// after adding the sublayer output rather than before feeding it. The
+/// two are not interchangeable and produce different models.
+///
+/// `width` is the model width, and passing it is not optional
+/// bookkeeping. The reference computes
+/// `hidden_states.pow(2).mean(-1, keepdim=True)` -- a mean over the
+/// LAST axis, so every position is normalized by its own RMS. An
+/// earlier version here normalized the whole state as a single vector,
+/// which is wrong in a way that is easy to miss: with a handful of
+/// positions the scales are similar, the output stays finite and
+/// plausible, and only a numerical comparison against the reference
+/// shows it. It cost a cosine of 0.9993 where the stages either side
+/// of it were exact.
+pub fn residual_norm(state: &mut [f32], delta: &[f32], epsilon: f32, width: usize) {
     for (slot, add) in state.iter_mut().zip(delta) {
         *slot += add;
     }
-    rms_norm(state, epsilon);
+    for row in state.chunks_mut(width.max(1)) {
+        rms_norm(row, epsilon);
+    }
 }

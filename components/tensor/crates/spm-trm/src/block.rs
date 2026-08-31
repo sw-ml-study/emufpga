@@ -25,7 +25,7 @@ impl Layer {
     #[must_use]
     pub fn new(config: &TrmConfig, positions: usize) -> Self {
         let width = config.hidden;
-        let inter = width * config.expansion;
+        let inter = config.intermediate();
         Self {
             qkv: vec![0.0; positions * width * 3],
             attn: vec![0.0; positions * width],
@@ -81,7 +81,7 @@ impl Layer {
             (&self.attn, positions),
             &mut self.hidden,
         )?;
-        residual_norm(state, &self.hidden, config.eps);
+        residual_norm(state, &self.hidden, config.eps, width);
         Ok(())
     }
 
@@ -93,7 +93,7 @@ impl Layer {
         state: &mut [f32],
     ) -> Result<(), LinearError> {
         let (width, positions) = (config.hidden, state.len() / config.hidden);
-        let inter = width * config.expansion;
+        let inter = config.intermediate();
         streamed(
             groups,
             (inter * 2, width),
@@ -107,7 +107,7 @@ impl Layer {
             (&self.folded, positions),
             &mut self.hidden,
         )?;
-        residual_norm(state, &self.hidden, config.eps);
+        residual_norm(state, &self.hidden, config.eps, width);
         Ok(())
     }
 }
