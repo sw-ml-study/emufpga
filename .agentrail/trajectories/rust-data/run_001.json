@@ -1,0 +1,11 @@
+{
+  "task_type": "rust-data",
+  "state": {
+    "number": 7,
+    "step": "gowin-device-profiles"
+  },
+  "action": "Checked for a local Apicula install first, then fetched the Gowin DS117 datasheet and attempted three extraction routes before falling back to vendor board pages. Cited document and retrieval date for every figure in code. Modelled Unknown in the type system and wrote a test that fails if the two load-bearing gaps are ever closed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-08-30T17:26:14"
+}
