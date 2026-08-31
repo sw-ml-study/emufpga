@@ -7,8 +7,10 @@ members = [
     "crates/spm-accum",
     "crates/spm-linear",
     "crates/spm-numeric",
+    "crates/spm-ops",
     "crates/spm-activations",
     "crates/spm-gemv-ref",
+    "crates/spm-trm",
     "crates/spm-vectors",
     "crates/spm-vectors-text",
 ]

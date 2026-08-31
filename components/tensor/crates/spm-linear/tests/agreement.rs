@@ -74,7 +74,7 @@ fn streamed_and_resident_agree_bit_for_bit() {
         let activations = weights(1000 + index as u64, cols);
 
         let mut want = vec![0.0f32; rows];
-        resident(&matrix, (rows, cols), &activations, &mut want).expect("resident");
+        resident(&matrix, (rows, cols), (&activations, 1), &mut want).expect("resident");
 
         let shape = (
             u32::try_from(rows).expect("fits"),
@@ -83,7 +83,8 @@ fn streamed_and_resident_agree_bit_for_bit() {
         let bytes = to_spm(&[shape], 1024, &[matrix]);
         let mut groups = GroupStream::open(MemoryWeightStream::new(bytes)).expect("open");
         let mut got = vec![0.0f32; rows];
-        let stream = streamed(&mut groups, (rows, cols), &activations, &mut got).expect("streamed");
+        let stream =
+            streamed(&mut groups, (rows, cols), (&activations, 1), &mut got).expect("streamed");
 
         assert_eq!(stream, 0);
         for (i, (a, b)) in got.iter().zip(&want).enumerate() {
@@ -111,9 +112,10 @@ fn consecutive_streams_are_consumed_in_order() {
         let (rows, cols) = (rows as usize, cols as usize);
         let activations = weights(500 + index as u64, cols);
         let mut want = vec![0.0f32; rows];
-        resident(&matrices[index], (rows, cols), &activations, &mut want).expect("resident");
+        resident(&matrices[index], (rows, cols), (&activations, 1), &mut want).expect("resident");
         let mut got = vec![0.0f32; rows];
-        let seen = streamed(&mut groups, (rows, cols), &activations, &mut got).expect("streamed");
+        let seen =
+            streamed(&mut groups, (rows, cols), (&activations, 1), &mut got).expect("streamed");
         assert_eq!(seen, index, "streams must arrive in declared order");
         assert_eq!(got, want, "stream {index}");
     }
@@ -126,7 +128,7 @@ fn a_group_size_that_does_not_divide_still_agrees() {
     let matrix = weights(42, rows * cols);
     let activations = weights(43, cols);
     let mut want = vec![0.0f32; rows];
-    resident(&matrix, (rows, cols), &activations, &mut want).expect("resident");
+    resident(&matrix, (rows, cols), (&activations, 1), &mut want).expect("resident");
 
     let shape = (
         u32::try_from(rows).expect("fits"),
@@ -135,7 +137,7 @@ fn a_group_size_that_does_not_divide_still_agrees() {
     let bytes = to_spm(&[shape], 16, &[matrix]);
     let mut groups = GroupStream::open(MemoryWeightStream::new(bytes)).expect("open");
     let mut got = vec![0.0f32; rows];
-    streamed(&mut groups, (rows, cols), &activations, &mut got).expect("streamed");
+    streamed(&mut groups, (rows, cols), (&activations, 1), &mut got).expect("streamed");
     for (a, b) in got.iter().zip(&want) {
         assert_eq!(a.to_bits(), b.to_bits());
     }
@@ -149,6 +151,37 @@ fn a_stream_that_ends_early_is_refused() {
     let activations = weights(10, 4);
     let mut got = vec![0.0f32; 16];
     // Claim a bigger matrix than the file holds.
-    let error = streamed(&mut groups, (16, 4), &activations, &mut got).expect_err("must fail");
+    let error = streamed(&mut groups, (16, 4), (&activations, 1), &mut got).expect_err("must fail");
     assert!(format!("{error}").contains("stream ended after"), "{error}");
+}
+
+#[test]
+fn batching_reuses_each_weight_without_changing_any_answer() {
+    // The reuse the architecture is built on: one sweep of the weights
+    // serves every position. Each position must get exactly the answer
+    // it would have got alone -- batching is an efficiency, not an
+    // approximation.
+    let (rows, cols, positions) = (16usize, 8usize, 5usize);
+    let matrix = weights(77, rows * cols);
+    let mut batch = Vec::new();
+    for p in 0..positions {
+        batch.extend(weights(100 + p as u64, cols));
+    }
+    let shape = (
+        u32::try_from(rows).expect("fits"),
+        u32::try_from(cols).expect("fits"),
+    );
+    let bytes = to_spm(&[shape], 32, std::slice::from_ref(&matrix));
+    let mut groups = GroupStream::open(MemoryWeightStream::new(bytes)).expect("open");
+    let mut got = vec![0.0f32; positions * rows];
+    streamed(&mut groups, (rows, cols), (&batch, positions), &mut got).expect("streamed");
+
+    for p in 0..positions {
+        let mut alone = vec![0.0f32; rows];
+        let row = &batch[p * cols..(p + 1) * cols];
+        resident(&matrix, (rows, cols), (row, 1), &mut alone).expect("resident");
+        for (i, (a, b)) in got[p * rows..(p + 1) * rows].iter().zip(&alone).enumerate() {
+            assert_eq!(a.to_bits(), b.to_bits(), "position {p} row {i}");
+        }
+    }
 }

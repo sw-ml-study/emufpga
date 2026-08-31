@@ -1,0 +1,22 @@
+[package]
+name = "spm-trm"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-linear = { path = "../spm-linear" }
+spm-ops = { path = "../spm-ops" }
+spm-stream = { path = "../../../stream/crates/spm-stream" }
+spm-stream-metrics = { path = "../../../stream/crates/spm-stream-metrics" }
+spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
+
+[dev-dependencies]
+spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
+spm-file = { path = "../../../format/crates/spm-file" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
+spm-walk = { path = "../../../format/crates/spm-walk" }

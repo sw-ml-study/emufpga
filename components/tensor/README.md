@@ -12,6 +12,9 @@ correctness matters more than its speed.
 | `spm-gemv-ref` | ternary GEMV over a `WeightStream` |
 | `spm-vectors` | reproducible golden case generation |
 | `spm-vectors-text` | golden case text format |
+| `spm-linear` | `y = Wx` streamed and resident, batched over positions |
+| `spm-ops` | resident operators: norm, `SwiGLU`, `RoPE`, attention |
+| `spm-trm` | TRM'"'"'s block and recursion, driving `rewind()` |
 
 ## The inner loop has no multiplier
 
@@ -57,4 +60,17 @@ it occupies a slot in the stream and a cycle in the engine. That keeps
 `Ps` a measure of reuse rather than of sparsity, which is a separate
 axis the format does not yet exploit.
 
-Built by saga 1 step 4 (spm-tensor-ref).
+## The rotating store, for real
+
+`spm-trm` is rung 1 of the model ladder. A TRM forward pass is 15
+`L_level` calls, each sweeping the same eight matrices and rewinding
+between them -- up to 240 sweeps per puzzle at `halt_max_steps` 16.
+That is docs/research.txt'"'"'s rotating parameter store, arriving free
+because the model is recursive rather than deep.
+
+It also means `Ps` under-reports reuse 15x for this model: scan
+productivity sees batch reuse but not recursion depth.
+`Forward::scan_productivity` counts both.
+
+Built by saga 1 step 4 (spm-tensor-ref) and saga 2 step 4
+(trm-forward).

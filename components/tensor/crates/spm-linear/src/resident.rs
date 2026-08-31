@@ -52,7 +52,13 @@ impl fmt::Display for LinearError {
 
 impl std::error::Error for LinearError {}
 
-/// Computes `y = Wx` with `W` resident, in column-major stream order.
+/// Computes `Y = WX` with `W` resident, in column-major stream order.
+///
+/// Batched over `positions`: `activations` is `positions x cols` and
+/// `out` is `positions x rows`, both row-major. One weight is applied
+/// to every position before the next weight is looked at, which is the
+/// same order the streamed version must use -- and the reason both can
+/// agree bit for bit.
 ///
 /// `weights[k]` is `W[k % rows][k / rows]`, the same order the stream
 /// delivers -- so this reads the matrix exactly as the streamed
@@ -69,25 +75,63 @@ impl std::error::Error for LinearError {}
 pub fn resident(
     weights: &[f32],
     shape: (usize, usize),
-    activations: &[f32],
+    batch: (&[f32], usize),
     out: &mut [f32],
 ) -> Result<(), LinearError> {
     let (rows, cols) = shape;
-    if weights.len() != rows * cols {
-        return Err(LinearError::WeightCount {
-            expected: rows * cols,
-            found: weights.len(),
-        });
-    }
-    if activations.len() < cols {
-        return Err(LinearError::ActivationLen {
-            expected: cols,
-            found: activations.len(),
-        });
-    }
-    out[..rows].fill(0.0);
+    let (activations, positions) = batch;
+    validate(weights.len(), shape, (activations.len(), positions))?;
+    out[..positions * rows].fill(0.0);
     for (index, weight) in weights.iter().enumerate() {
-        out[index % rows] = weight.mul_add(activations[index / rows], out[index % rows]);
+        apply_weight(
+            *weight,
+            (index % rows, index / rows),
+            (rows, cols, positions),
+            activations,
+            out,
+        );
     }
     Ok(())
+}
+
+/// Checks a matmul's shapes before any arithmetic happens.
+fn validate(
+    weights: usize,
+    shape: (usize, usize),
+    supplied: (usize, usize),
+) -> Result<(), LinearError> {
+    let (rows, cols) = shape;
+    let (activations, positions) = supplied;
+    if weights != rows * cols {
+        return Err(LinearError::WeightCount {
+            expected: rows * cols,
+            found: weights,
+        });
+    }
+    if activations < positions * cols {
+        return Err(LinearError::ActivationLen {
+            expected: positions * cols,
+            found: activations,
+        });
+    }
+    Ok(())
+}
+
+/// Applies one weight to every batch position.
+///
+/// This is the reuse the architecture is built on: the weight was
+/// fetched once and is used `positions` times before it is discarded.
+pub(crate) fn apply_weight(
+    weight: f32,
+    at: (usize, usize),
+    shape: (usize, usize, usize),
+    activations: &[f32],
+    out: &mut [f32],
+) {
+    let (row, col) = at;
+    let (rows, cols, positions) = shape;
+    for position in 0..positions {
+        let slot = position * rows + row;
+        out[slot] = weight.mul_add(activations[position * cols + col], out[slot]);
+    }
 }

@@ -1,6 +1,6 @@
 //! The same matmul, with `W` arriving off a stream.
 
-use crate::resident::LinearError;
+use crate::resident::{LinearError, apply_weight};
 use spm_codec_dense::decode_into;
 use spm_stream::WeightStream;
 use spm_stream_groups::GroupStream;
@@ -31,13 +31,14 @@ use spm_stream_groups::GroupStream;
 pub fn streamed<S: WeightStream>(
     groups: &mut GroupStream<S>,
     shape: (usize, usize),
-    activations: &[f32],
+    batch: (&[f32], usize),
     out: &mut [f32],
 ) -> Result<usize, LinearError> {
     let (rows, cols) = shape;
-    check(activations, cols)?;
+    let (activations, positions) = batch;
+    check(activations, positions * cols)?;
     let total = rows * cols;
-    out[..rows].fill(0.0);
+    out[..positions * rows].fill(0.0);
     let (mut at, mut which, mut buffer) = (0usize, None, Vec::new());
     while at < total {
         let Some((stream, count)) = take(groups, &mut buffer)? else {
@@ -47,7 +48,7 @@ pub fn streamed<S: WeightStream>(
             });
         };
         which.get_or_insert(stream);
-        apply(&buffer, at, rows, activations, out);
+        apply(&buffer, at, (rows, cols, positions), activations, out);
         at += count;
     }
     Ok(which.unwrap_or(0))
@@ -93,10 +94,26 @@ fn take<S: WeightStream>(
 }
 
 /// Accumulates one group's weights, starting at stream position `at`.
-fn apply(weights: &[f32], at: usize, rows: usize, activations: &[f32], out: &mut [f32]) {
+///
+/// Each weight is applied to every batch position before the next
+/// weight is decoded -- the weight is fetched once and used
+/// `positions` times, which is what `Ps` measures.
+fn apply(
+    weights: &[f32],
+    at: usize,
+    shape: (usize, usize, usize),
+    activations: &[f32],
+    out: &mut [f32],
+) {
+    let rows = shape.0;
     for (offset, weight) in weights.iter().enumerate() {
         let index = at + offset;
-        let row = index % rows;
-        out[row] = weight.mul_add(activations[index / rows], out[row]);
+        apply_weight(
+            *weight,
+            (index % rows, index / rows),
+            shape,
+            activations,
+            out,
+        );
     }
 }

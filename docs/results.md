@@ -290,3 +290,66 @@ needed to test values, not layout.
 A second test pins the mistake itself: sorting the rotating names
 alphabetically puts `o_proj` before `qkv_proj`, so a sweep seeks back.
 It exists so the regression cannot quietly return.
+
+## TRM forward pass (saga 2 step 4)
+
+Rung 1 of the model ladder. The recursion runs over streamed weights,
+rewinding the rotating region between every `L_level` call.
+
+### What is streamed and what is not
+
+| | where | size |
+| --- | --- | ---: |
+| The four projections per layer | streamed | 99.87% of weights |
+| `z_H`, `z_L`, residuals, norms, `RoPE`, softmax, `SwiGLU` | resident | kilobytes |
+
+docs/plan.md section 3 allows the second column in ordinary memory on
+purpose. The asymmetry between the columns is the reason the
+architecture works: a softmax needs a whole row before it can
+normalize, but it touches kilobytes, while the weights are megabytes
+and need nothing but to arrive in order.
+
+### Measured
+
+| | |
+| --- | ---: |
+| `L_level` calls per forward | 15 |
+| Rewinds per forward | 14 |
+| Rotating region re-read | 15x per forward |
+| Streams swept per call | 8 |
+
+### `Ps` under-reports recursion by 15x
+
+Scan productivity as `spm-stream-metrics` defines it counts
+applications per weight read, and a scan-level view sees batch reuse
+only. For a recursive model that is badly wrong: TRM re-reads its
+entire rotating region 15 times per forward, so weights are reused
+across **depth** as well as across batch.
+
+`Forward::scan_productivity` counts both, giving `positions * calls`.
+At 8 batch positions that is 120 rather than 8 -- and at
+`halt_max_steps` 16 a full puzzle reaches 240 sweeps, so the gap grows
+further. A dense transformer touches each weight once per token; TRM
+touches its whole weight set fifteen times per forward. The
+architecture's central problem is amortizing a scan, and this model
+solves it for us.
+
+### Bit-exact, and what that does not mean
+
+The streamed matmul agrees with a resident one **bit for bit** on
+TRM's real shapes (1536x512, 512x512, 3072x512, 512x1536), and
+batching changes no answer: each position gets exactly what it would
+have got alone. Both use `mul_add`, since a fused multiply-add rounds
+differently from a separate multiply and add.
+
+That establishes **mechanism**, not correctness of the model. Nothing
+here shows TRM solves mazes. Verifying that needs the published
+implementation, and torch is not installed -- it is the next step, and
+until then the only claim is that streaming changes nothing about the
+arithmetic.
+
+Two assumptions are recorded rather than hidden: the `RoPE` base is
+taken as 10000 because the published value is not in the config we
+have, and attention is unmasked because TRM sees a whole maze at once
+rather than generating left to right. Both get confirmed against the
+reference.

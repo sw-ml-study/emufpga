@@ -1,14 +1,11 @@
 //! Pulling scale groups off a parameter stream, one at a time.
 
 use crate::error::GroupError;
-use crate::open::{read_directory, read_header, widest_group};
-use spm_header::Header;
-use spm_layout::OpDescriptor;
+use crate::open::{read_directory, read_header, read_payload, widest_group};
+use spm_header::{HEADER_LEN, Header};
+use spm_layout::{DESCRIPTOR_LEN, OpDescriptor};
 use spm_stream::WeightStream;
 use spm_walk::Cursor;
-
-/// Bytes an `f32` scale occupies on the wire.
-const SCALE_LEN: usize = 4;
 
 /// One scale group as it arrives, borrowed from the reusable buffer.
 ///
@@ -35,6 +32,8 @@ pub struct GroupStream<S> {
     pub descriptors: Vec<OpDescriptor>,
     cursor: Cursor,
     buffer: Vec<u8>,
+    /// Header plus directory, in bytes. Skipped on every rewind.
+    prologue: usize,
 }
 
 impl<S: WeightStream> GroupStream<S> {
@@ -49,12 +48,14 @@ impl<S: WeightStream> GroupStream<S> {
         let descriptors = read_directory(&mut stream, header.stream_count)?;
         let cursor = Cursor::new(&descriptors);
         let buffer = vec![0; widest_group(&descriptors)];
+        let prologue = HEADER_LEN + descriptors.len() * DESCRIPTOR_LEN;
         Ok(Self {
             stream,
             header,
             descriptors,
             cursor,
             buffer,
+            prologue,
         })
     }
 
@@ -80,7 +81,8 @@ impl<S: WeightStream> GroupStream<S> {
             .encoding
             .bytes_for(count as usize);
         self.cursor.advance(&self.descriptors);
-        Some(self.take(bytes).map(move |scale| GroupView {
+        let payload = read_payload(&mut self.stream, &mut self.buffer[..bytes]);
+        Some(payload.map(move |scale| GroupView {
             stream: stream_index,
             scale,
             count,
@@ -88,11 +90,31 @@ impl<S: WeightStream> GroupStream<S> {
         }))
     }
 
-    /// Reads one scale then `bytes` of payload into the buffer.
-    fn take(&mut self, bytes: usize) -> Result<f32, GroupError> {
-        let mut scale = [0u8; SCALE_LEN];
-        self.stream.read_exact(&mut scale)?;
-        self.stream.read_exact(&mut self.buffer[..bytes])?;
-        Ok(f32::from_le_bytes(scale))
+    /// Returns to the **first group**, not to byte zero.
+    ///
+    /// The header and directory sit ahead of the payload, so a bare
+    /// stream rewind would land on metadata. This skips them and
+    /// resets the cursor, leaving the reader exactly where `open` left
+    /// it.
+    ///
+    /// Legal **between operations only**, which is the same contract
+    /// [`spm_stream::WeightStream::rewind`] carries. A recursive model
+    /// rewinds once per pass over its rotating region -- that is what
+    /// makes the region rotate, and it is why a consumption-order
+    /// layout puts that region first.
+    ///
+    /// # Errors
+    /// Returns [`GroupError`] if the stream cannot be rewound or ends
+    /// inside its own prologue.
+    pub fn rewind(&mut self) -> Result<(), GroupError> {
+        self.stream.rewind()?;
+        let mut left = self.prologue;
+        while left > 0 {
+            let take = left.min(self.buffer.len().max(1));
+            self.stream.read_exact(&mut self.buffer[..take])?;
+            left -= take;
+        }
+        self.cursor = Cursor::new(&self.descriptors);
+        Ok(())
     }
 }

@@ -86,6 +86,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-ops"
+version = "0.1.0"
+
+[[package]]
 name = "spm-stream"
 version = "0.1.0"
 
@@ -117,6 +121,22 @@ dependencies = [
 [[package]]
 name = "spm-stream-metrics"
 version = "0.1.0"
+
+[[package]]
+name = "spm-trm"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-dense",
+ "spm-file",
+ "spm-layout",
+ "spm-linear",
+ "spm-ops",
+ "spm-stream",
+ "spm-stream-groups",
+ "spm-stream-mem",
+ "spm-stream-metrics",
+ "spm-walk",
+]
 
 [[package]]
 name = "spm-vectors"

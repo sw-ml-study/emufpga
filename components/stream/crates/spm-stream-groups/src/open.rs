@@ -5,6 +5,9 @@ use spm_header::{HEADER_LEN, Header, parse as parse_header};
 use spm_layout::{DESCRIPTOR_LEN, OpDescriptor, parse as parse_descriptor};
 use spm_stream::WeightStream;
 
+/// Bytes an `f32` scale occupies on the wire.
+const SCALE_LEN: usize = 4;
+
 /// Consumes the fixed-size header from the front of `stream`.
 ///
 /// # Errors
@@ -45,4 +48,22 @@ pub(crate) fn widest_group(descriptors: &[OpDescriptor]) -> usize {
         .map(|d| d.encoding.bytes_for(d.group_size as usize))
         .max()
         .unwrap_or(0)
+}
+
+/// Reads one scale then `bytes` of payload into `buffer`.
+///
+/// A free function rather than a method so `GroupStream` keeps room
+/// for `rewind`; it needs nothing but the stream and somewhere to put
+/// the bytes.
+///
+/// # Errors
+/// Returns [`GroupError`] if the stream ends inside the group.
+pub(crate) fn read_payload(
+    stream: &mut impl WeightStream,
+    buffer: &mut [u8],
+) -> Result<f32, GroupError> {
+    let mut scale = [0u8; SCALE_LEN];
+    stream.read_exact(&mut scale)?;
+    stream.read_exact(buffer)?;
+    Ok(f32::from_le_bytes(scale))
 }
