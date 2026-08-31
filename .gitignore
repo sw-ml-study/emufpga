@@ -24,3 +24,8 @@ out/
 # GitHub's large-file block.
 .agentrail/sessions/
 .agentrail-archive/*/sessions/
+
+# Belt and braces. The two patterns above depend on agentrail's current
+# directory layout; this one does not. A session transcript is a .jsonl
+# and no .jsonl under any agentrail path is ever worth tracking.
+.agentrail*/**/*.jsonl
