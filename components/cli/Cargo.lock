@@ -111,6 +111,9 @@ name = "emufpga-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "fabric-model",
+ "fabric-report",
+ "spm-activations",
  "spm-bench",
  "spm-bench-report",
  "spm-codec",
@@ -118,6 +121,25 @@ dependencies = [
  "spm-numeric",
  "spm-quantize",
  "spm-stream-mem",
+]
+
+[[package]]
+name = "fabric-model"
+version = "0.1.0"
+dependencies = [
+ "spm-accum",
+ "spm-activations",
+ "spm-codec",
+ "spm-stream",
+ "spm-stream-groups",
+ "spm-stream-metrics",
+]
+
+[[package]]
+name = "fabric-report"
+version = "0.1.0"
+dependencies = [
+ "fabric-model",
 ]
 
 [[package]]

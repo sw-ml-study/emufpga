@@ -87,15 +87,23 @@ same build lock, so every cargo call routes through
 just check        # pre-commit gate over changed components
 just check-all    # ... over every component
 just build        # build all components, serially
+just bench        # reproduce the docs/results.md measurement
 just locks        # Cargo.lock consistency sweep
+```
+
+```
+emufpga pack  -i matrix.txt -o model.spm -g 64
+emufpga bench -i model.spm -b 1,2,4,8,16,32
+emufpga sim   -i model.spm -l 8 -w 8 -f 256 -F 64
 ```
 
 ## Status
 
-Saga 1 (`spm-walking-skeleton`) in progress. Built so far: the `.spm`
+Saga 1 (`spm-walking-skeleton`) nearly complete. Built: the `.spm`
 format, a seek-free weight stream, the multiplier-free ternary GEMV
-reference, and `emufpga pack` / `emufpga bench`. Remaining: Gowin
-device profiles and the fit report.
+reference, sourced Gowin device profiles (reference data, no
+consumer), the conceptual fabric model, and `emufpga pack` / `bench` /
+`sim`. Remaining: the saga wrapup.
 
 First measurement is in [docs/results.md](docs/results.md). The
 headline is a negative result with a useful number attached: the CPU

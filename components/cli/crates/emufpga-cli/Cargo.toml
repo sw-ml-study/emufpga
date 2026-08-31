@@ -8,7 +8,11 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+fabric-model = { path = "../../../fabric/crates/fabric-model" }
+fabric-report = { path = "../../../fabric/crates/fabric-report" }
+spm-activations = { path = "../../../tensor/crates/spm-activations" }
 spm-bench = { path = "../spm-bench" }
+spm-stream-mem = { path = "../../../stream/crates/spm-stream-mem" }
 spm-bench-report = { path = "../spm-bench-report" }
 spm-quantize = { path = "../spm-quantize" }
 clap = { version = "4.5.51", features = ["derive"] }

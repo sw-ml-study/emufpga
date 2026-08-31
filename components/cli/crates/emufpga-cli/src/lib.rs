@@ -22,5 +22,5 @@ mod args;
 mod commands;
 mod run;
 
-pub use args::{Cli, Command};
+pub use args::{Cli, Command, SimArgs};
 pub use run::{Failure, run};

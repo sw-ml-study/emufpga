@@ -1,6 +1,6 @@
 number = 9
 slug = "conceptual-fabric-model"
-status = "pending"
+status = "in-progress"
 description = """
 Build the conceptual fabric model -- the research's "virtual FPGA".
 Read docs..."""

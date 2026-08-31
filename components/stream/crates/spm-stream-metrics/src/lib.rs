@@ -31,4 +31,4 @@ mod model;
 mod rates;
 mod ratios;
 
-pub use model::ScanMetrics;
+pub use model::{ScanMetrics, widen};

@@ -154,3 +154,42 @@ where the cost is.
 - **One matrix, one shape, one machine.** Nothing here says how the
   numbers move with matrix shape, group size, or a store that is
   genuinely slow.
+
+## Fabric model: where the pipeline stalls
+
+Step 9 added the conceptual fabric model. Same 1024 x 512 `.spm` file,
+8 weight lanes, batch width 8, batch 8, 512-byte FIFO, sweeping only
+what the parameter store delivers per cycle:
+
+```
+emufpga sim -i bench.spm -b 8 -l 8 -w 8 -f 512 -F <fetch>
+```
+
+| fetch bytes/cycle | cycles | stall cycles | occupancy | cycles/weight |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 196608 | 131072 | 0.333 | 0.375 |
+| 4 | 98304 | 32768 | 0.667 | 0.188 |
+| 16 | 73728 | 8192 | 0.889 | 0.141 |
+| 64 | 67584 | 2048 | 0.970 | 0.129 |
+| 256 | 66048 | 512 | 0.992 | 0.126 |
+
+The datapath's own cost is the floor: 65,536 cycles for 524,288
+weights at 8 lanes, or 0.125 cycles per weight. Everything above that
+is waiting on the store.
+
+At 1 byte per cycle the pipeline spends a third of its cycles stalled
+and occupancy is 0.333. Occupancy reaches 0.889 at 16 bytes per cycle
+and 0.970 at 64; past that the returns are small, because the datapath
+is already close to its own floor.
+
+**This agrees in direction with the `eta` measurement above**, which is
+the point of having both. The CPU bench found a serial pipeline whose
+compute dominated by ~196x; the fabric model, given a datapath eight
+weights wide, finds the crossing between store-bound and compute-bound
+sitting somewhere between 4 and 16 bytes per cycle. Two different
+models, the same qualitative answer: the arithmetic is the scarce
+resource, not the bytes.
+
+**Cycles are a unit, not a duration.** None of this converts to
+seconds, and none of it says anything about whether such a datapath
+fits any part. Both questions need measurements nobody has taken.

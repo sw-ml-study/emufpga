@@ -5,9 +5,13 @@
 //! stdout.
 
 use crate::run::Failure;
+use fabric_model::{FabricConfig, run_fabric};
+use fabric_report::render as render_run;
+use spm_activations::Activations;
 use spm_bench::run_sweep;
 use spm_bench_report::render;
 use spm_quantize::{Quantized, parse_matrix, quantize, write_spm};
+use spm_stream_mem::MemoryWeightStream;
 use std::path::Path;
 
 /// Reads a text matrix, quantizes it, and writes a `.spm` file.
@@ -46,6 +50,26 @@ pub(crate) fn bench(input: &Path, batches: &[usize], repeat: usize) -> Result<St
     let sweep = run_sweep(input, batches, repeat.max(1))
         .map_err(|e| Failure::new(format!("{}: {e}", input.display())))?;
     Ok(render(&sweep))
+}
+
+/// Runs a `.spm` file through the conceptual fabric model.
+///
+/// Activations are deterministic sixteenths -- exactly representable
+/// in `f32`, so the run contributes no rounding of its own.
+///
+/// # Errors
+/// Returns [`Failure`] if the file cannot be read, or the
+/// configuration cannot describe a working pipeline.
+pub(crate) fn sim(input: &Path, config: &FabricConfig, batch: usize) -> Result<String, Failure> {
+    let bytes = std::fs::read(input)
+        .map_err(|e| Failure::new(format!("cannot read {}: {e}", input.display())))?;
+    let values: Vec<f32> = (0..4096)
+        .map(|i| f32::from(u16::try_from(i % 33).unwrap_or(0)) / 16.0 - 1.0)
+        .collect();
+    let activations = Activations::broadcast(batch, &values);
+    let outcome = run_fabric(MemoryWeightStream::new(bytes), &activations, config)
+        .map_err(|e| Failure::new(format!("{}: {e}", input.display())))?;
+    Ok(render_run(config, &outcome))
 }
 
 /// The line `pack` prints on success.

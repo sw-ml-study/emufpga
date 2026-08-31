@@ -1,6 +1,7 @@
 //! Command line shape.
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
+use fabric_model::FabricConfig;
 use std::path::PathBuf;
 
 /// The `--version` block.
@@ -135,4 +136,57 @@ pub enum Command {
         #[arg(short, long, default_value_t = 5, value_name = "N")]
         repeat: usize,
     },
+
+    /// Run a .spm file through the conceptual fabric model.
+    ///
+    /// Reports cycles, stalls and occupancy for a configuration whose
+    /// knobs are abstract -- lanes, FIFO depth, fetch rate -- and
+    /// tied to no particular part. Cycles are a UNIT, not a duration:
+    /// nothing here converts to seconds, because no fabric clock has
+    /// been measured. This is conceptual exploration, not an FPGA
+    /// simulator, and it says nothing about whether a design fits.
+    Sim(SimArgs),
+}
+
+/// Knobs for `sim`.
+///
+/// Its own struct so the parsed flags become a [`FabricConfig`] in one
+/// place, rather than being unpacked field by field at the dispatch
+/// site. Note what is absent: there is no `--fmax` and no way to ask
+/// for seconds. That is the guard against this becoming a fit model
+/// by the back door, and a test asserts the flag stays unknown.
+#[derive(Debug, Args)]
+pub struct SimArgs {
+    /// The .spm file to run.
+    #[arg(short, long, value_name = "FILE")]
+    pub input: PathBuf,
+    /// Batch lanes.
+    #[arg(short, long, default_value_t = 8, value_name = "N")]
+    pub batch: usize,
+    /// Weights the datapath consumes per cycle.
+    #[arg(short = 'l', long, default_value_t = 8, value_name = "N")]
+    pub weight_lanes: usize,
+    /// Accumulator updates per weight per cycle.
+    #[arg(short = 'w', long, default_value_t = 8, value_name = "N")]
+    pub batch_width: usize,
+    /// Weight FIFO depth in bytes.
+    #[arg(short, long, default_value_t = 256, value_name = "BYTES")]
+    pub fifo_bytes: usize,
+    /// Bytes the parameter store delivers per cycle.
+    #[arg(short = 'F', long, default_value_t = 16, value_name = "BYTES")]
+    pub fetch_bytes_per_cycle: usize,
+}
+
+impl SimArgs {
+    /// The fabric configuration these flags describe.
+    #[must_use]
+    pub fn config(&self) -> FabricConfig {
+        FabricConfig {
+            weight_lanes: self.weight_lanes,
+            batch_width: self.batch_width,
+            fifo_bytes: self.fifo_bytes,
+            fetch_bytes_per_cycle: self.fetch_bytes_per_cycle,
+            fetch_latency_cycles: 0,
+        }
+    }
 }

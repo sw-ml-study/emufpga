@@ -41,6 +41,11 @@ impl ScanMetrics {
 
 /// Widens a `u64` to `f64` without a lint-suppressing cast.
 ///
+/// Public because a second crate needs it: `fabric-model` computes the
+/// same kind of ratio over cycle counts. One definition with the
+/// reasoning attached beats the same three lines copied with the
+/// reasoning lost.
+///
 /// Rust has no `From<u64> for f64` because the conversion is lossy
 /// above 2^53, and `as` trips `clippy::cast_precision_loss`. Blanket
 /// allowing that lint across this crate would also hide genuine
@@ -48,7 +53,8 @@ impl ScanMetrics {
 /// explicitly instead. Both `try_from` calls are infallible by
 /// construction: a `u64` shifted right by 32, and a `u64` masked to
 /// its low 32 bits, each fit a `u32`.
-pub(crate) fn widen(value: u64) -> f64 {
+#[must_use]
+pub fn widen(value: u64) -> f64 {
     let high = u32::try_from(value >> 32).unwrap_or(u32::MAX);
     let low = u32::try_from(value & 0xFFFF_FFFF).unwrap_or(u32::MAX);
     f64::from(high).mul_add(4_294_967_296.0, f64::from(low))
