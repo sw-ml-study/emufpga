@@ -1,11 +1,12 @@
 number = 3
 slug = "consumption-order-layout"
-status = "in-progress"
+status = "completed"
 description = """
 Lay the TRM weights out in CONSUMPTION ORDER, and prove a forward
 sweep never..."""
 role = "production"
 context_files = ["docs/plan.md"]
 created_at = "2026-08-30T19:03:03"
+completed_at = "2026-08-30T19:40:39"
 task_type = "rust-format"
-commits = []
+commits = ["265fbb8113474f0e71b111c314464618632465a6"]
