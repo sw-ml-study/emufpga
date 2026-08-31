@@ -1,10 +1,11 @@
 number = 6
 slug = "trm-vs-conventional"
-status = "in-progress"
+status = "completed"
 description = """
 The first head-to-head comparison: TRM's forward pass over streamed
 weights a..."""
 role = "production"
 context_files = []
 created_at = "2026-08-31T12:17:45"
-commits = []
+completed_at = "2026-08-31T12:31:20"
+commits = ["623b24630ff612fe9210b7876e1baf248a6ca470"]
