@@ -96,11 +96,13 @@ fn two_modules_need_only_one_rotating_region() {
         .map(|_| Layer::new(&config.block, positions))
         .collect();
 
+    let input = draw(902, positions * width);
     let report = forward(
         &mut groups,
         &config,
         (&mut z_low, &mut z_high),
         (&mut low, &mut high),
+        &input,
     )
     .expect("forward");
 

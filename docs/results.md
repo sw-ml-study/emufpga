@@ -486,12 +486,43 @@ HRM -- and its config states the same `hidden_size`, `num_heads`,
 block is numerically verified against its published implementation at
 cosine 1.0, and `spm_trm::Layer` is reused unchanged.
 
-The recursion is **not** numerically verified against a reference.
-`transformers` 5.16 does not recognise `model_type: hrm` and the
-checkpoint ships no modeling code, so the published model cannot be
-loaded to compare against. What is tested is the sweep and rewind
-pattern, the layout, and agreement with published parameter counts.
+### Verified against the official implementation
 
-Recording that plainly rather than implying more: rung 1's lesson was
-that a reference comparison finds bugs nothing else does, and this rung
-does not have one.
+The first version of this section said the recursion could not be
+checked, because `transformers` does not recognise `model_type: hrm`
+and the checkpoint ships no modeling code. That was giving up too
+early: `sapientinc/HRM` **is** the modeling code, and the ported
+checkpoint's tensors differ from it only in name.
+
+Cloned it and ran its own `ReasoningModule` on the real weights. The
+one obstacle is `flash_attn`, which is CUDA-only; it is a performance
+kernel rather than a different algorithm, so a stand-in built on
+torch's `scaled_dot_product_attention` computes the same function. The
+remapped tensors load with **zero missing and zero unexpected keys**,
+which is itself evidence the shapes and the mapping are right.
+
+One low-level module sweep, four layers, real weights, 8 positions:
+
+| | |
+| --- | ---: |
+| max abs error | 1.43e-6 |
+| relative | 4.16e-7 |
+| cosine | **1.000000000000** |
+
+### The bug that found
+
+Writing that comparison exposed an omission the earlier tests could
+not see: `forward` never performed HRM's **input injection**.
+`ReasoningModule.forward` adds an injection to the hidden state before
+its layers run, and the recursion supplies a different one each time --
+`z_high + input` for the low module, `z_low` for the high one. This
+crate was computing `low(z_L)` where HRM computes
+`low(z_L, z_H + input)`.
+
+The result ran, stayed finite, produced plausible numbers, and was not
+HRM. The tests checked sweep counts, rewind counts and finiteness, all
+of which passed. It is the same failure mode docs/postmortem-1.md
+records for TRM's layout bugs, repeated one rung later for semantics
+rather than layout -- which is a reasonable argument that the
+postmortem's rules are not yet strong enough, since they were written
+down and the bug still landed.
