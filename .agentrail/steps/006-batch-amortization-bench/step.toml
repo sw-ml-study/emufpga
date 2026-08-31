@@ -1,11 +1,12 @@
 number = 6
 slug = "batch-amortization-bench"
-status = "in-progress"
+status = "completed"
 description = """
 Add `emufpga bench` and find the crossover where compute, not storage,
 become..."""
 role = "production"
 context_files = ["docs/plan.md"]
 created_at = "2026-08-30T16:33:54"
+completed_at = "2026-08-30T17:05:41"
 task_type = "rust-bench"
-commits = []
+commits = ["9a146b5a96869b8556df2a3357e2b9067b19c698"]

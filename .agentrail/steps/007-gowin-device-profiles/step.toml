@@ -1,0 +1,11 @@
+number = 7
+slug = "gowin-device-profiles"
+status = "pending"
+description = """
+Build `components/device/` -- Gowin device profiles for the five Tang
+Nano bo..."""
+role = "production"
+context_files = ["docs/plan.md"]
+created_at = "2026-08-30T17:05:41"
+task_type = "rust-data"
+commits = []

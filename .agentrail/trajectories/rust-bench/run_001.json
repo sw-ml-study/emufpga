@@ -1,0 +1,11 @@
+{
+  "task_type": "rust-bench",
+  "state": {
+    "number": 6,
+    "step": "batch-amortization-bench"
+  },
+  "action": "Generated a 1024x512 matrix, packed it, swept batch 1..128 with 9 passes. Read the first run's anomaly rather than reporting it, traced the batch-64 collapse to accumulator stride against L1, fixed the layout and re-measured. Split spm-bench and spm-bench-report when the module ceiling bit. Added scripts/bench so docs/results.md is reproducible from a seed.",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-08-30T17:05:41"
+}
