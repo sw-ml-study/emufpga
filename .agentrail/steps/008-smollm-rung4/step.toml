@@ -1,10 +1,11 @@
 number = 8
 slug = "smollm-rung4"
-status = "in-progress"
+status = "completed"
 description = """
 Rung 4: SmolLM2-135M (`HuggingFaceTB/SmolLM2-135M`), a conventional
 Llama-sha..."""
 role = "production"
 context_files = []
 created_at = "2026-08-31T13:48:28"
-commits = []
+completed_at = "2026-08-31T14:05:14"
+commits = ["eb794a6bf1ba800238375c6615c85d9a7a03cc6e"]
