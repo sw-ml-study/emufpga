@@ -59,6 +59,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-hrm"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-dense",
+ "spm-file",
+ "spm-layout",
+ "spm-linear",
+ "spm-order",
+ "spm-stream",
+ "spm-stream-groups",
+ "spm-stream-mem",
+ "spm-stream-metrics",
+ "spm-trm",
+ "spm-walk",
+]
+
+[[package]]
+name = "spm-import"
+version = "0.1.0"
+dependencies = [
+ "spm-file",
+ "spm-layout",
+ "spm-walk",
+]
+
+[[package]]
 name = "spm-layout"
 version = "0.1.0"
 dependencies = [
@@ -88,6 +114,13 @@ dependencies = [
 [[package]]
 name = "spm-ops"
 version = "0.1.0"
+
+[[package]]
+name = "spm-order"
+version = "0.1.0"
+dependencies = [
+ "spm-import",
+]
 
 [[package]]
 name = "spm-stream"

@@ -13,7 +13,12 @@ builds toward is GGUF, not pickle, so a .pt VM would be written once
 and retired. The split puts the throwaway half in the language that
 already has a pickle implementation.
 
-    scripts/extract-checkpoint <model.pt> <out-dir>
+    scripts/extract-checkpoint <model.pt|model.safetensors> <out-dir>
+
+Both container formats are read. A .pt is a ZIP holding a pickle; a
+.safetensors is a JSON header giving names, shapes, dtypes and byte
+offsets, followed by the raw data -- no pickle, and far less to go
+wrong. The output contract is the same either way.
 
 Writes <out-dir>/manifest.tsv and one <out-dir>/<index>.bin per
 tensor, little-endian f32, in .spm STREAM ORDER.
@@ -36,6 +41,7 @@ value, only frames bytes that already mean what the format says.
 """
 
 import array
+import json
 import struct
 import sys
 import zipfile
@@ -45,6 +51,25 @@ from pathlib import Path
 # Only what TRM's checkpoint actually contains; anything else is
 # rejected loudly rather than guessed at.
 WIDTHS = {"FloatStorage": 4, "BFloat16Storage": 2, "HalfStorage": 2}
+
+# safetensors names its dtypes differently; map onto the same set so
+# the widening and transposing paths below do not have to care which
+# container the bytes arrived in.
+SAFETENSORS_DTYPES = {"F32": "FloatStorage", "BF16": "BFloat16Storage", "F16": "HalfStorage"}
+
+
+def read_safetensors(path):
+    """Return {name: (dtype, shape, raw bytes)} from a .safetensors."""
+    with open(path, "rb") as f:
+        length = struct.unpack("<Q", f.read(8))[0]
+        header = json.loads(f.read(length))
+        body = f.read()
+    header.pop("__metadata__", None)
+    out = {}
+    for name, meta in header.items():
+        lo, hi = meta["data_offsets"]
+        out[name] = (meta["dtype"], meta["shape"], body[lo:hi])
+    return out
 
 
 def read_index(path):
@@ -126,14 +151,23 @@ def main():
         raise SystemExit("usage: extract-checkpoint <model.pt> <out-dir>")
     src, dst = Path(sys.argv[1]), Path(sys.argv[2])
     dst.mkdir(parents=True, exist_ok=True)
-    z, root, index = read_index(src)
+    if src.suffix == ".safetensors":
+        index = {
+            name: (SAFETENSORS_DTYPES.get(dtype, dtype), shape, raw)
+            for name, (dtype, shape, raw) in read_safetensors(src).items()
+        }
+    else:
+        z, root, raw_index = read_index(src)
+        index = {
+            name: (stype, shape, z.read(f"{root}/data/{key}"))
+            for name, (stype, key, shape) in raw_index.items()
+        }
 
     lines = ["# name\tshape\tdtype\tblob\telements"]
     total = 0
-    for i, (name, (stype, key, shape)) in enumerate(sorted(index.items())):
+    for i, (name, (stype, shape, raw)) in enumerate(sorted(index.items())):
         if stype not in WIDTHS:
             raise SystemExit(f"{name}: unsupported storage {stype}")
-        raw = z.read(f"{root}/data/{key}")
         blob = f"{i:03d}.bin"
         (dst / blob).write_bytes(to_stream_order(to_f32(raw, stype), shape))
         elements = 1

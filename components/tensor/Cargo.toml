@@ -5,6 +5,7 @@
 [workspace]
 members = [
     "crates/spm-accum",
+    "crates/spm-hrm",
     "crates/spm-linear",
     "crates/spm-numeric",
     "crates/spm-ops",

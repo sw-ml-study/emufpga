@@ -1,0 +1,77 @@
+# Consumption order for zbloss/HRM-sudoku-extreme (27,276,802 params).
+#
+# Read from HRM's forward pass, not guessed:
+#
+#   for h in range(H_cycles):          # 2
+#     for l in range(L_cycles):        # 2
+#       z_L = low_level(z_L, z_H + input)
+#     z_H = high_level(z_H, z_L)
+#
+# So per outer cycle the low-level module is swept L_cycles times and
+# the high-level module once, in that order. LOW COMES FIRST, which is
+# the opposite of the checkpoint's own ordering -- safetensors lists
+# tensors alphabetically, and "high" sorts before "low". Within a layer
+# alphabetical also reverses execution order, exactly as it did for TRM
+# (down, gate_up, output, qkv against qkv, output, gate_up, down).
+#
+# THE TWO-MODULE STRUCTURE DOES NOT NEED A SECOND ROTATING REGION.
+# With [low][high] contiguous, a plain rewind-to-zero serves the whole
+# recursion:
+#
+#   sweep low, rewind, sweep low   -> cursor now sits at the first
+#                                     high-level stream
+#   sweep high                     -> cursor at end
+#   rewind                         -> back to the first low stream
+#
+# The last low sweep of an outer cycle leaves the cursor exactly where
+# the high-level module begins, so no seek is ever required. That only
+# works because low precedes high in the file; the reverse would need
+# a seek backwards and there is none.
+#
+# 32 weight matrices rotate (27,262,976 weights, 99.95%). Seven small
+# tensors stay resident: 13,826 weights, 0.05% -- embeddings, init
+# states and output heads, which docs/plan.md section 3 puts in
+# ordinary memory on purpose.
+
+[rotating]
+model.inner.low_level_module.layers.0.self_attn.qkv_projection.weight
+model.inner.low_level_module.layers.0.self_attn.output_projection.weight
+model.inner.low_level_module.layers.0.mlp.gate_up_projection.weight
+model.inner.low_level_module.layers.0.mlp.down_projection.weight
+model.inner.low_level_module.layers.1.self_attn.qkv_projection.weight
+model.inner.low_level_module.layers.1.self_attn.output_projection.weight
+model.inner.low_level_module.layers.1.mlp.gate_up_projection.weight
+model.inner.low_level_module.layers.1.mlp.down_projection.weight
+model.inner.low_level_module.layers.2.self_attn.qkv_projection.weight
+model.inner.low_level_module.layers.2.self_attn.output_projection.weight
+model.inner.low_level_module.layers.2.mlp.gate_up_projection.weight
+model.inner.low_level_module.layers.2.mlp.down_projection.weight
+model.inner.low_level_module.layers.3.self_attn.qkv_projection.weight
+model.inner.low_level_module.layers.3.self_attn.output_projection.weight
+model.inner.low_level_module.layers.3.mlp.gate_up_projection.weight
+model.inner.low_level_module.layers.3.mlp.down_projection.weight
+model.inner.high_level_module.layers.0.self_attn.qkv_projection.weight
+model.inner.high_level_module.layers.0.self_attn.output_projection.weight
+model.inner.high_level_module.layers.0.mlp.gate_up_projection.weight
+model.inner.high_level_module.layers.0.mlp.down_projection.weight
+model.inner.high_level_module.layers.1.self_attn.qkv_projection.weight
+model.inner.high_level_module.layers.1.self_attn.output_projection.weight
+model.inner.high_level_module.layers.1.mlp.gate_up_projection.weight
+model.inner.high_level_module.layers.1.mlp.down_projection.weight
+model.inner.high_level_module.layers.2.self_attn.qkv_projection.weight
+model.inner.high_level_module.layers.2.self_attn.output_projection.weight
+model.inner.high_level_module.layers.2.mlp.gate_up_projection.weight
+model.inner.high_level_module.layers.2.mlp.down_projection.weight
+model.inner.high_level_module.layers.3.self_attn.qkv_projection.weight
+model.inner.high_level_module.layers.3.self_attn.output_projection.weight
+model.inner.high_level_module.layers.3.mlp.gate_up_projection.weight
+model.inner.high_level_module.layers.3.mlp.down_projection.weight
+
+[resident]
+model.inner.low_level_init_state
+model.inner.high_level_init_state
+model.inner.token_embeddings.weight
+model.inner.puzzle_embedding.weight
+model.inner.lm_head.weight
+model.inner.q_head.weight
+model.inner.q_head.bias

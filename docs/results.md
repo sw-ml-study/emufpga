@@ -426,3 +426,72 @@ That keeps the Rust importer pure framing -- it still never touches a
 value. The earlier claim that it was "pure framing" was true of the
 code and false of the pipeline, because the bytes it framed did not
 yet mean what the format said they meant.
+
+## HRM, rung 2 (saga 2 step 5)
+
+`zbloss/HRM-sudoku-extreme`, 27,276,802 parameters. Imported, laid out
+in consumption order, and driven through its two-module recursion.
+
+| | |
+| --- | ---: |
+| Tensors | 39 |
+| Parameters | 27,276,802 |
+| Rotating streams | 32 (4 matrices x 4 layers x 2 modules) |
+| Rotating weights | 27,262,976 (99.95%) |
+| Resident weights | 13,826 (0.05%) |
+| `.spm` size | 109,215,052 bytes |
+
+### The question this rung opened, and the answer
+
+HRM has **two** modules where TRM has one shared block:
+
+```text
+for h in range(H_cycles):        # 2
+  for l in range(L_cycles):      # 2
+    z_L = low_level(z_L, z_H + input)
+  z_H = high_level(z_H, z_L)
+```
+
+The risk was that two modules force two rotating regions -- which
+`rewind` alone cannot serve, because it returns to the start of the
+stream and there is no seek to offer it an offset.
+
+**They do not.** With `[low][high]` contiguous and low first, a plain
+rewind-to-zero serves the whole recursion:
+
+```text
+sweep low            cursor -> first high stream
+rewind, sweep low    cursor -> first high stream
+sweep high           cursor -> end
+rewind               cursor -> first low stream
+```
+
+The last low sweep of an outer cycle leaves the cursor exactly where
+the high module begins, so the high sweep continues forward with no
+seek. One rewind before every low sweep except the first, and never
+before a high sweep: `h_cycles * l_cycles - 1` in total.
+
+That works **only** because low precedes high. The checkpoint's own
+ordering is alphabetical, which puts `high_level_module` first and
+would require a backwards seek -- the same trap TRM had, in a second
+place, and the postmortem predicted it.
+
+### What is verified and what is inferred
+
+The block is verified. HRM's source describes it as self-attention,
+RMS norm, fully connected, RMS norm with post-norm residuals -- the
+same block TRM uses, which is unsurprising since TRM was derived from
+HRM -- and its config states the same `hidden_size`, `num_heads`,
+`expansion`, `intermediate_size`, `rope_theta` and `rms_norm_eps`. TRM's
+block is numerically verified against its published implementation at
+cosine 1.0, and `spm_trm::Layer` is reused unchanged.
+
+The recursion is **not** numerically verified against a reference.
+`transformers` 5.16 does not recognise `model_type: hrm` and the
+checkpoint ships no modeling code, so the published model cannot be
+loaded to compare against. What is tested is the sweep and rewind
+pattern, the layout, and agreement with published parameter counts.
+
+Recording that plainly rather than implying more: rung 1's lesson was
+that a reference comparison finds bugs nothing else does, and this rung
+does not have one.

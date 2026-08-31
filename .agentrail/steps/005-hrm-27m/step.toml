@@ -1,6 +1,6 @@
 number = 5
 slug = "hrm-27m"
-status = "pending"
+status = "in-progress"
 description = """
 Rung 2 of the model ladder: HRM, 27M parameters, from
 `sapientinc/HRM`.
