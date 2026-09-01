@@ -1,0 +1,931 @@
+look at these potentially related repos: 
+sw-ml-study/sw-mlpl and 
+sw-ml-study/emufpga and come up with a plan to document and visualize the kind of changes to inference processing from the traditional RAM-heavy approach, and the simulated or hardware FPGA approach to stream activations sequentially.   Need clear explanations and visualization.  look specifically at: 
+research.txt-- how can we use sw-mlpl features to describe/explain/teach this approach?
+
+You want the two repositories to reinforce each other:
+
+emufpga should remain the executable research vehicle for the Serial Parameter Machine (SPM): packing, streaming, cycle approximation, metrics, and eventually FPGA hardware.
+sw-mlpl can become the executable teaching and visualization language for explaining why this architecture differs from conventional inference, using arrays and transformations that correspond closely to the actual math.
+
+That separation is strong. I would not turn sw-mlpl into another FPGA simulator. Instead, use MLPL to expose the dataflow transformations that emufpga implements.
+
+The central conceptual contrast in emufpga is already excellent:
+
+conventional accelerator: compute asks memory for weights
+SPM: weights flow past compute
+
+That is stated explicitly in both the research note and README: model weights live in sequential storage, while activations, accumulators, scales, and recurrent state remain in fast memory.
+
+1. I would build a small “SPM curriculum”
+
+Rather than one giant demonstration, make perhaps 7–9 MLPL lessons/demos, each adding exactly one architectural idea.
+
+Demo	Question answered	MLPL concept exercised
+spm_01_gemv.mlpl	What does ordinary inference compute?	arrays, labeled axes, matmul
+spm_02_consumption_order.mlpl	Why don't weights require random access?	transpose, reshape, indexing
+spm_03_streaming_gemv.mlpl	Can sequential consumption produce identical y = Wx?	UDFs, iteration, reductions
+spm_04_ternary.mlpl	Why is low-bit arithmetic FPGA-friendly?	masks, add/subtract, HOFs
+spm_05_batch_reuse.mlpl	How can one fetched weight do more work?	broadcasting, batch axis
+spm_06_residency.mlpl	What remains in RAM?	shapes, reductions, bar charts
+spm_07_pipeline.mlpl	When are storage vs compute the bottleneck?	array modeling, line charts
+spm_08_moe.mlpl	Why does routing activations help?	grouping, selection, arrays
+spm_09_real_model.mlpl	How does this map onto TRM?	tensor/model visualization
+
+This fits what sw-MLPL already claims to be: an array-oriented, functional-first ML language with native tensors, labeled shapes, higher-order functions, Model DSL, execution tracing, and visualization.
+
+And its visualization stack already supports line, bar, heatmap, scatter, and decision-boundary SVG output in the browser, so much of this can be done without inventing infrastructure first.
+
+2. The most important demo: same math, radically different traversal
+
+Start with an intentionally tiny matrix.
+
+Conceptually:
+
+W : [out, in]
+
+       in0 in1 in2 in3
+out0    1   0  -1   1
+out1    0   1   1  -1
+out2   -1   1   0   1
+
+x : [in]
+       4   7   2   3
+
+Ordinary MLPL:
+
+y = matmul(W, x)
+
+Then show the SPM transformation.
+
+Instead of thinking:
+
+load W
+      ↓
+matmul(W,x)
+
+physically transform W into consumption order:
+
+x0: w00 w10 w20
+x1: w01 w11 w21
+x2: w02 w12 w22
+x3: w03 w13 w23
+
+Now animate:
+
+cycle       activation       incoming weights         accumulators
+
+  0             x0          [w00 w10 w20]         [0 0 0]
+  1             x0          [w00 w10 w20]         [...]
+  2             x1          [w01 w11 w21]         [...]
+  ...
+
+The punch line is:
+
+traditional result == streamed result
+
+The arithmetic didn't change.
+
+The memory contract changed.
+
+That is the lesson people need before discussing NAND, FPGA lanes, MoE, etc.
+
+3. sw-MLPL's labeled axes are particularly valuable here
+
+This might be one of the best uses yet for your named-axis feature.
+
+MLPL already supports things such as:
+
+X : [batch, feat] = ...
+
+with axis names carried through operations.
+
+For SPM material, make the dimensions explicit:
+
+W : [output, input]
+X : [batch, input]
+Y : [batch, output]
+
+Then introduce the physical stream representation as something like:
+
+S : [input, output]
+
+or, once tiled:
+
+S : [group, lane, weight]
+
+This gives you a wonderfully simple teaching move:
+
+Mathematical view
+W : [output, input]
+Physical consumption view
+stream = transpose(W)
+
+stream : [input, output]
+
+That transpose is not merely an array-language trick.
+
+It represents an architectural change.
+
+This is exactly the sort of thing an APL-derived language is unusually good at explaining: layout transformations are first-class ideas rather than buried inside CUDA kernels or C pointer arithmetic.
+
+4. Make “consumption order” visible
+
+This deserves its own visualization.
+
+Use a heatmap where every cell is a weight.
+
+Initially:
+
+        input →
+      0 1 2 3 4 5
+out 0  ■ ■ ■ ■ ■ ■
+ ↓  1  ■ ■ ■ ■ ■ ■
+    2  ■ ■ ■ ■ ■ ■
+    3  ■ ■ ■ ■ ■ ■
+
+Then animate traversal.
+
+GPU-ish conceptual traversal
+
+Emphasize that an addressable memory system permits the compute engine to request whatever tile comes next.
+
+SPM traversal
+
+Highlight a strictly monotonic path:
+
+0 → 1 → 2 → 3 → ... → N
+
+No reverse arrows.
+
+No arbitrary address.
+
+Then demonstrate the actual TRM layout bug discovered by emufpga.
+
+The first importer alphabetized tensors:
+
+down_proj
+gate_up_proj
+o_proj
+qkv_proj
+
+but execution required:
+
+qkv_proj
+o_proj
+gate_up_proj
+down_proj
+
+That would force a backward seek, which violates the architecture. emufpga now has a layout file and tests specifically preventing this regression.
+
+That is a fantastic pedagogical example.
+
+Show:
+
+BAD LAYOUT
+
+qkv_proj ───────────────┐
+                       │ backward!
+o_proj       <──────────┘
+
+versus:
+
+SPM LAYOUT
+
+qkv_proj → o_proj → gate_up_proj → down_proj
+
+That's much stronger than a theoretical diagram because it is a real mistake the project found.
+
+5. Ternary processing could be almost self-explanatory in MLPL
+
+Your research note observes that for ternary weights:
+
+-1 → subtract activation
+ 0 → do nothing
++1 → add activation
+
+so the parameter stream starts looking almost like an instruction stream.
+
+MLPL can express that beautifully with masks.
+
+Conceptually:
+
+positive = W == 1
+negative = W == -1
+
+y = sum(positive * x) - sum(negative * x)
+
+Then transform the visualization from:
+
+weight × activation
+
+into:
+
++1 ───────► ADD x
+ 0 ───────► BYPASS
+-1 ───────► SUB x
+
+This explains why the eventual FPGA isn't really trying to reproduce a GPU multiplier array.
+
+It may consist largely of:
+
+decode → add/sub → accumulator
+
+and perhaps XNOR/popcount for binary representations.
+
+6. Batch reuse should become one of the strongest visual demonstrations
+
+emufpga now has actual measurements for this.
+
+Its metric scan productivity Ps is:
+
+useful parameter applications / parameter values read.
+
+And measured Ps equals the batch size exactly while parameter traffic stays constant.
+
+This deserves an animated diagram.
+
+For batch=1:
+
+weight w ──► x0 ──► accumulator
+
+Ps = 1
+
+For batch=8:
+
+                  ┌── x0
+                  ├── x1
+                  ├── x2
+weight w ─────────┼── x3
+                  ├── x4
+                  ├── x5
+                  ├── x6
+                  └── x7
+
+Ps = 8
+
+One weight read.
+
+Eight useful applications.
+
+In MLPL, this corresponds naturally to broadcasting across a batch axis.
+
+Conceptually:
+
+X : [batch, input]
+W : [output, input]
+
+A streamed scalar or vector of weights can broadcast across:
+
+batch
+
+That makes MLPL semantics almost an executable description of the hardware broadcast network.
+
+7. Plot the real emufpga measurements
+
+I would definitely import selected results from emufpga into MLPL demos.
+
+For example, batch:
+
+[1, 2, 4, 8, 16, 32, 64, 128]
+
+and measured aggregate Mw/s:
+
+[167.2, 318.8, 554.1, 958.9,
+ 1487.0, 2592.7, 4883.6, 7395.3]
+
+Then:
+
+svg(data, "line")
+
+or a higher-level helper.
+
+But show three plots, not just throughput.
+
+Plot A — Parameter bytes read
+
+Essentially flat.
+
+bytes
+  |
+  | ─────────────────────────
+  +--------------------------- batch
+Plot B — Scan productivity Ps
+
+Linear:
+
+Ps
+ |
+ |                         /
+ |                      /
+ |                   /
+ |_______________ /
+ +---------------------- batch
+Plot C — useful throughput
+
+Increasing, but sublinearly.
+
+That combination tells the architecture story much better than TOPS.
+
+And explicitly explain the measured surprise:
+
+128× larger batch yielded about 44× aggregate throughput, not 128×.
+
+The stream does no extra storage work, but each arriving weight must participate in more arithmetic.
+
+8. Make the memory hierarchy a visualization, not prose
+
+One interactive diagram should compare:
+
+Conventional inference
+┌─────────────────────────────────┐
+│ HBM / VRAM                      │
+│                                 │
+│ █████████████████████ weights   │
+│ █████████ KV cache              │
+│ ██ activations                  │
+└─────────────────────────────────┘
+             │
+             ▼
+           GPU
+
+versus:
+
+SPM
+SEQUENTIAL STORE
+┌─────────────────────────────────┐
+│ █████████████████████ weights   │
+└─────────────────────────────────┘
+              │
+              ▼ stream
+
+             FPGA
+┌─────────────────────────────────┐
+│ ██ activations                  │
+│ ██ accumulators                 │
+│ ▌ scales                        │
+│ ▌ recurrent state              │
+└─────────────────────────────────┘
+
+Then expose Rp, parameter residency:
+
+Rp = resident_parameter_bytes / total_parameter_bytes
+
+Conventional:
+
+Rp ≈ 1
+
+SPM experiment:
+
+Rp = 0.001953
+
+The emufpga measurement is one group buffer rather than an entire model.
+
+A bar chart makes this instantly understandable:
+
+GPU      █████████████████████████  ~1.0
+SPM      ▏                          .001953
+
+This might be the single strongest diagram for explaining what RAM problem you're attacking.
+
+9. Make eta into a pipeline occupancy lesson
+
+This is where sw-MLPL can explain something the prose currently requires considerable concentration to understand.
+
+Show:
+
+storage ──► FIFO ──► tensor lanes ──► accumulators
+
+Animate three regimes.
+
+Store-bound
+storage ─►░░░░FIFO░░░─► COMPUTE
+                       ^ waiting
+Balanced
+storage ─────► FIFO ─────► COMPUTE
+Compute-bound
+storage ─────►████FIFO████► slow compute
+
+The conceptual fabric simulation gives actual points:
+
+fetch bytes/cycle	occupancy
+1	.333
+4	.667
+16	.889
+64	.970
+256	.992
+
+and shows diminishing returns as the datapath approaches its 0.125 cycles/weight floor.
+
+Plotting this curve in MLPL immediately teaches:
+
+once arithmetic is saturated, adding storage bandwidth has little benefit.
+
+That is the inverse of much of the discussion around GPUs, where memory bandwidth is typically treated as the scarce resource.
+
+10. sw-MLPL should probably gain an architecture-diagram renderer
+
+Current svg() modes are primarily quantitative:
+
+scatter
+line
+bar
+heatmap
+decision boundary
+
+and MLPL's visualization milestone explicitly contemplated higher-level analysis helpers.
+
+For SPM teaching, I think you're missing one important type:
+
+flow
+
+or better:
+
+dataflow
+
+Something roughly capable of:
+
+nodes = [...]
+edges = [...]
+dataflow(nodes, edges)
+
+which emits SVG.
+
+It does not need to become Graphviz.
+
+Support:
+
+boxes,
+directed edges,
+groups,
+edge labels,
+optional widths,
+optional state/highlight.
+
+Then the same facility could explain:
+
+transformer models,
+autograd,
+compiler passes,
+ML pipelines,
+SPM,
+MoE routing,
+neural-thickets,
+category diagrams.
+
+That seems general enough to justify putting it in sw-MLPL rather than making it SPM-specific.
+
+Your existing visualization design work was already moving toward a Visualization IR so execution, tensors, model nodes and visualization renderers aren't hard-wired together.
+
+SPM is a very good forcing function for finishing that abstraction.
+
+11. I would use the Viz IR as the cross-repo seam
+
+I'd make the eventual architecture roughly:
+
+                  sw-MLPL
+                     │
+                     │ conceptual model
+                     ▼
+               SPM lesson data
+                     │
+          ┌──────────┴───────────┐
+          ▼                      ▼
+     quantitative             Viz IR
+      MLPL arrays                │
+          │                      │
+          ▼                      ▼
+ line/bar/heatmap       architecture/dataflow
+                                  │
+                                  ▼
+                                SVG
+
+And separately:
+
+               emufpga
+                  │
+          metrics / trace JSON
+                  │
+                  ▼
+              Viz IR data
+                  │
+                  ▼
+               sw-MLPL
+                  │
+                  ▼
+          same visualizations
+
+The important part is:
+
+don't couple sw-MLPL to emufpga Rust internals.
+
+Use a small interchange format.
+
+Something like:
+
+{
+  "experiment": "fabric-fetch-sweep",
+  "series": {
+    "fetch_bytes_cycle": [1,4,16,64,256],
+    "occupancy": [.333,.667,.889,.970,.992]
+  }
+}
+
+Later actual hardware can emit the same format:
+
+behavioral emulator ─┐
+RTL simulation ──────┼──► experiment JSON ──► MLPL visualization
+physical FPGA ───────┘
+
+That gives you an unusually compelling research progression:
+
+theory
+  ↓
+MLPL executable model
+  ↓
+emufpga behavioral emulator
+  ↓
+RTL
+  ↓
+physical FPGA
+
+with comparable graphs at every rung.
+
+12. Use MLPL to demonstrate the CPU-layout trap too
+
+This result from emufpga is educationally valuable.
+
+The first accumulator organization was lane-major, producing huge strides and a performance collapse around batch 64. Reorganizing it so the batch dimension became the fast-varying index removed the cliff and improved the result by around 5× in the affected regime.
+
+This could be an excellent MLPL array-layout lesson.
+
+Show logically identical arrays:
+
+A : [batch, output]
+
+versus:
+
+A : [output, batch]
+
+Then visualize access order.
+
+bad CPU traversal:
+
+X . . . . . . . X . . . . . . . X
+  <--- stride --->
+
+good traversal:
+
+X X X X X X X X
+
+And explain the intriguing hardware distinction:
+
+the mathematical shape is the same, but the CPU implementation cares deeply about physical adjacency; the FPGA implementation naturally places a row's batch accumulators next to each other as registers.
+
+That reinforces one of the overall project's themes:
+
+array orientation is not just syntax—it lets us talk explicitly about computation shape and physical layout.
+
+13. Then progress from GEMV to a real model
+
+The current emufpga work has already imported a real TRM checkpoint and distinguished the model into:
+
+rotating / streamed     99.87%
+resident                 0.13%
+
+with resident tensors including embeddings, initialization vectors and output heads, while the bulk projections belong to the sequential stream.
+
+That gives you a terrific final demo.
+
+Visualize the model as:
+
+                RESIDENT
+        ┌──────────────────┐
+        │ embedding        │
+        │ z_H / z_L        │
+        │ norms            │
+        │ RoPE             │
+        │ softmax          │
+        └────────┬─────────┘
+                 │
+                 ▼
+ ╔══════════════════════════════╗
+ ║         ROTATING            ║
+ ║                              ║
+ ║ qkv → o → gate/up → down    ║
+ ║  ▲                      │    ║
+ ║  └────── rewind ────────┘    ║
+ ╚══════════════════════════════╝
+
+Then perhaps display:
+
+15 L_level calls
+15 stream sweeps
+14 rewinds
+
+This moves the learner from:
+
+3 × 4 toy matrix
+
+to:
+
+actual trained network
+
+without changing the fundamental mental model.
+
+That's important.
+
+14. Eventually add MoE as the “why this could matter” demo
+
+Do this after basic SPM is understood.
+
+Visualization:
+
+             Router
+          /    |     \
+         /     |      \
+        ▼      ▼       ▼
+     Expert 2 Expert 7 Expert 11
+       │        │        │
+     STREAM   STREAM    STREAM
+
+Then tokens:
+
+A ───────────────► Expert 7
+B ───► Expert 2
+C ───────────────► Expert 7
+D ─────────────────────► Expert 11
+E ───────────────► Expert 7
+
+Group them:
+
+Expert 7 queue = [A,C,E]
+
+and show:
+
+one Expert-7 scan
+three activation vectors
+Ps = 3
+
+This teaches the real inversion:
+
+Conventional
+
+Move expert weights toward compute.
+
+SPM
+
+Move tiny activation vectors toward stationary/sequential experts.
+
+That's much easier to grasp visually than from prose.
+
+15. The documentation itself should be layered
+
+I would restructure the research material rather than making research.txt even larger.
+
+Something like:
+
+emufpga/docs/
+    research.txt                 # historical notebook / original exploration
+    serial-parameter-machine.md  # concise current architecture
+    memory-model.md
+    consumption-order.md
+    metrics.md
+    model-mapping.md
+    experiments.md
+    hardware-roadmap.md
+
+And put the interactive educational material in sw-MLPL:
+
+sw-mlpl/
+    demos/
+        spm_01_gemv.mlpl
+        ...
+        spm_09_trm.mlpl
+
+    docs/tutorial/
+        serial-parameter-machine.md
+
+The distinction:
+
+emufpga/docs/research.txt
+
+Why did we consider this? What hypotheses emerged?
+
+Keep it largely historical.
+
+emufpga/docs/serial-parameter-machine.md
+
+What do we currently believe the architecture actually is?
+
+Short and authoritative.
+
+MLPL tutorial
+
+Show me how it works.
+
+Executable.
+
+That prevents research history, current specification, and teaching material from becoming tangled together.
+
+16. A very good top-level visual metaphor
+
+I'd make the canonical comparison a horizontal animation.
+
+RAM accelerator
+                         requests
+                    ↙ ↙ ↓ ↘ ↘
+
+ █████████████████ MEMORY █████████████████
+          ↑     ↑       ↑       ↑
+          │     │       │       │
+        compute engines
+
+Compute is the active thing; memory responds.
+
+SPM
+WEIGHT STREAM >>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+      ▼       ▼       ▼       ▼
+     PE0     PE1     PE2     PE3
+      │       │       │       │
+     acc     acc     acc     acc
+
+Weights are the moving thing.
+
+Compute waits in place.
+
+That one image explains the phrase:
+
+compute moves to the weight stream
+
+better than paragraphs of description.
+
+17. One additional sw-MLPL feature would pay off enormously: stepping
+
+Longer term, I would like an executable MLPL demo to support something like:
+
+:step
+
+or a visualization timeline:
+
+|◀  ◀|  ▶  |▶|
+cycle 37 / 192
+
+For ordinary ML explanations that would let you step through:
+
+forward passes,
+attention,
+optimization,
+cellular automata,
+
+but for SPM it becomes especially intuitive:
+
+cycle 0     receive group 0
+cycle 1     decode weights
+cycle 2     update accumulators
+cycle 3     FIFO refill
+...
+
+Your current tracing facility already provides a natural foundation for this; the project has typed trace infrastructure and JSON trace export.
+
+So the architecture should probably be:
+
+execution
+   │
+ trace events
+   ▼
+timeline / Viz IR
+   │
+   ├── static SVG
+   └── step animation
+
+rather than inventing SPM animation machinery independently.
+
+18. Repository responsibilities
+
+My recommended split is therefore:
+
+Responsibility	sw-mlpl	emufpga
+Explain y = Wx	✓	
+Demonstrate array layout	✓	
+Compare mathematical equivalence	✓	
+Teach batch broadcasting	✓	
+Visualize memory residency	✓	
+Plot experiment results	✓	source
+Define .spm format		✓
+Pack real weights		✓
+Validate consumption order		✓
+Golden-vector correctness		✓
+Cycle/FIFO simulation		✓
+FPGA resource experiments		✓
+RTL / hardware		✓
+Emit experiment traces		✓
+Render traces interactively	✓	
+
+This keeps both repositories coherent.
+
+19. Suggested implementation sequence
+
+I would proceed in four relatively small milestones.
+
+Milestone A — no new MLPL language features
+
+Build:
+
+spm_01_gemv
+spm_02_consumption_order
+spm_03_ternary
+spm_04_batch
+
+using existing:
+
+arrays,
+named axes,
+transpose/reshape,
+broadcasting,
+comparisons,
+reductions,
+heatmaps,
+line/bar graphs.
+
+This proves whether sw-MLPL really is a good explanatory medium.
+
+Milestone B — consume real emufpga results
+
+Have emufpga export experiment JSON/CSV for:
+
+batch sweep,
+Ps,
+Rp,
+eta,
+FIFO occupancy,
+fetch-rate sweep.
+
+Have MLPL load and visualize it.
+
+Now the tutorial moves seamlessly from model → evidence.
+
+Milestone C — generalized dataflow() / Viz IR
+
+Add the missing architectural-diagram primitive to MLPL.
+
+Use SPM as its first forcing function, but ensure it's generic enough for transformer, autograd and pipeline visualization.
+
+Milestone D — trace/timeline integration
+
+Let emulator traces become visual frames:
+
+fetch → FIFO → decode → PE → accumulator
+
+Eventually feed exactly the same renderer with real FPGA traces.
+
+20. The larger payoff
+
+There is a nice meta-story here.
+
+sw-mlpl began as an array-oriented ML language, but array languages are unusually appropriate for describing alternative ML architectures because the interesting operations are transformations of:
+
+shapes,
+layouts,
+axes,
+traversal order,
+broadcast dimensions,
+reductions.
+
+SPM is almost a perfect demonstration.
+
+Instead of explaining this hardware using:
+
+for row in ...
+    for col in ...
+        index = ...
+
+you can show:
+
+logical weights : [output, input]
+
+             transpose
+
+physical stream : [input, output]
+
+               ↓
+
+broadcast across [batch]
+
+               ↓
+
+reduce into [batch, output]
+
+That is simultaneously:
+
+the mathematics,
+the MLPL program,
+the dataflow diagram,
+and a high-level description of the FPGA.
+
+That could make this one of the most compelling demonstrations of why sw-MLPL exists, rather than merely using MLPL to plot some emufpga benchmark numbers.
+
+Take this further in ChatGPT Work
+Turn your work into a polished document, deck, spreadsheet, report, or website.
+Try Work
