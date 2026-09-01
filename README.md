@@ -32,6 +32,10 @@ into the [MLPL playground](https://sw-ml-study.github.io/sw-mlpl/).
 Self-contained, with charts and diagrams, and every claim either
 computed live or measured on a real model.
 
+Moving to another machine:
+[docs/handoff-linux-cuda.md](docs/handoff-linux-cuda.md) -- what to
+fetch, what needs CUDA, and what is queued.
+
 Start here: [docs/why-this-saves-ram.md](docs/why-this-saves-ram.md) --
 the plain-language case, what has actually been measured, why MoE is
 the best case rather than a stretch goal, and what is not yet true.
