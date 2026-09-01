@@ -1195,3 +1195,115 @@ arithmetic, which is postmortem 2 defect 11's mistake exactly.
   prefill cost.
 - **No tokenizer, no sampling, no server.** Greedy decoding of token
   ids. Connecting real agents over HTTP is a separate step.
+
+## When the store is not RAM (saga 2 step 12)
+
+Every result above this point read from a page-cached file on a 64 GB
+machine, so every demanded-bandwidth figure was a **requirement a
+store would have to meet**, never an observation of one meeting it.
+This is the first test of the central assumption, and it is the
+cheapest experiment that could have falsified the whole thesis.
+
+`spm-stream-throttle` wraps any `WeightStream` and delivers its bytes
+at a chosen rate, reporting how long the engine spent **waiting on the
+store**. That stall figure is `eta` observed rather than modelled.
+
+### The prediction, and why it was wrong
+
+Written before the sweep: the knee should be near **258 MB/s**,
+because step 11 reported that figure as the demand at five clients.
+
+It is not. 500 MB/s is free and 258 MB/s already stalls 35%.
+
+The 258 came from a different workload -- `smol-xcheck`'s eight
+position **prefill** -- and was applied to a one-token **decode** step.
+Two different amounts of compute against the same bytes. Recording it
+because a prediction that survives is worth more than a measurement
+that had none, and this one failed usefully: it located an apples-to-
+oranges comparison that had been sitting in the document.
+
+### The measurement
+
+Five clients, 8 tokens each, 13 sweeps, 2,760 MB of weight traffic:
+
+| store | wall clock | stalled | store share |
+| ---: | ---: | ---: | ---: |
+| page cache | 6.884 s | -- | -- |
+| 2000 MB/s | 6.946 s | 0 ns | 0.0% |
+| **500 MB/s** | **6.908 s** | **4.8 us** | **0.0%** |
+| 258 MB/s | 10.822 s | 3.843 s | 35.5% |
+| 200 MB/s | 13.931 s | 6.922 s | 49.7% |
+| 150 MB/s | 18.542 s | 11.514 s | 62.1% |
+| 100 MB/s | 27.760 s | 20.640 s | 74.3% |
+| 50 MB/s | 55.418 s | 48.282 s | 87.1% |
+
+Every client's tokens matched the reference at every store speed. **A
+slow store makes this slower, never wrong** -- which is the property
+that matters, since the goal is doing more with less at equal
+correctness.
+
+### A model that predicts it
+
+```
+wall clock = max(compute, bytes / rate)
+```
+
+fits every row above within 2%. The store streams continuously and the
+engine waits only when it outruns it.
+
+The knee is therefore where compute and store time cross:
+2,760 MB in 6.884 s means this engine consumes at **401 MB/s**. Any
+store faster than that is free; any store slower sets the pace.
+
+### The finding: concurrency is what makes cheap storage viable
+
+The same measurement at **one** client:
+
+| clients | demand | at a 500 MB/s store |
+| ---: | ---: | --- |
+| 1 | **1328 MB/s** | 4.276 s, **60% stalled** |
+| 5 | **401 MB/s** | 6.908 s, **0% stalled** |
+
+**The same store is store-bound with one client and free with five.**
+
+Bytes per sweep are fixed; compute per sweep grows with clients. So
+the bandwidth a store must deliver falls as clients rise -- 3.3x lower
+for 5x the clients here, short of linear because attention work grows
+too.
+
+This is the amortization from step 11 reappearing as a hardware
+requirement, and it closes the argument in docs/why-this-saves-ram.md:
+concurrency does not merely divide the traffic, it **lowers the class
+of device you need**. Serving more agents makes cheaper storage
+adequate, which is the opposite of how conventional serving scales.
+
+### What this says about real devices
+
+| device | roughly | at 5 clients |
+| --- | ---: | --- |
+| NVMe SSD | 2000+ MB/s | free |
+| SATA SSD | 500 MB/s | free |
+| SAS array | 200 MB/s | works, 2x wall clock |
+| spinning disk | 150 MB/s | works, 2.7x wall clock |
+| 1 GbE | 110 MB/s | works, 4x wall clock |
+
+At twenty clients the demand would fall near 100 MB/s and every row
+becomes free -- untested, and the obvious next measurement.
+
+### What these numbers do not support
+
+- **This is bandwidth, not a disk.** No seek latency, no queueing, no
+  readahead. A sequential sweep is precisely what avoids seeks, which
+  is the architecture's point, but a real spinning disk shared with
+  other work would behave worse than the 150 MB/s row.
+- **The read is still not cold.** The throttle paces a page-cached
+  file, so this measures a slow *store*, not a cold *read*. Dropping
+  the cache on macOS needs `sudo purge`, which was not run. Latency
+  spikes on first touch remain untested.
+- **The engine is still scalar.** A faster engine demands more
+  bandwidth and moves the knee up; more clients move it down. The
+  401 MB/s figure belongs to this engine at five clients, not to the
+  architecture.
+- **One model, one machine, 8 tokens.** The model above is simple
+  enough that it should generalise, and it has not been checked
+  against anything else.

@@ -1,0 +1,16 @@
+[package]
+name = "spm-stream-throttle"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-stream = { path = "../spm-stream" }
+spm-stream-metrics = { path = "../spm-stream-metrics" }
+
+[dev-dependencies]
+spm-stream-metrics = { path = "../spm-stream-metrics" }
+spm-stream-mem = { path = "../spm-stream-mem" }

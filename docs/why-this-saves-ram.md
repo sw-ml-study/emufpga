@@ -144,9 +144,12 @@ Stated plainly, so the case above is not read as more than it is:
   refuses the profile rather than supporting it. It is the change that
   would move both traffic and arithmetic at once
   (docs/research-ternary-fpga.md).
-- **No disk has been measured.** Every store in every result has been
-  page-cached RAM. The demanded-bandwidth figures are requirements a
-  store would have to meet, not observations of one meeting them.
+- **A slow store has now been measured; a cold read has not.** Saga 2
+  step 12 ran the serving demo against a bandwidth-limited store: a
+  500 MB/s SATA-class device feeds five clients for free, and a
+  150 MB/s spinning disk works at 2.7x wall clock with every token
+  still correct. What remains untested is a genuinely cold read --
+  first-touch latency, not sustained bandwidth.
 - **No energy has been measured**, though correct-answers per kWh is a
   stated goal.
 - **The largest model run here is 135M parameters**, where nobody
@@ -156,9 +159,14 @@ Stated plainly, so the case above is not read as more than it is:
 
 Each is cheap and each can falsify the next:
 
-1. **Measure a cold store.** Put a `.spm` on a real disk, drop the
-   page cache, and re-run the serving demo. This is the cheapest
-   experiment in the list and it tests the central assumption.
+1. **DONE, and it held.** Saga 2 step 12 measured a
+   bandwidth-limited store. The finding that matters:
+   **concurrency lowers the class of device you need.** One client
+   demands 1328 MB/s; five demand 401. The same 500 MB/s store is
+   store-bound at one client and free at five. Serving more agents
+   makes cheaper storage adequate -- the opposite of how conventional
+   serving scales, and the same argument as the expert sweep above,
+   arriving as a hardware requirement.
 2. **Run ternary end to end** on a model trained ternary, against its
    reference. Predicted 5.31 MB per generated token at five clients,
    against 42.5 MB at bf16.

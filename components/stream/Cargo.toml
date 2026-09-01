@@ -10,6 +10,7 @@ members = [
     "crates/spm-stream-file",
     "crates/spm-stream-groups",
     "crates/spm-stream-metrics",
+    "crates/spm-stream-throttle",
 ]
 resolver = "2"
 

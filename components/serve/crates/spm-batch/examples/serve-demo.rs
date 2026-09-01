@@ -19,6 +19,7 @@ use spm_smol::{Resident, SmolConfig};
 use spm_stream_file::FileWeightStream;
 use spm_stream_groups::GroupStream;
 use spm_stream_metrics::widen;
+use spm_stream_throttle::Throttle;
 
 mod support;
 use support::{Fixture, load};
@@ -30,7 +31,12 @@ fn serve(
     fixture: &Fixture,
     prompts: &[Vec<u32>],
     steps: usize,
-) -> (Vec<Vec<u32>>, usize, std::time::Duration) {
+    rate: f64,
+) -> (
+    Vec<Vec<u32>>,
+    usize,
+    (std::time::Duration, std::time::Duration),
+) {
     let resident = Resident {
         embed: &fixture.embed,
         norms: &fixture.norms,
@@ -42,7 +48,13 @@ fn serve(
         .map(|p| Client::new(config, context, p[0]))
         .collect();
     let mut scratch = Scratch::new(config, clients.len());
-    let mut groups = GroupStream::open(FileWeightStream::open(spm).expect("open")).expect("spm");
+    // A throttled store: `rate` bytes per second, 0 meaning unlimited.
+    // Every earlier measurement read a page-cached file, so the
+    // demanded-bandwidth figures were requirements rather than
+    // observations. This makes the store real.
+    let throttle = Throttle::new(FileWeightStream::open(spm).expect("open"), rate);
+    let stalls = throttle.meter();
+    let mut groups = GroupStream::open(throttle).expect("spm");
 
     let longest = prompts.iter().map(Vec::len).max().unwrap_or(1);
     let total = longest + steps - 1;
@@ -78,7 +90,9 @@ fn serve(
         }
     }
     let produced = clients.iter().map(|c| c.produced.clone()).collect();
-    (produced, bytes, elapsed)
+    let stalled =
+        std::time::Duration::from_nanos(stalls.load(std::sync::atomic::Ordering::Relaxed));
+    (produced, bytes, (elapsed, stalled))
 }
 
 fn main() {
@@ -89,13 +103,17 @@ fn main() {
     let spm = args.next().expect("spm");
     let extracted = args.next().expect("extracted");
     let steps: usize = args.next().map_or(8, |v| v.parse().expect("steps"));
+    // Store speed in MB/s. 0 means unlimited -- the page-cached
+    // baseline every earlier result used.
+    let store: f64 = args.next().map_or(0.0, |v| v.parse().expect("store MB/s"));
 
     let config = SmolConfig::default();
     let fixture = load(&extracted, &config);
     let reference = support::greedy(&dir);
 
     let prompts: Vec<Vec<u32>> = reference.prompts.clone();
-    let (produced, bytes, elapsed) = serve(&spm, &config, &fixture, &prompts, steps);
+    let (produced, bytes, (elapsed, stalled)) =
+        serve(&spm, &config, &fixture, &prompts, steps, store * 1.0e6);
 
     println!("=== correctness ===");
     for (index, got) in produced.iter().enumerate() {
@@ -132,4 +150,14 @@ fn main() {
         widen(u64::try_from(per_client).unwrap_or(u64::MAX)) / 1.0e6
     );
     println!("total decode time        {elapsed:.3?}");
+    if store > 0.0 {
+        println!("store speed              {store} MB/s");
+        println!("stalled on store         {stalled:.3?}");
+        println!(
+            "store share of wall      {:.1}%",
+            100.0 * stalled.as_secs_f64() / elapsed.as_secs_f64()
+        );
+    } else {
+        println!("store speed              unlimited (page cache)");
+    }
 }

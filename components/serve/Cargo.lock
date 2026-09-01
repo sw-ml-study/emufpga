@@ -20,6 +20,7 @@ dependencies = [
  "spm-stream-groups",
  "spm-stream-mem",
  "spm-stream-metrics",
+ "spm-stream-throttle",
 ]
 
 [[package]]
@@ -142,6 +143,14 @@ dependencies = [
 [[package]]
 name = "spm-stream-metrics"
 version = "0.1.0"
+
+[[package]]
+name = "spm-stream-throttle"
+version = "0.1.0"
+dependencies = [
+ "spm-stream",
+ "spm-stream-metrics",
+]
 
 [[package]]
 name = "spm-walk"

@@ -1,0 +1,11 @@
+number = 15
+slug = "cold-store"
+status = "in-progress"
+description = """
+Measure what happens when the parameter store is not RAM.
+
+Every result in do..."""
+role = "production"
+context_files = []
+created_at = "2026-08-31T17:27:45"
+commits = []

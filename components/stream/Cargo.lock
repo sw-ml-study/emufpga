@@ -71,6 +71,15 @@ name = "spm-stream-metrics"
 version = "0.1.0"
 
 [[package]]
+name = "spm-stream-throttle"
+version = "0.1.0"
+dependencies = [
+ "spm-stream",
+ "spm-stream-mem",
+ "spm-stream-metrics",
+]
+
+[[package]]
 name = "spm-walk"
 version = "0.1.0"
 dependencies = [

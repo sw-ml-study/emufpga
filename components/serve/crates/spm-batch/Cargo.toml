@@ -23,6 +23,7 @@ spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
 spm-codec-bf16 = { path = "../../../format/crates/spm-codec-bf16" }
 spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
 spm-stream-metrics = { path = "../../../stream/crates/spm-stream-metrics" }
+spm-stream-throttle = { path = "../../../stream/crates/spm-stream-throttle" }
 spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
 spm-file = { path = "../../../format/crates/spm-file" }
 spm-layout = { path = "../../../format/crates/spm-layout" }
