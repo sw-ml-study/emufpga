@@ -69,10 +69,11 @@ both.
 
 What sw-mlpl would need to make them better is recorded in
 [UPSTREAM.md](UPSTREAM.md) -- written from friction actually hit, not
-from a wish list. The short version: `disp` prints nothing in script
-mode, a length-1 array does not broadcast where a scalar does, there
-is no indexing primitive, and the structural diagrams this material
-wants need a `dataflow` renderer that does not exist yet.
+from a wish list, and including one ask that turned out to be my own
+misdiagnosis rather than a defect. The short version: a length-1 array
+does not broadcast where a scalar does, there is no indexing
+primitive, and the structural diagrams this material wants need a
+`dataflow` renderer that does not exist yet.
 
 Not yet written, from research2.txt's plan: residency (`Rp`) and
 pipeline occupancy (`eta`), both of which want that renderer.

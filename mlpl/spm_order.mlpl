@@ -27,7 +27,7 @@ print(alphabetical)
 
 def u:steps(order, i, acc) {
   "Collect the jump taken at each hop of `order` as the reader walks it front to back. A negative entry is a backward seek, which the parameter stream cannot express: rewind returns to zero and there is no offset to give it."
-  if gt(i, 2) {
+  if i > 2 {
     acc
   } else {
     here = reshape(gather_rows(reshape(order, [4,1]), [i]), []);

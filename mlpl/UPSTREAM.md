@@ -7,26 +7,35 @@ workaround it would remove.
 The demos live here and stay here. These are requests against
 `../sw-mlpl`, ordered by how much they would improve this material.
 
-## 1. `disp` prints nothing in script mode -- a bug
+## 1. WITHDRAWN: `disp` is not broken, my diagnosis was
+
+**This entry was wrong and is kept rather than deleted**, because the
+mistake is more instructive than the request was.
+
+I observed that `disp("A"); print("B")` emits only `B`, and concluded
+`disp` was silently failing. It is not. **`disp` returns a string** --
+`type_of(disp([1,2,3]))` is `string` -- and it renders the ASCII box
+the REPL and the final-value echo then display. The working idiom is:
 
 ```
-disp("A"); print("B")     ->  B
+print(disp([1,2,3]))
 ```
 
-Only `print` produces output. `disp` appears to work in
-`examples/hello-world.mlpl` **only because it is the last statement**,
-where the script runner echoes the final value anyway. Its doc comment
-says "disp prints any value; given a string it prints the text as-is",
-and in a script that is not true of any statement but the last.
+which prints the box mid-program, exactly as wanted. The glossary said
+so all along. Only `examples/hello-world.mlpl`'s comment misleads, by
+describing `disp` as something that prints.
 
-Either make `disp` write to stdout in script mode, or change
-hello-world and the docs to use `print`. As it stands the first
-example a newcomer reads teaches a function that does not do what it
-says.
+So the correct ask is a **one-line documentation fix**, not a
+behaviour change -- and a behaviour change would have been actively
+harmful: `disp` appears in roughly 230 downstream files with recorded
+output baselines, most ending in a `disp`, so making it write to
+stdout would double their output and break every one of them.
 
-Cost here: every line of both demos uses `print`, so the friction was
-ten minutes of confusion rather than a workaround. It is listed first
-because it misleads readers, not because it cost the most.
+**The lesson, which is postmortem 2's and which I failed here:**
+resolve a surprise by asking the source of truth what a thing *does*,
+rather than reasoning from the symptom. One call to `type_of` would
+have answered it, and I had written that lesson down two steps
+earlier.
 
 ## 2. No length-1 broadcast
 
@@ -90,6 +99,31 @@ None of those are a line chart. Boxes, directed edges, groups, edge
 labels, optional widths and highlight would cover all of them, and
 would serve transformer diagrams, autograd graphs and compiler passes
 just as well -- general enough to belong in sw-mlpl rather than here.
+
+## Status
+
+Against the sw-mlpl build in `../sw-mlpl`:
+
+| ask | state |
+| --- | --- |
+| 1. `disp` | **withdrawn** -- doc fix only, and it is being made |
+| 2. length-1 broadcast | applied upstream, not yet in the local build |
+| 3. `at(v, i)` | planned |
+| 4. `dataflow` renderer | planned |
+
+Two things shipped that were not asked for here and are already in
+use: **infix comparisons** (`i > 3` rather than `gt(i, 3)`, now in
+both demos) and **qualified refs** (`:ns:name`).
+
+When items 2 and 3 land, the activation lookup at the heart of
+`spm_stream.mlpl` collapses from
+
+```
+a = reshape(gather_rows(x, [i]), [])
+```
+
+to `a = at(x, i)`, and the sweep reads the way the architecture works:
+one activation meets one row of weights.
 
 ## What did NOT get in the way
 

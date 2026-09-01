@@ -44,7 +44,7 @@ print(S)
 
 def u:sweep(S, x, i, acc) {
   "Fold row `i` of the stream into `acc`, scaled by activation `i`, then move to row i+1. The only motion is forward: no row is revisited and no address is computed, which is the whole restriction the architecture imposes."
-  if gt(i, 3) {
+  if i > 3 {
     acc
   } else {
     row = reshape(gather_rows(S, [i]), [3]);
@@ -78,7 +78,7 @@ print(neg)
 
 def u:sweep_ternary(pos, neg, x, i, acc) {
   "The same sweep with no multiply at all: each arriving weight either adds the activation, subtracts it, or is skipped. `pos` and `neg` are the decoded add and subtract masks, so the arithmetic is a select between + and - rather than a product."
-  if gt(i, 3) {
+  if i > 3 {
     acc
   } else {
     p = reshape(gather_rows(pos, [i]), [3]);
@@ -108,7 +108,7 @@ print(X)
 
 def u:sweep_batch(S, Xt, i, acc) {
   "Fold row `i` of the stream into every batch element at once. `Xt` is the batch transposed to [input, batch], so row `i` of the stream meets row `i` of the activations and the outer product applies one fetched weight vector to the whole batch. The stream is read exactly once no matter how large the batch is."
-  if gt(i, 3) {
+  if i > 3 {
     acc
   } else {
     row = reshape(gather_rows(S, [i]), [1, 3]);
