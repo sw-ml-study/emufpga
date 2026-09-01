@@ -153,27 +153,49 @@ heatmap could draw.
 
 ## What would be useful next
 
-One thing, found while packaging these for the playground.
+Two, both found by a diagram coming out scrambled in the playground.
+The first is a defect; the second is a missing knob.
 
-**`--svg-out DIR` writes only the last visual.** A script with four
-`svg`/`dataflow` calls produces one file. That follows from the
-script runner showing a single final value, and it is consistent --
-but the flag's name promises the script's output, and a lesson that
-renders four diagrams silently drops three of them. Either writing
-every visual under that flag, or documenting that it captures the
-final one, would remove a surprise. It cost the emufpga lessons a
-round of confusion: they were written with `print(str_len(dataflow(
-...)))`, which renders nothing at all, precisely because the bare
-call appeared to do nothing under `-f`.
+### 5. Edge labels are not measured against the column gap
 
-Everything else in this file has been met, including the two raised
-after the renderer landed.
+The renderer sizes a **node box** to its label -- `CHAR_W` (8) per
+character plus `BOX_PAD` -- and that works. It then centres an **edge
+label** in `COL_GAP` (96) *without applying the same metric*. Any edge
+label longer than 12 characters therefore lands on the boxes either
+side, silently.
 
-If a future lesson needs something, it will be recorded here the same
-way: from friction actually hit while writing the lesson, with the
-workaround it would remove. That is the only kind of request in this
-file that has ever been worth acting on -- and one of them still
-turned out to be a misdiagnosis, which is why item 1 is kept.
+Two labels in one diagram here were 160px and 152px in a 96px gap. The
+result was unreadable, and nothing warned.
+
+The measurement already exists; it is just not used in this one place.
+Either widen a column to fit its widest edge label, or truncate with
+an ellipsis, or emit a warning. Any of the three beats overlap.
+
+`mlpl/check-diagrams` in this repo is the stopgap: it parses the SVG
+and flags labels wider than `COL_GAP`. That a caller needs to
+post-process the renderer's output to find out whether it collided is
+the argument for fixing it upstream.
+
+### 6. No control over canvas size or spacing
+
+`NODE_W`, `CHAR_W`, `BOX_PAD`, `NODE_H`, `COL_GAP`, `ROW_GAP` and
+`PAD` are all fixed constants, and the canvas derives from content.
+There is no way to ask for a wider diagram or more space between
+boxes, which is the first thing anyone reaches for when a picture is
+crowded.
+
+An optional `spacing` on the nodes or edges record -- a multiplier on
+the gaps, or explicit `col_gap` / `row_gap` -- would cover it without
+changing any existing call.
+
+### Also worth knowing: groups must not span layers
+
+Not a defect, but it should be documented. A group band is drawn
+across every layer its members occupy, so grouping nodes that sit at
+different depths makes two bands overlap. In the scrambled diagram,
+three nodes were grouped while one of them sat a layer deeper, and the
+bands crossed. The fix was to drop the grouping. A line in the design
+doc would have saved the diagnosis.
 
 ## What did NOT get in the way
 

@@ -198,32 +198,32 @@ svg([weights_total, weights_resident], "bar")
 # Percent of wall clock lost waiting, against store speed.
 svg(stall_share, "line")
 
-# Conventional: everything resident before anything runs.
+# Conventional: everything must be resident before anything runs.
 dataflow(
-  { labels: ["disk", "VRAM: weights", "VRAM: KV cache", "VRAM: activations", "compute"],
-    groups: [0, 1, 1, 1, 2] },
-  { from: [0, 1, 2, 3], to: [1, 4, 4, 4],
-    labels: ["load ALL, once", "random access", "read", "read"],
-    widths: [269564308, 269564308, 700000, 11520],
+  { labels: ["disk", "VRAM 269 MB", "compute"] },
+  { from: [0, 1], to: [1, 2],
+    labels: ["load all", "random"],
+    widths: [269564308, 269564308],
     width_scale: "log" })
 
 # Streamed: the weights never land. Real byte counts on a log scale --
 # 65,000:1 cannot be drawn linearly without lying about one end.
+# Labels are kept under 12 characters: the renderer centres an edge
+# label in a 96px column gap at 8px per character, so anything longer
+# spills onto the boxes either side.
 dataflow(
-  { labels: ["sequential store: 269 MB", "one group buffer: 4 KiB",
-             "RAM: KV cache", "RAM: activations", "compute"],
-    groups: [0, 1, 1, 1, 2],
-    highlight: [0, 1, 0, 0, 0] },
-  { from: [0, 1, 2, 3], to: [1, 4, 4, 4],
-    labels: ["stream, forward only", "one group at a time", "read", "read"],
-    widths: [269564308, 4096, 700000, 11520],
+  { labels: ["store 269 MB", "RAM 0.7 MB", "buffer 4 KiB", "compute"],
+    highlight: [0, 0, 1, 0] },
+  { from: [0, 2, 1], to: [2, 3, 3],
+    labels: ["stream", "apply", "resident"],
+    widths: [269564308, 4096, 700000],
     width_scale: "log",
-    highlight: [1, 1, 0, 0] })
+    highlight: [1, 1, 0] })
 
 # The rotating store. The rewind is a back-edge, and it draws dashed.
 dataflow(
-  { labels: ["region start", "sweep the region", "region end", "output head"],
+  { labels: ["region start", "sweep", "region end", "output"],
     highlight: [0, 1, 0, 0] },
   { from: [0, 1, 2, 2], to: [1, 2, 0, 3],
-    labels: ["read", "consume", "rewind (between calls only)", "read on"],
+    labels: ["read", "consume", "rewind", "read on"],
     widths: [4, 4, 4, 1] })

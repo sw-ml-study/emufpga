@@ -72,6 +72,20 @@ The fix was a layout file rather than a smarter reader; see
 `layouts/trm-maze-30x30.order` and
 `components/cli/crates/spm-order/tests/no_seek.rs`.
 
+## Checking a diagram before shipping it
+
+```sh
+../sw-mlpl/target/release/mlpl-repl --svg-out /tmp/d -f mlpl/spm_rotation.mlpl
+python3 mlpl/check-diagrams '/tmp/d/*.svg'
+```
+
+The renderer centres an edge label in a 96px column gap at 8px per
+character and does not check that it fits, so a label over 12
+characters lands on the boxes either side with no warning. This flags
+that. Keep edge labels short, and do not put nodes from different
+layers in one group -- the band is drawn across every layer its
+members occupy and will overlap another group's.
+
 ## Where these live
 
 Here, and they stay here. `docs/research2.txt` floated moving them to

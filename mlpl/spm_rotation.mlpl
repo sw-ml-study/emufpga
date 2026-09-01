@@ -12,13 +12,13 @@
 # recurrence, and the renderer dashes it -- which is exactly what a
 # rewind is and how it should read.
 rotation = {
-  labels: ["region start", "sweep the region", "region end", "output head"],
+  labels: ["region start", "sweep", "region end", "output"],
   highlight: [0, 1, 0, 0]
 }
 rotation_edges = {
   from: [0, 1, 2, 2],
   to:   [1, 2, 0, 3],
-  labels: ["read", "consume", "rewind (between calls only)", "read on"],
+  labels: ["read", "consume", "rewind", "read on"],
   widths: [4, 4, 4, 1]
 }
 print("the rotating store, as a graph")
@@ -89,13 +89,13 @@ print(u:reread(traffic_mb, region_mb, 0, []))
 # See docs/results.md, "SmolLM2-135M, rung 4".
 
 cached = {
-  labels: ["storage", "cache: 27 MB region", "sweep x15", "output"],
+  labels: ["storage", "cache 27 MB", "sweep x15", "output"],
   highlight: [0, 1, 0, 0]
 }
 cached_edges = {
   from: [0, 1, 2, 2],
   to:   [1, 2, 1, 3],
-  labels: ["read once: 27 MB", "hit", "re-read from cache", "done"],
+  labels: ["read once", "hit", "re-read", "done"],
   widths: [27, 409, 409, 1],
   width_scale: "log"
 }

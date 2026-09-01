@@ -33,38 +33,36 @@ svg([weights_total, weights_resident], "bar")
 # The contrast is not "less memory". It is that the weights move to a
 # different KIND of memory, and only the small things stay fast.
 
-conventional = {
-  labels: ["disk", "VRAM: weights 269 MB", "VRAM: KV cache",
-           "VRAM: activations", "compute"],
-  groups: [0, 1, 1, 1, 2]
-}
+# Edge labels stay under 12 characters and no group spans two layers.
+# The renderer centres an edge label in a 96px column gap at 8px per
+# character, and draws a group band across every layer its members
+# occupy -- so a long label lands on the boxes, and a group whose
+# members sit at different depths overlaps another group's band.
+
+conventional = { labels: ["disk", "VRAM 269 MB", "compute"] }
 conventional_edges = {
-  from: [0, 1, 2, 3],
-  to:   [1, 4, 4, 4],
-  labels: ["load ALL, once", "random access", "read", "read"],
-  widths: [269564308, 269564308, 700000, 11520],
+  from: [0, 1], to: [1, 2],
+  labels: ["load all", "random"],
+  widths: [269564308, 269564308],
   width_scale: "log"
 }
 print("conventional: everything resident before anything runs")
 dataflow(conventional, conventional_edges)
 
 streamed = {
-  labels: ["sequential store: 269 MB", "one group buffer: 4 KiB",
-           "RAM: KV cache", "RAM: activations", "compute"],
-  groups: [0, 1, 1, 1, 2],
-  highlight: [0, 1, 0, 0, 0]
+  labels: ["store 269 MB", "RAM 0.7 MB", "buffer 4 KiB", "compute"],
+  highlight: [0, 0, 1, 0]
 }
 streamed_edges = {
-  from: [0, 1, 2, 3],
-  to:   [1, 4, 4, 4],
-  labels: ["stream, forward only", "one group at a time", "read", "read"],
+  from: [0, 2, 1], to: [2, 3, 3],
+  labels: ["stream", "apply", "resident"],
   # Real byte counts, not hand-picked stroke widths. A 65,000:1 ratio
-  # cannot be drawn linearly -- the thin edge vanishes or the thick one
-  # becomes a blob -- so the log scale is what makes the honest numbers
-  # renderable at all.
-  widths: [269564308, 4096, 700000, 11520],
+  # cannot be drawn linearly -- the thin edge vanishes or the thick
+  # one becomes a blob -- so the log scale is what makes the honest
+  # numbers renderable at all.
+  widths: [269564308, 4096, 700000],
   width_scale: "log",
-  highlight: [1, 1, 0, 0]
+  highlight: [1, 1, 0]
 }
 print("streamed: the weights never land")
 dataflow(streamed, streamed_edges)

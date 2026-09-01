@@ -1,0 +1,29 @@
+"""Flag dataflow diagrams whose text collides with a box.
+
+The renderer sizes node boxes to their label (CHAR_W=8, BOX_PAD=14) but
+draws edge labels centred in COL_GAP=96 without checking they fit. A
+label wider than the gap lands on the boxes either side.
+"""
+import re, sys, glob
+
+CHAR_W, COL_GAP = 8, 96
+
+def check(path):
+    svg = open(path).read()
+    rects = [(float(m[0]), float(m[1]), float(m[2]), float(m[3])) for m in
+             re.findall(r'<rect[^>]*x="([0-9.]+)" y="([0-9.]+)" width="([0-9.]+)" height="([0-9.]+)"', svg)]
+    texts = re.findall(r'<text x="([0-9.]+)" y="([0-9.]+)"[^>]*font-size="11"[^>]*>([^<]*)', svg)
+    bad = []
+    for x, y, label in texts:
+        w = len(label) * CHAR_W
+        if w > COL_GAP:
+            bad.append((label, w))
+    return bad, len(rects), re.search(r'viewBox="([^"]*)"', svg).group(1)
+
+for path in sorted(glob.glob(sys.argv[1])):
+    bad, n, vb = check(path)
+    print(f"{path.split('/')[-1]:24} viewBox {vb:16} rects {n}")
+    for label, w in bad:
+        print(f"    OVERFLOWS COL_GAP({COL_GAP}): {w:3}px  \"{label}\"")
+    if not bad:
+        print("    all edge labels fit the column gap")
