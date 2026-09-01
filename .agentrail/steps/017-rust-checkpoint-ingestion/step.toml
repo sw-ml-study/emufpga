@@ -1,9 +1,10 @@
 number = 17
 slug = "rust-checkpoint-ingestion"
-status = "in-progress"
+status = "completed"
 description = "Replace scripts/extract-checkpoint with a Rust-native checkpoint ingestion im..."
 role = "production"
 context_files = []
 created_at = "2026-09-01T14:52:22"
+completed_at = "2026-09-01T15:17:54"
 task_type = "rust-import"
-commits = []
+commits = ["c39e9a4a7aaa04535d199f845dcacfe6cca909c8"]

@@ -1,0 +1,1 @@
+Replaced production checkpoint extraction with hardened Rust-native PyTorch and safetensors ingestion; preserved Python only as an independent oracle; proved exact parity on TRM, HRM, and Smol artifacts; added executable MLPL layout spec; full gate passes at 242/0 with one expected freshness warning. Commit c39e9a4 is local pending push.
