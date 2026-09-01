@@ -40,7 +40,52 @@ huggingface-cli download zbloss/HRM-sudoku-extreme --local-dir hrm
 curl -sLO https://raw.githubusercontent.com/pathwaycom/bdh/main/bdh.py
 ```
 
-### Or copy them across, which is faster and removes doubt
+### Verify the download, whichever way it arrives
+
+**Re-downloading is the default and it is the right one** -- these are
+public checkpoints and the box has its own bandwidth. The only thing
+re-downloading cannot tell you is whether you got the *same bytes*
+that produced every number in `docs/results.md`.
+
+`yagizdevre/trm-maze-30x30` and `zbloss/HRM-sudoku-extreme` are
+individual users' repositories. They can be updated, re-quantized or
+withdrawn, and nothing about the model name pins a revision. So check:
+
+```sh
+cd ~/spm-weights && sha256sum -c spm-weights.sha256
+```
+
+with `spm-weights.sha256` containing:
+
+```
+80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1  smol/model.safetensors
+1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843  smol/config.json
+4635dbdaca8dee63b0f1ce47f40e820a50a8c4d3effc67fcd49947ee9be64c58  trm/model.pt
+ad1fc4457e6f74356188bcb92ccb6e84a5c66b24d06d23c20bb877f75cf66d99  hrm/model.safetensors
+54d3168d57406b08d2cf44722a0e737fd3420cdeacf4ee420326c54c62257003  hrm/config.json
+cfe24008f920965cc3c8236feff52c89ca794a31e52324acf9ddb4cd6fd50ac9  bdh/bdh.py
+```
+
+| file | sha256 |
+| --- | --- |
+| `smol/model.safetensors` | `80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1` |
+| `smol/config.json` | `1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843` |
+| `trm/model.pt` | `4635dbdaca8dee63b0f1ce47f40e820a50a8c4d3effc67fcd49947ee9be64c58` |
+| `hrm/model.safetensors` | `ad1fc4457e6f74356188bcb92ccb6e84a5c66b24d06d23c20bb877f75cf66d99` |
+| `hrm/config.json` | `54d3168d57406b08d2cf44722a0e737fd3420cdeacf4ee420326c54c62257003` |
+| `bdh/bdh.py` | `cfe24008f920965cc3c8236feff52c89ca794a31e52324acf9ddb4cd6fd50ac9` |
+
+A mismatch is not necessarily wrong -- upstream may simply have a
+better checkpoint -- but it means the results there are **not
+comparable** to the ones recorded here, and that should be said
+plainly in whatever is written next rather than discovered later.
+
+`bdh.py` is the one to watch: it is code rather than weights, tracks
+an active repository, and BDH's own weights are seeded random, so
+`reference.py` regenerates them reproducibly from that file. A changed
+`bdh.py` silently changes the model.
+
+### Or copy them across, which removes the doubt entirely
 
 The checkpoints are already downloaded on the Mac. Copying guarantees
 the target sees byte-identical inputs, so any difference in results is
