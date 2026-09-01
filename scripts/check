@@ -71,11 +71,9 @@ else
 fi
 
 echo "=== extractor guards ==="
-# scripts/extract-checkpoint is not in any cargo workspace, so no
-# component gate covers it -- and it is where defect 8 (every imported
-# matrix silently transposed) lived. The importer's byte round-trip
-# test passed throughout, because round-tripping bytes says nothing
-# about how they are read. Run its guards on every gate, always.
+# Defect 8 (every imported matrix silently transposed) lived at this
+# framework boundary. The Rust extractor has crate tests now, but this
+# end-to-end guard also exercises its stable scripts/ entry point.
 "$SCRIPT_DIR/test-extract"
 
 echo "=== repository size ==="

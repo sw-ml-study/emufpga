@@ -577,7 +577,7 @@ Linux/NVIDIA box rather than fighting on macOS.
 | task | note |
 | --- | --- |
 | Everything in `components/` | pure Rust, no GPU path at all |
-| `scripts/extract-checkpoint` | stdlib Python; torch not imported |
+| `scripts/extract-checkpoint` | Rust; Python predecessor retained as a parity oracle |
 | TRM reference comparison | torch CPU; verified at cosine 1.0 |
 | HRM reference comparison | needs a `flash_attn` stand-in -- see below |
 

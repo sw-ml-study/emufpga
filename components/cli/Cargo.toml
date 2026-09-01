@@ -12,6 +12,9 @@
 [workspace]
 members = [
     "crates/spm-import",
+    "crates/spm-checkpoint-source",
+    "crates/spm-checkpoint-extract",
+    "crates/spm-extract",
     "crates/spm-order",
     "crates/spm-quantize",
     "crates/spm-bench",

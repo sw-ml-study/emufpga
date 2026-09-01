@@ -1,0 +1,12 @@
+[package]
+name = "spm-checkpoint-extract"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+half = "2"
+spm-checkpoint-source = { path = "../spm-checkpoint-source" }

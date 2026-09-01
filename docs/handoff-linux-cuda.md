@@ -130,6 +130,10 @@ works there. If the regenerated `.spm` differs byte-for-byte from the
 one here, that is a finding worth chasing, and copying would have
 hidden it.
 
+`scripts/extract-checkpoint` is Rust-native. The Python predecessor is
+retained at `tools/checkpoint-oracle/extract.py` as an independent
+conformance oracle, not as part of the normal pipeline.
+
 Each `tools/*/README.md` has the exact pipeline for that model.
 Python side: `uv venv && source .venv/bin/activate && uv pip install
 torch transformers` (never plain `pip`).

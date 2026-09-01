@@ -1,0 +1,12 @@
+[package]
+name = "spm-checkpoint-source"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+repugnant-pickle = { version = "0.0.1", features = ["torch"] }
+serde_json = "1"

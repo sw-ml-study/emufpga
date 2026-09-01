@@ -1,0 +1,30 @@
+# Framework row-major bytes to SPM physical stream order.
+#
+# This is the executable specification for scripts/extract-checkpoint.
+# A matrix W[rows, cols] arrives row-major from PyTorch. The parameter
+# machine consumes one complete input column at a time, so physical
+# stream index k must hold W[k % rows][k / rows].
+
+matrix = [0, 1, 10, 11, 20, 21]
+expected = [0, 10, 20, 1, 11, 21]
+
+def u:column_major(src, rows, cols, column, row, acc) {
+  if gt(cols, column) {
+    if gt(rows, row) {
+      value = take(src, 0, row * cols + column);
+      u:column_major(src, rows, cols, column, row + 1, concat(acc, [value]))
+    } else {
+      u:column_major(src, rows, cols, column + 1, 0, acc)
+    }
+  } else {
+    acc
+  }
+}
+
+stream = u:column_major(matrix, 3, 2, 0, 0, [])
+print("row-major framework matrix")
+print(matrix)
+print("physical SPM stream")
+print(stream)
+print("difference from known answer")
+print(stream - expected)

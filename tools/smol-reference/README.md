@@ -30,6 +30,10 @@ Unlike BDH, SmolLM's tensors are ordinary torch `Linear` weights
 stored `(out, in)`, so `scripts/extract-checkpoint`'s transpose is the
 correct one and the normal import path applies.
 
+The normal extractor is Rust-native. The retired Python implementation
+is kept at `tools/checkpoint-oracle/extract.py` only to generate an
+independent parity result when the checkpoint boundary changes.
+
 ## Two things that look like bugs and are not
 
 **`transformers` norms only its last hidden state.** `hidden_states[30]`

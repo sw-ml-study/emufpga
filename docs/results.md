@@ -196,6 +196,10 @@ fits any part. Both questions need measurements nobody has taken.
 
 ## TRM import (saga 2 step 2)
 
+Current pipeline note: `scripts/extract-checkpoint` is now Rust-native.
+It reproduced every blob below byte-for-byte against the retained
+Python oracle on the real TRM, HRM, and SmolLM checkpoints.
+
 `yagizdevre/trm-maze-30x30` imported end to end. Verified manually
 against the real checkpoint; the automated tests are hermetic and use
 synthetic checkpoints, because weights never enter this repository.
