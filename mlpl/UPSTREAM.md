@@ -113,6 +113,20 @@ Against the sw-mlpl build in `../sw-mlpl`:
 
 Everything asked for has landed, and nothing here is blocked.
 
+The two follow-ups below, raised after the renderer arrived, have also
+shipped:
+
+| follow-up | state |
+| --- | --- |
+| honest width channel for extreme ratios | **shipped** as `width_scale: "log"` |
+| back-edge that reads as a rewind | **shipped**, dashed and routed below |
+
+`spm_residency.mlpl` now passes real byte counts -- 269,564,308 against
+4,096 -- rather than hand-picked stroke widths, which is only
+renderable because of the log scale. `spm_rotation.mlpl` exists
+because of the back-edge: a rewind is an edge pointing at an earlier
+stage, and it now draws as one.
+
 Two things shipped that were not asked for here and are already in
 use: **infix comparisons** (`i > 3` rather than `gt(i, 3)`, now in
 both demos) and **qualified refs** (`:ns:name`).
@@ -139,17 +153,14 @@ heatmap could draw.
 
 ## What would be useful next
 
-Nothing is blocking. In rough order of value to this material:
+Nothing. Every request in this file has been met, and the two that
+were raised after the renderer landed have been met too.
 
-- **Edge labels that carry a unit.** `widths` is a good channel, but
-  the residency diagram wants "269 MB" and "4 KiB" on the same picture
-  at honest relative widths, and 65,000:1 does not render. A log-width
-  option, or a note that the caller should pre-scale, would settle
-  what is currently a judgement call per diagram.
-- **A back-edge that reads as a rewind.** The design doc says a cycle
-  is drawn dashed without changing layering, which is right. The
-  rotating parameter store is exactly a back-edge, and a lesson on
-  recursion-as-rotation would lean on it. Not tried yet.
+If a future lesson needs something, it will be recorded here the same
+way: from friction actually hit while writing the lesson, with the
+workaround it would remove. That is the only kind of request in this
+file that has ever been worth acting on -- and one of them still
+turned out to be a misdiagnosis, which is why item 1 is kept.
 
 ## What did NOT get in the way
 

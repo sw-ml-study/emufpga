@@ -1,0 +1,103 @@
+# A rotating parameter store is a stream with one back-edge.
+#
+# TRM, HRM and BDH all apply ONE set of weights many times per forward
+# pass. In the stream that is a rewind: the reader returns to the
+# start of the region and sweeps it again. Everything else about the
+# architecture is unchanged -- still forward-only, still no seek, and
+# a rewind is legal only BETWEEN operations.
+#
+#   mlpl-repl -f mlpl/spm_rotation.mlpl
+
+# The back-edge, drawn. An edge that points to an earlier stage is a
+# recurrence, and the renderer dashes it -- which is exactly what a
+# rewind is and how it should read.
+rotation = {
+  labels: ["region start", "sweep the region", "region end", "output head"],
+  highlight: [0, 1, 0, 0]
+}
+rotation_edges = {
+  from: [0, 1, 2, 2],
+  to:   [1, 2, 0, 3],
+  labels: ["read", "consume", "rewind (between calls only)", "read on"],
+  widths: [4, 4, 4, 1]
+}
+print("the rotating store, as a graph")
+print(str_len(dataflow(rotation, rotation_edges)))
+
+# ---------------------------------------------------------------- 1
+# How much rotation each model actually does. Measured, from
+# docs/results.md.
+
+models  = ["TRM", "HRM", "BDH", "SmolLM"]
+sweeps  = [15, 4, 6, 1]
+rewinds = [14, 3, 5, 0]
+print("sweeps of the rotating region per forward")
+print(sweeps)
+print("rewinds per forward -- always one fewer, and zero when nothing rotates")
+print(rewinds)
+print("sweeps minus rewinds (must be all 1)")
+print(sweeps - rewinds)
+
+# SmolLM has 30 distinct layers and rotates nothing: its 0 is not a
+# small number, it is a different architecture.
+
+# ---------------------------------------------------------------- 2
+# What rotation costs, and what it buys.
+#
+# The tempting reading is that re-reading is free reuse. It is not.
+# Saga 2 step 8 corrected this: arithmetic intensity is batch/4 MACs
+# per weight-byte for ANY f32 model read once, recursion or not. A
+# rewind moves bytes; it does not buy work per byte.
+
+region_mb  = [27.3, 109.1, 100.7, 212.3]
+traffic_mb = [409, 436, 604, 212]
+print("rotating region, MB -- the WORKING SET")
+print(region_mb)
+print("bytes moved per forward, MB -- the TRAFFIC")
+print(traffic_mb)
+svg(region_mb, "bar")
+svg(traffic_mb, "bar")
+
+# TRM moves 409 MB per forward to use a 27 MB region. SmolLM moves
+# 212 MB to use a 212 MB one. Similar traffic, very different working
+# sets -- and the working set is the thing recursion actually buys.
+
+def u:reread(traffic, region, i, acc) {
+  "How many times each model re-reads its own region: traffic divided by working set. A ratio of 1 means nothing rotates."
+  if i > 3 {
+    acc
+  } else {
+    u:reread(traffic, region, i + 1,
+             concat(acc, [at(traffic, i) / at(region, i)]))
+  }
+}
+
+print("re-reads of the region per forward")
+print(u:reread(traffic_mb, region_mb, 0, []))
+
+# ---------------------------------------------------------------- 3
+# The uncomfortable consequence.
+#
+# TRM's 27 MB region fits in any machine's RAM. A real engine would
+# read it from storage ONCE and re-read it from cache fourteen more
+# times, paying 27 MB rather than 409. This engine does not: a rewind
+# goes back to the file.
+#
+# So for a model whose working set fits, streaming is a DEMONSTRATION
+# rather than a win -- caching beats it. The case for a serial
+# parameter store is a model too big to hold, read once, in order.
+# See docs/results.md, "SmolLM2-135M, rung 4".
+
+cached = {
+  labels: ["storage", "cache: 27 MB region", "sweep x15", "output"],
+  highlight: [0, 1, 0, 0]
+}
+cached_edges = {
+  from: [0, 1, 2, 2],
+  to:   [1, 2, 1, 3],
+  labels: ["read once: 27 MB", "hit", "re-read from cache", "done"],
+  widths: [27, 409, 409, 1],
+  width_scale: "log"
+}
+print("what a cache would do instead, when the region fits")
+print(str_len(dataflow(cached, cached_edges)))

@@ -29,6 +29,7 @@ to show they are the same.
 | `spm_order.mlpl` | consumption order is not a filing preference -- alphabetical layout forces backward seeks |
 | `spm_residency.mlpl` | what actually has to be in RAM: `Rp`, and the memory hierarchy both ways |
 | `spm_pipeline.mlpl` | when the store is the bottleneck, from the measured store sweep |
+| `spm_rotation.mlpl` | a rotating parameter store is a stream with one back-edge -- and re-reading is traffic, not reuse |
 
 The first two end by printing a difference that must be all zero --
 **same arithmetic, different memory contract.** The last two plot
@@ -80,8 +81,8 @@ does not broadcast where a scalar does, there is no indexing
 primitive, and the structural diagrams this material wants need a
 `dataflow` renderer that does not exist yet.
 
-All four asks in UPSTREAM.md have now landed upstream -- `at(v, i)`,
+All six asks in UPSTREAM.md have now landed upstream -- `at(v, i)`,
 length-1 broadcast, infix comparisons, and the `dataflow` renderer --
-so the two lessons that needed them are written and the first two are
-simpler for it. The sweep now reads `row = at(S, i); a = at(x, i)`,
+plus a log-width channel and dashed back-edges, so every lesson the
+plan called for is written and the earlier ones are simpler for it. The sweep now reads `row = at(S, i); a = at(x, i)`,
 which is one activation meeting one row of weights.
