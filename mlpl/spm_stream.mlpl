@@ -47,8 +47,8 @@ def u:sweep(S, x, i, acc) {
   if i > 3 {
     acc
   } else {
-    row = reshape(gather_rows(S, [i]), [3]);
-    a = reshape(gather_rows(x, [i]), []);
+    row = at(S, i);
+    a = at(x, i);
     u:sweep(S, x, i + 1, acc + row * a)
   }
 }
@@ -81,9 +81,9 @@ def u:sweep_ternary(pos, neg, x, i, acc) {
   if i > 3 {
     acc
   } else {
-    p = reshape(gather_rows(pos, [i]), [3]);
-    n = reshape(gather_rows(neg, [i]), [3]);
-    a = reshape(gather_rows(x, [i]), []);
+    p = at(pos, i);
+    n = at(neg, i);
+    a = at(x, i);
     u:sweep_ternary(pos, neg, x, i + 1, acc + p * a - n * a)
   }
 }
@@ -111,8 +111,8 @@ def u:sweep_batch(S, Xt, i, acc) {
   if i > 3 {
     acc
   } else {
-    row = reshape(gather_rows(S, [i]), [1, 3]);
-    col = reshape(gather_rows(Xt, [i]), [3, 1]);
+    row = reshape(at(S, i), [1, 3]);
+    col = reshape(at(Xt, i), [3, 1]);
     u:sweep_batch(S, Xt, i + 1, acc + matmul(col, row))
   }
 }

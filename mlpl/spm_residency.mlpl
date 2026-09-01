@@ -1,0 +1,86 @@
+# What actually has to be in RAM.
+#
+# The whole point of the Serial Parameter Machine, as one ratio.
+# Numbers are measured, from docs/results.md saga 2 steps 9 and 11:
+# SmolLM2-135M at bf16, five clients, on a real checkpoint.
+#
+#   mlpl-repl -f mlpl/spm_residency.mlpl
+
+# Parameter residency: Rp = resident parameter bytes / total.
+weights_total = 269564308      # the .spm on disk, bf16
+weights_resident = 4096        # one group buffer -- the ONLY weights in RAM
+
+print("weight bytes on disk")
+print(weights_total)
+print("weight bytes resident")
+print(weights_resident)
+
+# A conventional engine must hold every weight before it can use any,
+# because it will ask for them in an input-dependent order. Rp = 1.
+print("Rp conventional (all weights resident)")
+print(1)
+print("Rp streamed")
+print(weights_resident / weights_total)
+print("times fewer resident weight bytes")
+print(weights_total / weights_resident)
+
+# The bar makes the ratio visible in a way the number does not.
+svg([weights_total, weights_resident], "bar")
+
+# ---------------------------------------------------------------- 2
+# Where each thing lives, in both designs.
+#
+# The contrast is not "less memory". It is that the weights move to a
+# different KIND of memory, and only the small things stay fast.
+
+conventional = {
+  labels: ["disk", "VRAM: weights 269 MB", "VRAM: KV cache",
+           "VRAM: activations", "compute"],
+  groups: [0, 1, 1, 1, 2]
+}
+conventional_edges = {
+  from: [0, 1, 2, 3],
+  to:   [1, 4, 4, 4],
+  labels: ["load ALL, once", "random access", "read", "read"],
+  widths: [8, 8, 2, 1]
+}
+print("conventional: everything resident before anything runs")
+print(str_len(dataflow(conventional, conventional_edges)))
+
+streamed = {
+  labels: ["sequential store: 269 MB", "one group buffer: 4 KiB",
+           "RAM: KV cache", "RAM: activations", "compute"],
+  groups: [0, 1, 1, 1, 2],
+  highlight: [0, 1, 0, 0, 0]
+}
+streamed_edges = {
+  from: [0, 1, 2, 3],
+  to:   [1, 4, 4, 4],
+  labels: ["stream, forward only", "one group at a time", "read", "read"],
+  widths: [8, 1, 2, 1],
+  highlight: [1, 1, 0, 0]
+}
+print("streamed: the weights never land")
+print(str_len(dataflow(streamed, streamed_edges)))
+
+# ---------------------------------------------------------------- 3
+# The bill that does NOT go away.
+#
+# A KV cache is per conversation: written as generation proceeds, read
+# on every later token, growing with clients and context. It cannot be
+# streamed, and it is the real memory cost of this design.
+#
+# For a 300 GB mixture-of-experts model with compressed attention
+# state (docs/why-this-saves-ram.md), in gigabytes:
+
+clients = [1, 5, 20]
+kv_gb = [0.29, 1.44, 5.76]
+print("clients")
+print(clients)
+print("KV cache GB, weights resident ~0")
+print(kv_gb)
+svg(kv_gb, "bar")
+
+# 300 GB of model against about 1.4 GB of RAM at five clients. That is
+# the whole thesis in two numbers, and the KV cache -- not the weights
+# -- is what now sets the limit.

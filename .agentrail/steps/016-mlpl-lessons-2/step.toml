@@ -1,0 +1,10 @@
+number = 16
+slug = "mlpl-lessons-2"
+status = "in-progress"
+description = """
+Take up the sw-mlpl changes: simplify the two existing lessons and
+write the ..."""
+role = "production"
+context_files = []
+created_at = "2026-08-31T20:39:09"
+commits = []

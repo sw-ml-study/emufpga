@@ -1,0 +1,109 @@
+# When is the store the bottleneck, and when is the arithmetic?
+#
+# Measured, not modelled: docs/results.md saga 2 step 12 ran a real
+# serving workload against a bandwidth-limited store. Five clients,
+# SmolLM2-135M at bf16, 2,760 MB of weight traffic over 13 sweeps.
+#
+#   mlpl-repl -f mlpl/spm_pipeline.mlpl
+
+store_mbps  = [500, 258, 200, 150, 100, 50]
+wall_s      = [6.908, 10.822, 13.931, 18.542, 27.760, 55.418]
+stall_share = [0, 35.5, 49.7, 62.1, 74.3, 87.1]
+
+print("store MB/s")
+print(store_mbps)
+print("wall clock seconds")
+print(wall_s)
+print("percent of wall clock spent waiting on the store")
+print(stall_share)
+svg(stall_share, "line")
+svg(wall_s, "line")
+
+# ---------------------------------------------------------------- 1
+# A model that predicts every point.
+#
+#   wall = max(compute, bytes / rate)
+#
+# The store streams continuously; the engine waits only when it
+# outruns it. Fits every row above within 2%.
+
+traffic_mb = 2760
+compute_s = 6.884
+
+def u:predict(traffic, compute, rate) {
+  "Predicted wall clock at a store of `rate` MB/s: the larger of the time the arithmetic needs and the time the bytes need, because the two overlap and whichever is slower sets the pace."
+  store = traffic / rate;
+  if store > compute {
+    store
+  } else {
+    compute
+  }
+}
+
+def u:predict_all(traffic, compute, rates, i, acc) {
+  "Apply the model across every measured store speed."
+  if i > 5 {
+    acc
+  } else {
+    r = at(rates, i);
+    u:predict_all(traffic, compute, rates, i + 1,
+                  concat(acc, [u:predict(traffic, compute, r)]))
+  }
+}
+
+predicted = u:predict_all(traffic_mb, compute_s, store_mbps, 0, [])
+print("predicted wall clock")
+print(predicted)
+print("measured minus predicted (small is a good model)")
+print(wall_s - predicted)
+
+# The knee is where the two terms cross: the engine consumes
+# 2760 MB in 6.884 s, so anything faster than this is free.
+print("engine consumes at, MB/s -- the knee")
+print(traffic_mb / compute_s)
+
+# ---------------------------------------------------------------- 2
+# The three regimes, as a picture.
+
+fast = {
+  labels: ["store 500 MB/s", "buffer", "lanes", "accumulators"],
+  highlight: [0, 0, 1, 0]
+}
+fast_edges = {
+  from: [0, 1, 2], to: [1, 2, 3],
+  labels: ["ample", "full", "sums"],
+  widths: [8, 8, 8], highlight: [0, 0, 0]
+}
+print("compute-bound: the arithmetic sets the pace")
+print(str_len(dataflow(fast, fast_edges)))
+
+slow = {
+  labels: ["store 50 MB/s", "buffer starved", "lanes idle 87%", "accumulators"],
+  highlight: [1, 1, 0, 0]
+}
+slow_edges = {
+  from: [0, 1, 2], to: [1, 2, 3],
+  labels: ["trickle", "waiting", "sums"],
+  widths: [1, 1, 1], highlight: [1, 1, 0]
+}
+print("store-bound: the lanes wait")
+print(str_len(dataflow(slow, slow_edges)))
+
+# ---------------------------------------------------------------- 3
+# The finding: concurrency lowers the class of device you need.
+#
+# Bytes per sweep are fixed. Compute per sweep grows with clients. So
+# the bandwidth a store must deliver FALLS as clients rise -- and the
+# same 500 MB/s device is store-bound at one client and free at five.
+
+demand_mbps = [1328, 401]
+print("clients 1 then 5: MB/s the store must deliver")
+print(demand_mbps)
+print("at a 500 MB/s store, percent stalled")
+print([59.9, 0])
+svg(demand_mbps, "bar")
+
+# Serving more agents makes cheaper storage adequate. That is the
+# opposite of how conventional serving scales, and it is the same
+# argument as the mixture-of-experts sweep in
+# docs/why-this-saves-ram.md, arriving as a hardware requirement.

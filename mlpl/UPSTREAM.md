@@ -106,69 +106,50 @@ Against the sw-mlpl build in `../sw-mlpl`:
 
 | ask | state |
 | --- | --- |
-| 1. `disp` | **RESOLVED** (docs) -- `disp` returns a display string, `print` is the stdout verb; hello-world + glossary corrected |
-| 2. length-1 broadcast | **SHIPPED** -- `[2] * [1,2,3]` is `[2,4,6]`, both surfaces |
-| 3. `at(v, i)` | **SHIPPED** -- `at(order, i)` reads element `i` as a scalar, both surfaces |
-| 4. `dataflow` renderer | **QUEUED** upstream (`dataflow-svg-renderer` saga; design first) |
+| 1. `disp` | **withdrawn** -- my misdiagnosis; doc fix only |
+| 2. length-1 broadcast | **shipped** |
+| 3. `at(v, i)` | **shipped** -- and it indexes matrix rows too |
+| 4. `dataflow` renderer | **shipped**, groups/widths/highlight included |
 
-## Upstream resolution (2026-08-31, from sw-mlpl)
-
-Three of the four landed in `../sw-mlpl`; the fourth is queued. To pick
-them up, refresh the selected binaries -- rebuild `mlpl-repl` /
-`mlpl-build` from the adjacent source, or re-select
-`../sw-mlpl/target/release/{mlpl-repl,mlpl-build}` (already rebuilt).
-
-- **2 -- length-1 broadcast.** A single-element operand (a rank-0
-  scalar OR a length-1 array like `[2]`) now broadcasts against the
-  other operand's shape, matching NumPy / APL. Purely additive: only
-  previously-erroring shape pairs change, so nothing that ran before
-  behaves differently. A genuine `[1,2] + [1,2,3]` mismatch still
-  errors.
-
-- **3 -- `at(v, i)`.** The 2-argument convenience for `take(v, 0, i)`:
-  reads element `i` of a rank-1 vector as a scalar (and selects slice
-  `i` along axis 0 of a higher-rank value). With item 2, the activation
-  lookup collapses exactly as predicted:
-
-  ```
-  a = reshape(gather_rows(x, [i]), [])   # before
-  a = at(x, i)                           # now
-  ```
-
-  and `at(w, i) * row` reads "one activation meets one row of weights".
-
-- **1 -- `disp`.** Not a runtime bug and not changed: `disp(v)` RETURNS
-  a box-diagram display string; it does not itself write to stdout, so
-  a bare `disp` shows only as a script's final echoed value. `print(v)`
-  is the mid-program stdout verb (which both demos already use).
-  Changing `disp` to write to stdout would double-break the ~230
-  downstream files that use it as a final statement with mlplunit
-  baselines, so the fix was the misleading doc + hello-world comment.
-
-- **4 -- `dataflow` renderer.** Accepted as the one genuinely new
-  capability; queued as its own saga (a structural SVG mode: boxes,
-  directed edges, groups, edge labels, optional widths + highlight),
-  general enough to also serve transformer / autograd / compiler-pass
-  diagrams. Design (the node/edge record schema + a layered layout)
-  comes before implementation.
-
-Also usable now, though not asked for here: **infix comparisons**
-(`i > 3`), **qualified references** (`:ns:name` for library/provider
-namespaces in `call`/`each`), and **unary minus** (`-x`).
+Everything asked for has landed, and nothing here is blocked.
 
 Two things shipped that were not asked for here and are already in
 use: **infix comparisons** (`i > 3` rather than `gt(i, 3)`, now in
 both demos) and **qualified refs** (`:ns:name`).
 
-When items 2 and 3 land, the activation lookup at the heart of
-`spm_stream.mlpl` collapses from
+The predicted payoff arrived exactly as described. The heart of
+`spm_stream.mlpl` went from
 
 ```
-a = reshape(gather_rows(x, [i]), [])
+row = reshape(gather_rows(S, [i]), [3]);
+a   = reshape(gather_rows(x, [i]), []);
 ```
 
-to `a = at(x, i)`, and the sweep reads the way the architecture works:
-one activation meets one row of weights.
+to
+
+```
+row = at(S, i);
+a   = at(x, i);
+```
+
+which is one activation meeting one row of weights, and is now
+readable as the thing it describes. `dataflow` unblocked the two
+lessons -- residency and pipeline occupancy -- that no line, bar or
+heatmap could draw.
+
+## What would be useful next
+
+Nothing is blocking. In rough order of value to this material:
+
+- **Edge labels that carry a unit.** `widths` is a good channel, but
+  the residency diagram wants "269 MB" and "4 KiB" on the same picture
+  at honest relative widths, and 65,000:1 does not render. A log-width
+  option, or a note that the caller should pre-scale, would settle
+  what is currently a judgement call per diagram.
+- **A back-edge that reads as a rewind.** The design doc says a cycle
+  is drawn dashed without changing layering, which is right. The
+  rotating parameter store is exactly a back-edge, and a lesson on
+  recursion-as-rotation would lean on it. Not tried yet.
 
 ## What did NOT get in the way
 

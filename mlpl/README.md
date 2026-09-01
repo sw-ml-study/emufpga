@@ -27,9 +27,14 @@ to show they are the same.
 | --- | --- |
 | `spm_stream.mlpl` | a forward-only sweep computes exactly `W x`; ternary needs no multiplier; one sweep serves a whole batch |
 | `spm_order.mlpl` | consumption order is not a filing preference -- alphabetical layout forces backward seeks |
+| `spm_residency.mlpl` | what actually has to be in RAM: `Rp`, and the memory hierarchy both ways |
+| `spm_pipeline.mlpl` | when the store is the bottleneck, from the measured store sweep |
 
-Both end by printing a difference that must be all zero. That is the
-point: **same arithmetic, different memory contract.**
+The first two end by printing a difference that must be all zero --
+**same arithmetic, different memory contract.** The last two plot
+measurements from `docs/results.md` rather than invented numbers, and
+`spm_pipeline.mlpl` re-derives the `max(compute, bytes/rate)` model in
+the language and prints its residuals against the measured run.
 
 ## What each demonstrates
 
@@ -75,5 +80,8 @@ does not broadcast where a scalar does, there is no indexing
 primitive, and the structural diagrams this material wants need a
 `dataflow` renderer that does not exist yet.
 
-Not yet written, from research2.txt's plan: residency (`Rp`) and
-pipeline occupancy (`eta`), both of which want that renderer.
+All four asks in UPSTREAM.md have now landed upstream -- `at(v, i)`,
+length-1 broadcast, infix comparisons, and the `dataflow` renderer --
+so the two lessons that needed them are written and the first two are
+simpler for it. The sweep now reads `row = at(S, i); a = at(x, i)`,
+which is one activation meeting one row of weights.
