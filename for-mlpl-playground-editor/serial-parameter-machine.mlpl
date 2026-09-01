@@ -203,22 +203,23 @@ dataflow(
   { labels: ["disk", "VRAM 269 MB", "compute"] },
   { from: [0, 1], to: [1, 2],
     labels: ["load all", "random"],
-    widths: [269564308, 269564308],
-    width_scale: "log" })
+    widths: [5, 5] })
 
-# Streamed: the weights never land. Real byte counts on a log scale --
-# 65,000:1 cannot be drawn linearly without lying about one end.
-# Labels are kept under 12 characters: the renderer centres an edge
-# label in a 96px column gap at 8px per character, so anything longer
-# spills onto the boxes either side.
+# Streamed: the weights never land.
+#
+# The quantities are in the LABELS, not the stroke widths. A 65,000:1
+# ratio cannot be read off a line thickness however it is scaled --
+# the number does that work, and the width only hints at which edge
+# carries the bulk. The KV cache is drawn as what it is: a recurrence
+# that compute writes and reads back, which is also why its edge does
+# not have to skip a layer and land on a box.
 dataflow(
-  { labels: ["store 269 MB", "RAM 0.7 MB", "buffer 4 KiB", "compute"],
-    highlight: [0, 0, 1, 0] },
-  { from: [0, 2, 1], to: [2, 3, 3],
-    labels: ["stream", "apply", "resident"],
-    widths: [269564308, 4096, 700000],
-    width_scale: "log",
-    highlight: [1, 1, 0] })
+  { labels: ["store 269 MB", "buffer 4 KiB", "compute", "RAM 0.7 MB"],
+    highlight: [0, 1, 0, 0] },
+  { from: [0, 1, 2, 3], to: [1, 2, 3, 2],
+    labels: ["269 MB", "4 KiB", "write", "read"],
+    widths: [5, 1, 1, 1],
+    highlight: [1, 1, 0, 0] })
 
 # The rotating store. The rewind is a back-edge, and it draws dashed.
 dataflow(

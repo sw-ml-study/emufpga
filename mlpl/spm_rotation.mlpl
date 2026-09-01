@@ -95,9 +95,8 @@ cached = {
 cached_edges = {
   from: [0, 1, 2, 2],
   to:   [1, 2, 1, 3],
-  labels: ["read once", "hit", "re-read", "done"],
-  widths: [27, 409, 409, 1],
-  width_scale: "log"
+  labels: ["27 MB once", "hit", "409 MB", "done"],
+  widths: [2, 5, 5, 1]
 }
 print("what a cache would do instead, when the region fits")
 dataflow(cached, cached_edges)

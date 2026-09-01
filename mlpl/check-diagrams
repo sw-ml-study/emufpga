@@ -1,29 +1,87 @@
-"""Flag dataflow diagrams whose text collides with a box.
+#!/usr/bin/env python3
+"""Flag dataflow diagrams whose labels collide with boxes.
 
-The renderer sizes node boxes to their label (CHAR_W=8, BOX_PAD=14) but
-draws edge labels centred in COL_GAP=96 without checking they fit. A
-label wider than the gap lands on the boxes either side.
+Written after two rounds of shipping unreadable diagrams. The first
+version only compared an edge label's width against COL_GAP, which
+missed the failure that actually mattered: a label sitting ON a node
+box, because its edge skips a layer and passes underneath one.
+
+Geometry from the renderer's constants (mlpl-viz-flow/src/model.rs):
+CHAR_W 8, COL_GAP 96. Text is centred on its x.
 """
-import re, sys, glob
 
-CHAR_W, COL_GAP = 8, 96
+import glob
+import re
+import sys
+
+CHAR_W = 8
+COL_GAP = 96
+NODE_H = 40
+EDGE_FONT = 11
+
+
+def boxes(svg):
+    """Node rects only.
+
+    Edge labels get a rounded background chip too, so matching every
+    rounded rect counts a label's own chip as a box and reports it
+    colliding with itself. Node boxes are NODE_H (40) tall and chips
+    are about 15, so height separates them.
+    """
+    out = []
+    for m in re.finditer(
+        r'<rect x="([0-9.]+)" y="([0-9.]+)" width="([0-9.]+)" height="([0-9.]+)"[^>]*rx=',
+        svg,
+    ):
+        x, y, w, h = (float(v) for v in m.groups())
+        if h >= NODE_H - 4:
+            out.append((x, y, x + w, y + h))
+    return out
+
+
+def labels(svg):
+    """Edge labels, as (x1, y1, x2, y2, text). Centred, ~1 line tall."""
+    out = []
+    pattern = r'<text x="([0-9.]+)" y="([0-9.]+)"[^>]*font-size="11"[^>]*>([^<]*)'
+    for m in re.finditer(pattern, svg):
+        x, y, text = float(m.group(1)), float(m.group(2)), m.group(3)
+        half = len(text) * CHAR_W / 2
+        out.append((x - half, y - EDGE_FONT, x + half, y + 4, text))
+    return out
+
+
+def overlaps(a, b):
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
 
 def check(path):
-    svg = open(path).read()
-    rects = [(float(m[0]), float(m[1]), float(m[2]), float(m[3])) for m in
-             re.findall(r'<rect[^>]*x="([0-9.]+)" y="([0-9.]+)" width="([0-9.]+)" height="([0-9.]+)"', svg)]
-    texts = re.findall(r'<text x="([0-9.]+)" y="([0-9.]+)"[^>]*font-size="11"[^>]*>([^<]*)', svg)
-    bad = []
-    for x, y, label in texts:
-        w = len(label) * CHAR_W
-        if w > COL_GAP:
-            bad.append((label, w))
-    return bad, len(rects), re.search(r'viewBox="([^"]*)"', svg).group(1)
+    svg = open(path, encoding="utf-8").read()
+    rects, texts = boxes(svg), labels(svg)
+    problems = []
+    for *box, text in texts:
+        width = len(text) * CHAR_W
+        if width > COL_GAP:
+            problems.append(f'label "{text}" is {width}px in a {COL_GAP}px gap')
+        for rect in rects:
+            if overlaps(box, rect):
+                problems.append(f'label "{text}" sits on a node box')
+                break
+    return problems, len(rects), re.search(r'viewBox="([^"]*)"', svg).group(1)
 
-for path in sorted(glob.glob(sys.argv[1])):
-    bad, n, vb = check(path)
-    print(f"{path.split('/')[-1]:24} viewBox {vb:16} rects {n}")
-    for label, w in bad:
-        print(f"    OVERFLOWS COL_GAP({COL_GAP}): {w:3}px  \"{label}\"")
-    if not bad:
-        print("    all edge labels fit the column gap")
+
+def main():
+    bad = 0
+    for path in sorted(glob.glob(sys.argv[1])):
+        problems, count, view = check(path)
+        name = path.split("/")[-1]
+        print(f"{name:22} viewBox {view:16} nodes {count}")
+        for problem in problems:
+            print(f"    COLLISION: {problem}")
+            bad += 1
+        if not problems:
+            print("    clean")
+    sys.exit(1 if bad else 0)
+
+
+if __name__ == "__main__":
+    main()

@@ -156,46 +156,72 @@ heatmap could draw.
 Two, both found by a diagram coming out scrambled in the playground.
 The first is a defect; the second is a missing knob.
 
-### 5. Edge labels are not measured against the column gap
+### 5. Labels are placed without checking what is already there
 
-The renderer sizes a **node box** to its label -- `CHAR_W` (8) per
-character plus `BOX_PAD` -- and that works. It then centres an **edge
-label** in `COL_GAP` (96) *without applying the same metric*. Any edge
-label longer than 12 characters therefore lands on the boxes either
-side, silently.
+Two distinct collisions, same root cause -- the renderer places a
+label and never asks whether that rectangle is occupied.
 
-Two labels in one diagram here were 160px and 152px in a 96px gap. The
-result was unreadable, and nothing warned.
+**An edge label is centred in `COL_GAP` (96) without applying
+`CHAR_W`.** The renderer already measures text to size node boxes; it
+just does not use that measurement here, so any label over 12
+characters lands on the boxes either side. Two labels here were 160px
+and 152px in a 96px gap.
 
-The measurement already exists; it is just not used in this one place.
-Either widen a column to fit its widest edge label, or truncate with
-an ellipsis, or emit a warning. Any of the three beats overlap.
+**An edge that skips a layer puts its label on the node it passes.**
+`RAM -> compute` crossing layer 1 drew "resident" underneath the
+buffer box. This is the harder one: shortening the label does not help,
+because the collision is with a node the edge routes past.
 
-`mlpl/check-diagrams` in this repo is the stopgap: it parses the SVG
-and flags labels wider than `COL_GAP`. That a caller needs to
-post-process the renderer's output to find out whether it collided is
-the argument for fixing it upstream.
+Either would be fixed by testing the label rectangle against the boxes
+already placed and nudging, or by routing skip-edges around rather
+than through. `mlpl/verify-diagrams` in this repo is the stopgap: it
+renders every `dataflow` call in a file separately and fails on any
+overlap. That a caller has to re-parse the renderer's SVG to discover
+whether it collided is the argument for fixing it upstream.
 
 ### 6. No control over canvas size or spacing
 
 `NODE_W`, `CHAR_W`, `BOX_PAD`, `NODE_H`, `COL_GAP`, `ROW_GAP` and
-`PAD` are all fixed constants, and the canvas derives from content.
-There is no way to ask for a wider diagram or more space between
-boxes, which is the first thing anyone reaches for when a picture is
-crowded.
+`PAD` are fixed constants and the canvas derives from content. There
+is no way to ask for a wider diagram or more room between boxes, which
+is the first thing anyone reaches for when a picture is crowded. An
+optional multiplier on the gaps, or explicit `col_gap` / `row_gap`,
+would cover it without changing any existing call.
 
-An optional `spacing` on the nodes or edges record -- a multiplier on
-the gaps, or explicit `col_gap` / `row_gap` -- would cover it without
-changing any existing call.
+### 7. The arrowhead scales with stroke width
 
-### Also worth knowing: groups must not span layers
+A wide edge renders as a large triangle rather than a thick line, and
+at `W_MAX` (9) it occludes what is behind it. A marker that stays a
+fixed size while the line thickens would read better.
 
-Not a defect, but it should be documented. A group band is drawn
-across every layer its members occupy, so grouping nodes that sit at
-different depths makes two bands overlap. In the scrambled diagram,
-three nodes were grouped while one of them sat a layer deeper, and the
-bands crossed. The fix was to drop the grouping. A line in the design
-doc would have saved the diagnosis.
+### Correcting request 4: width is the wrong channel for a big ratio
+
+I asked for the log-width scale and it works as specified. Then using
+it taught me the request was aimed at the wrong thing.
+
+**A stroke width cannot express 65,000:1 however it is scaled.**
+Nobody reads a thickness and recovers a ratio, and the log scale that
+makes the extremes renderable also compresses them into looking
+similar. The honest channel is the label: these diagrams now say
+"269 MB" and "4 KiB" on the edges and keep widths modest, and they
+communicate the ratio far better than any stroke did.
+
+The feature is still right for modest ratios, where a reader really
+can compare two thicknesses. It is recorded here because the request
+was granted in good faith and the premise behind it was mine and
+wrong.
+
+### Also worth documenting: two layout rules callers cannot discover
+
+Neither is a defect, but both cost a round of unreadable output:
+
+- **A group band spans every layer its members occupy**, so grouping
+  nodes at different depths overlaps another group's band.
+- **An edge that skips a layer routes through it**, so its label
+  collides with whatever is there.
+
+Both are consequences of the layering, and both are invisible until
+the picture comes out wrong.
 
 ## What did NOT get in the way
 

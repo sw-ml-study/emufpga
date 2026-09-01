@@ -1,0 +1,43 @@
+"""Check every dataflow() call in a file.
+
+`-f` renders only the final value, so each call is checked by copying
+the whole file and APPENDING that call -- every definition is present
+and the call under test is last.
+"""
+import glob, pathlib, re, subprocess, sys, tempfile
+
+REPL = "/Users/mike/github/sw-ml-study/sw-mlpl/target/release/mlpl-repl"
+CHECK = "/Users/mike/github/sw-ml-study/emufpga/mlpl/check-diagrams"
+
+def calls(src):
+    out = []
+    for m in re.finditer(r'\bdataflow\(', src):
+        i, depth = m.end(), 1
+        while i < len(src) and depth:
+            depth += (src[i] == '(') - (src[i] == ')')
+            i += 1
+        out.append(src[m.start():i])
+    return out
+
+bad = 0
+for path in sys.argv[1:]:
+    src = pathlib.Path(path).read_text()
+    for n, call in enumerate(calls(src)):
+        with tempfile.TemporaryDirectory() as d:
+            f = pathlib.Path(d) / "one.mlpl"
+            f.write_text(src + "\n\n" + call + "\n")
+            out = pathlib.Path(d) / "svg"; out.mkdir()
+            subprocess.run([REPL, "--svg-out", str(out), "-f", str(f)],
+                           capture_output=True, text=True)
+            label = f"{pathlib.Path(path).name} #{n+1}"
+            if not glob.glob(str(out / "*.svg")):
+                print(f"{label:34} DID NOT RENDER"); bad += 1; continue
+            c = subprocess.run(["python3", CHECK, str(out / "*.svg")],
+                               capture_output=True, text=True)
+            print(f"{label:34} {'clean' if c.returncode == 0 else 'COLLISION'}")
+            if c.returncode:
+                for line in c.stdout.strip().splitlines():
+                    if "COLLISION" in line:
+                        print("   ", line.strip())
+                bad += 1
+sys.exit(1 if bad else 0)

@@ -75,16 +75,23 @@ The fix was a layout file rather than a smarter reader; see
 ## Checking a diagram before shipping it
 
 ```sh
-../sw-mlpl/target/release/mlpl-repl --svg-out /tmp/d -f mlpl/spm_rotation.mlpl
-python3 mlpl/check-diagrams '/tmp/d/*.svg'
+python3 mlpl/verify-diagrams mlpl/*.mlpl \
+  ../for-mlpl-playground-editor/serial-parameter-machine.mlpl
 ```
 
-The renderer centres an edge label in a 96px column gap at 8px per
-character and does not check that it fits, so a label over 12
-characters lands on the boxes either side with no warning. This flags
-that. Keep edge labels short, and do not put nodes from different
-layers in one group -- the band is drawn across every layer its
-members occupy and will overlap another group's.
+Renders every `dataflow` call separately -- `-f` shows only the final
+value, so a file with four diagrams otherwise writes one SVG -- and
+fails on any label that collides with a node box.
+
+Three rules it enforces, each learned by shipping something
+unreadable:
+
+- an edge label must fit the 96px column gap, at 8px per character;
+- no group may span layers, or its band overlaps another's;
+- no edge may skip a layer, or its label lands on the node it passes.
+
+Quantities belong in labels, not stroke widths. A 65,000:1 ratio
+cannot be read off a line thickness however it is scaled.
 
 ## Where these live
 

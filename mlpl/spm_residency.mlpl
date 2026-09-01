@@ -39,30 +39,34 @@ svg([weights_total, weights_resident], "bar")
 # occupy -- so a long label lands on the boxes, and a group whose
 # members sit at different depths overlaps another group's band.
 
+# Three rules, learned by shipping unreadable diagrams twice:
+#   * an edge label must fit COL_GAP (96px at CHAR_W 8) or it lands on
+#     the boxes either side;
+#   * no group may span layers, or its band overlaps another's;
+#   * no edge may skip a layer, or its midpoint label sits on the node
+#     it passes.
+# mlpl/check-diagrams verifies all three against the rendered SVG.
+
 conventional = { labels: ["disk", "VRAM 269 MB", "compute"] }
 conventional_edges = {
   from: [0, 1], to: [1, 2],
   labels: ["load all", "random"],
-  widths: [269564308, 269564308],
-  width_scale: "log"
+  widths: [5, 5]
 }
 print("conventional: everything resident before anything runs")
 dataflow(conventional, conventional_edges)
 
+# The quantities live in the LABELS. A 65,000:1 ratio cannot be read
+# off a stroke width however it is scaled; the number does that work.
 streamed = {
-  labels: ["store 269 MB", "RAM 0.7 MB", "buffer 4 KiB", "compute"],
-  highlight: [0, 0, 1, 0]
+  labels: ["store 269 MB", "buffer 4 KiB", "compute", "RAM 0.7 MB"],
+  highlight: [0, 1, 0, 0]
 }
 streamed_edges = {
-  from: [0, 2, 1], to: [2, 3, 3],
-  labels: ["stream", "apply", "resident"],
-  # Real byte counts, not hand-picked stroke widths. A 65,000:1 ratio
-  # cannot be drawn linearly -- the thin edge vanishes or the thick
-  # one becomes a blob -- so the log scale is what makes the honest
-  # numbers renderable at all.
-  widths: [269564308, 4096, 700000],
-  width_scale: "log",
-  highlight: [1, 1, 0]
+  from: [0, 1, 2, 3], to: [1, 2, 3, 2],
+  labels: ["269 MB", "4 KiB", "write", "read"],
+  widths: [5, 1, 1, 1],
+  highlight: [1, 1, 0, 0]
 }
 print("streamed: the weights never land")
 dataflow(streamed, streamed_edges)
