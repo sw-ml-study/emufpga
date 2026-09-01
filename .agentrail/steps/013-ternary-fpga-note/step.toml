@@ -1,10 +1,11 @@
 number = 13
 slug = "ternary-fpga-note"
-status = "in-progress"
+status = "completed"
 description = """
 Answer, as a research note, whether a ternary ISA on an FPGA would
 help the s..."""
 role = "production"
 context_files = []
 created_at = "2026-08-31T17:10:12"
-commits = []
+completed_at = "2026-08-31T17:11:46"
+commits = ["6e072ce73511d9994af37c1886fa2a9ab4347296"]
