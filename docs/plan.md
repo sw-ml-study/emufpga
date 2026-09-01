@@ -91,6 +91,16 @@ random-access memory. The rule is enforced in the type system -- there
 is no seek method to call -- so the architecture cannot quietly erode
 back into a memory controller as the code grows.
 
+**Ternary is the one change that moves both terms at once**, and it is
+the open research direction with the strongest case. It is 16x smaller
+AND needs no multiplier, so a given store feeds more lanes and more
+lanes fit in the fabric. See docs/research-ternary-fpga.md, which also
+works out where a PC/FPGA boundary would have to fall -- weights must
+never cross the host link, activations may -- and finds that the
+partition is the same asymmetry saga 2 step 11 measured. Nothing there
+is measured yet; the ternary profile has never run against a real
+model.
+
 **Streaming is a demonstration rather than a win whenever the working
 set fits in memory anyway.** Rung 4 made this unavoidable. Arithmetic
 intensity is `batch / 4` MACs per weight-byte for any f32 model read
