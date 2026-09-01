@@ -153,8 +153,21 @@ heatmap could draw.
 
 ## What would be useful next
 
-Nothing. Every request in this file has been met, and the two that
-were raised after the renderer landed have been met too.
+One thing, found while packaging these for the playground.
+
+**`--svg-out DIR` writes only the last visual.** A script with four
+`svg`/`dataflow` calls produces one file. That follows from the
+script runner showing a single final value, and it is consistent --
+but the flag's name promises the script's output, and a lesson that
+renders four diagrams silently drops three of them. Either writing
+every visual under that flag, or documenting that it captures the
+final one, would remove a surprise. It cost the emufpga lessons a
+round of confusion: they were written with `print(str_len(dataflow(
+...)))`, which renders nothing at all, precisely because the bare
+call appeared to do nothing under `-f`.
+
+Everything else in this file has been met, including the two raised
+after the renderer landed.
 
 If a future lesson needs something, it will be recorded here the same
 way: from friction actually hit while writing the lesson, with the

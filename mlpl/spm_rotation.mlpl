@@ -22,7 +22,7 @@ rotation_edges = {
   widths: [4, 4, 4, 1]
 }
 print("the rotating store, as a graph")
-print(str_len(dataflow(rotation, rotation_edges)))
+dataflow(rotation, rotation_edges)
 
 # ---------------------------------------------------------------- 1
 # How much rotation each model actually does. Measured, from
@@ -100,4 +100,4 @@ cached_edges = {
   width_scale: "log"
 }
 print("what a cache would do instead, when the region fits")
-print(str_len(dataflow(cached, cached_edges)))
+dataflow(cached, cached_edges)

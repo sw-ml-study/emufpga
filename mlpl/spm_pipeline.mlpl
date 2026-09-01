@@ -75,7 +75,7 @@ fast_edges = {
   widths: [8, 8, 8], highlight: [0, 0, 0]
 }
 print("compute-bound: the arithmetic sets the pace")
-print(str_len(dataflow(fast, fast_edges)))
+dataflow(fast, fast_edges)
 
 slow = {
   labels: ["store 50 MB/s", "buffer starved", "lanes idle 87%", "accumulators"],
@@ -87,7 +87,7 @@ slow_edges = {
   widths: [1, 1, 1], highlight: [1, 1, 0]
 }
 print("store-bound: the lanes wait")
-print(str_len(dataflow(slow, slow_edges)))
+dataflow(slow, slow_edges)
 
 # ---------------------------------------------------------------- 3
 # The finding: concurrency lowers the class of device you need.

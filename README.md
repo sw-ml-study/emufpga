@@ -26,6 +26,12 @@ clients asking five different questions off one pass of the weights.
 Projected onto a 300 GB mixture-of-experts model, that is about 1.4 GB
 of RAM for five clients instead of 300 GB of VRAM.
 
+**See it run in your browser:** paste
+[`for-mlpl-playground-editor/serial-parameter-machine.mlpl`](for-mlpl-playground-editor/serial-parameter-machine.mlpl)
+into the [MLPL playground](https://sw-ml-study.github.io/sw-mlpl/).
+Self-contained, with charts and diagrams, and every claim either
+computed live or measured on a real model.
+
 Start here: [docs/why-this-saves-ram.md](docs/why-this-saves-ram.md) --
 the plain-language case, what has actually been measured, why MoE is
 the best case rather than a stretch goal, and what is not yet true.

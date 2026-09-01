@@ -46,7 +46,7 @@ conventional_edges = {
   width_scale: "log"
 }
 print("conventional: everything resident before anything runs")
-print(str_len(dataflow(conventional, conventional_edges)))
+dataflow(conventional, conventional_edges)
 
 streamed = {
   labels: ["sequential store: 269 MB", "one group buffer: 4 KiB",
@@ -67,7 +67,7 @@ streamed_edges = {
   highlight: [1, 1, 0, 0]
 }
 print("streamed: the weights never land")
-print(str_len(dataflow(streamed, streamed_edges)))
+dataflow(streamed, streamed_edges)
 
 # ---------------------------------------------------------------- 3
 # The bill that does NOT go away.

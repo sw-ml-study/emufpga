@@ -9,6 +9,12 @@ are the teaching artifacts, and they run.
 ../sw-mlpl/target/release/mlpl-repl -f mlpl/spm_order.mlpl
 ```
 
+**Want to just look at it?** `../for-mlpl-playground-editor/` holds a
+single self-contained file to paste into the browser playground, where
+every chart and diagram renders. Under `-f` only the **last** picture
+in a file is drawn, because the script runner shows one value; the
+playground and the interactive REPL show every statement.
+
 ## Why MLPL for this
 
 The central claim is a claim about **layout**: the arithmetic of
