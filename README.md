@@ -18,6 +18,18 @@ physically in exactly the order the tensor engine consumes them, then
 start a scan. When the stream reaches the end of the layer, the matrix
 operation is finished.
 
+**The goal is not speed.** It is doing more with less at equal
+correctness: less VRAM, less system RAM, older and cheaper hardware,
+fewer kWh. On a 135M model, streaming holds **4 KiB** of weights
+resident instead of 269 MB, gives bit-exact answers, and serves five
+clients asking five different questions off one pass of the weights.
+Projected onto a 300 GB mixture-of-experts model, that is about 1.4 GB
+of RAM for five clients instead of 300 GB of VRAM.
+
+Start here: [docs/why-this-saves-ram.md](docs/why-this-saves-ram.md) --
+the plain-language case, what has actually been measured, why MoE is
+the best case rather than a stretch goal, and what is not yet true.
+
 Background and the full argument: [docs/research.txt](docs/research.txt).
 
 ## What this is

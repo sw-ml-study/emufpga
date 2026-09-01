@@ -1,0 +1,10 @@
+number = 14
+slug = "why-this-saves-ram"
+status = "in-progress"
+description = """
+Write docs/why-this-saves-ram.md: the plain-language case, and the MoE
+analys..."""
+role = "production"
+context_files = []
+created_at = "2026-08-31T17:23:00"
+commits = []
