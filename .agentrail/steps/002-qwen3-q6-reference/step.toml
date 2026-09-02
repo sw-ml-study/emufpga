@@ -1,9 +1,10 @@
 number = 2
 slug = "qwen3-q6-reference"
-status = "in-progress"
+status = "completed"
 description = "Acquire the official Qwen/Qwen3-8B-GGUF Q6_K artifact under /disk1/tmp withou..."
 role = "validation"
 context_files = []
 created_at = "2026-09-02T06:39:53"
+completed_at = "2026-09-02T09:57:44"
 task_type = "qwen-quant-comparison"
-commits = []
+commits = ["c0591302f8b2b8d961cbb81c6493e0163a599cd2"]
