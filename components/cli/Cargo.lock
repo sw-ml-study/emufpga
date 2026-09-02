@@ -728,6 +728,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-gguf"
+version = "0.1.0"
+
+[[package]]
+name = "spm-gguf-inspect"
+version = "0.1.0"
+dependencies = [
+ "spm-gguf",
+]
+
+[[package]]
 name = "spm-header"
 version = "0.1.0"
 dependencies = [

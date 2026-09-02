@@ -1,6 +1,6 @@
 number = 3
 slug = "gguf-rust-ingestion"
-status = "pending"
+status = "in-progress"
 description = "Implement safe, bounded Rust-native GGUF ingestion for the pinned official Qw..."
 role = "production"
 context_files = []
