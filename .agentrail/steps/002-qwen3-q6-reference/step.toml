@@ -1,0 +1,9 @@
+number = 2
+slug = "qwen3-q6-reference"
+status = "pending"
+description = "Acquire the official Qwen/Qwen3-8B-GGUF Q6_K artifact under /disk1/tmp withou..."
+role = "validation"
+context_files = []
+created_at = "2026-09-02T06:39:53"
+task_type = "qwen-quant-comparison"
+commits = []
