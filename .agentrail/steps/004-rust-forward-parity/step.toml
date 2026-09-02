@@ -1,9 +1,10 @@
 number = 4
 slug = "rust-forward-parity"
-status = "in-progress"
+status = "completed"
 description = "Build the next correctness rung from the validated Qwen3 Q6_K GGUF. First imp..."
 role = "production"
 context_files = []
 created_at = "2026-09-02T13:09:15"
+completed_at = "2026-09-02T13:36:30"
 task_type = "rust-qwen-forward"
-commits = []
+commits = ["14b405b57cb26baf0e90cf4a4089d96c1d5a23d8"]
