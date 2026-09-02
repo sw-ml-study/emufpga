@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Register the pinned official GGUF in Ollama without requantizing it.
+
+GGUF="${QWEN_Q6_GGUF:-/disk1/tmp/qwen3-8b-q6/Qwen3-8B-Q6_K.gguf}"
+MODEL="${QWEN_Q6_MODEL:-qwen3:8b-q6}"
+TEMPLATE_MODEL="${QWEN_TEMPLATE_MODEL:-qwen3:8b}"
+EXPECTED_SIZE=6725899040
+EXPECTED_SHA256=cb042ccd76795a8830d6be6bd4165245847cc68e41797b13bd61aed4c2cfbce6
+
+[ -f "$GGUF" ] || { echo "missing pinned GGUF: $GGUF" >&2; exit 2; }
+actual_size="$(stat --format='%s' "$GGUF")"
+[ "$actual_size" = "$EXPECTED_SIZE" ] || {
+    echo "wrong GGUF size: expected $EXPECTED_SIZE, got $actual_size" >&2
+    exit 2
+}
+actual_sha256="$(sha256sum "$GGUF" | cut -d' ' -f1)"
+[ "$actual_sha256" = "$EXPECTED_SHA256" ] || {
+    echo "wrong GGUF SHA-256: expected $EXPECTED_SHA256, got $actual_sha256" >&2
+    exit 2
+}
+
+model_file="$(mktemp)"
+trap 'rm -f "$model_file"' EXIT INT TERM
+# A bare GGUF import defaults to TEMPLATE {{ .Prompt }} in this Ollama
+# release. Reuse the baseline model's wrapper so the quant comparison does
+# not accidentally compare different prompt formats or stop parameters.
+ollama show "$TEMPLATE_MODEL" --modelfile >"$model_file"
+sed -i "s|^FROM .*|FROM $GGUF|" "$model_file"
+grep -Fqx "FROM $GGUF" "$model_file" || {
+    echo "could not replace the template model's FROM layer" >&2
+    exit 2
+}
+ollama create "$MODEL" --file "$model_file"
+ollama show "$MODEL"

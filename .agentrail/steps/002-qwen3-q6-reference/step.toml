@@ -1,6 +1,6 @@
 number = 2
 slug = "qwen3-q6-reference"
-status = "pending"
+status = "in-progress"
 description = "Acquire the official Qwen/Qwen3-8B-GGUF Q6_K artifact under /disk1/tmp withou..."
 role = "validation"
 context_files = []
