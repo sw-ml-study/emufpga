@@ -1,9 +1,10 @@
 number = 3
 slug = "gguf-rust-ingestion"
-status = "in-progress"
+status = "completed"
 description = "Implement safe, bounded Rust-native GGUF ingestion for the pinned official Qw..."
 role = "production"
 context_files = []
 created_at = "2026-09-02T09:57:44"
+completed_at = "2026-09-02T13:09:15"
 task_type = "rust-gguf"
-commits = []
+commits = ["267c162ab17a00abe55ca19f5c46cd0a6d7a38f2"]
