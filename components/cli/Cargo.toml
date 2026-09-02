@@ -17,6 +17,7 @@ members = [
     "crates/spm-extract",
     "crates/spm-gguf",
     "crates/spm-gguf-inspect",
+    "crates/spm-qwen3-slice",
     "crates/spm-order",
     "crates/spm-quantize",
     "crates/spm-bench",

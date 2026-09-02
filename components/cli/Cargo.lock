@@ -788,6 +788,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-qwen3-slice"
+version = "0.1.0"
+dependencies = [
+ "spm-gguf",
+]
+
+[[package]]
 name = "spm-stream"
 version = "0.1.0"
 

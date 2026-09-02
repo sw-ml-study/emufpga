@@ -63,5 +63,11 @@ fn reads_a_tiny_aligned_fixture() {
     let c = spm_gguf::read(&p).unwrap();
     assert_eq!(c.tensors[0].len, 128);
     assert_eq!(c.tensors[0].offset, 64);
+    assert_eq!(
+        spm_gguf::read_tensor_range(&p, &c.tensors[0], 3, 4, 4).unwrap(),
+        [1, 1, 1, 1]
+    );
+    assert!(spm_gguf::read_tensor_range(&p, &c.tensors[0], 127, 2, 2).is_err());
+    assert!(spm_gguf::read_tensor_range(&p, &c.tensors[0], 0, 5, 4).is_err());
     fs::remove_file(p).unwrap();
 }

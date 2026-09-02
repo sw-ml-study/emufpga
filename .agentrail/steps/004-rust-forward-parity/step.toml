@@ -1,6 +1,6 @@
 number = 4
 slug = "rust-forward-parity"
-status = "pending"
+status = "in-progress"
 description = "Build the next correctness rung from the validated Qwen3 Q6_K GGUF. First imp..."
 role = "production"
 context_files = []

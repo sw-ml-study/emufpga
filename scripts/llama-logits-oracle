@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+llama_dir=${LLAMA_CPP_DIR:-/disk1/github/ggml-org/llama.cpp}
+model=${1:?usage: scripts/llama-logits-oracle MODEL.gguf PROMPT}
+prompt=${2:?usage: scripts/llama-logits-oracle MODEL.gguf PROMPT}
+expected=6e6725459a892b49602b596339de4916c7c7965a
+actual=$(git -C "$llama_dir" rev-parse HEAD)
+if [[ "$actual" != "$expected" ]]; then
+    echo "llama.cpp revision mismatch: expected $expected, found $actual" >&2
+    exit 1
+fi
+
+binary=/disk1/tmp/emufpga-llama-logits-$expected
+if [[ ! -x "$binary" || tools/llama-logits/main.cpp -nt "$binary" ]]; then
+    c++ -std=c++20 -O2 \
+        -I"$llama_dir/include" -I"$llama_dir/ggml/include" \
+        tools/llama-logits/main.cpp -o "$binary" \
+        "$llama_dir/build/src/libllama.a" \
+        "$llama_dir/build/ggml/src/libggml.a" \
+        "$llama_dir/build/ggml/src/libggml-cpu.a" \
+        /usr/lib/libgomp.so /usr/lib/libpthread.a \
+        "$llama_dir/build/ggml/src/ggml-cuda/libggml-cuda.a" \
+        "$llama_dir/build/ggml/src/libggml-base.a" \
+        -L/usr/local/lib/ollama/cuda_v12 \
+        -Wl,-rpath,/usr/local/lib/ollama/cuda_v12 \
+        -l:libcudart.so.12 -l:libcublas.so.12 -l:libcublasLt.so.12 \
+        /opt/cuda/targets/x86_64-linux/lib/libculibos.a -lcuda -ldl -lrt -lm
+fi
+
+export LD_LIBRARY_PATH=/usr/local/lib/ollama/cuda_v12:${LD_LIBRARY_PATH:-}
+exec "$binary" "$model" "$prompt"
