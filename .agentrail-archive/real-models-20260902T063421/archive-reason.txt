@@ -1,0 +1,1 @@
+Completed real-model import and Rust checkpoint-ingestion ladder; starting Qwen3-8B quantized GPU experiments.

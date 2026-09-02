@@ -1,0 +1,9 @@
+number = 1
+slug = "qwen3-q4-baseline"
+status = "in-progress"
+description = "Characterize the locally installed Ollama qwen3:8b Q4_K_M model on the RTX 50..."
+role = "validation"
+context_files = []
+created_at = "2026-09-02T06:34:50"
+task_type = "qwen-gpu-baseline"
+commits = []

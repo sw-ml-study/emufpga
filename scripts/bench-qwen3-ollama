@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Reproducible local Ollama baseline. Large responses and samples stay outside
+# the repository; only the small harness and distilled results are committed.
+
+MODEL="${QWEN_MODEL:-qwen3:8b}"
+RUNS="${QWEN_RUNS:-3}"
+NUM_CTX="${QWEN_NUM_CTX:-8192}"
+NUM_PREDICT="${QWEN_NUM_PREDICT:-128}"
+OLLAMA_URL="${OLLAMA_URL:-http://127.0.0.1:11434}"
+OUT="${1:-/disk1/tmp/emufpga-qwen3-q4-$(date -u +%Y%m%dT%H%M%SZ)}"
+PROMPT='Explain in four concise bullet points why deterministic tests should separate model-loading, prompt-evaluation, and token-generation time.'
+
+case "$RUNS:$NUM_CTX:$NUM_PREDICT" in
+    *[!0-9:]*|:*|*::*|*:) echo "run and token limits must be positive integers" >&2; exit 2 ;;
+esac
+[ "$RUNS" -gt 0 ] && [ "$NUM_CTX" -gt 0 ] && [ "$NUM_PREDICT" -gt 0 ] || {
+    echo "run and token limits must be positive integers" >&2
+    exit 2
+}
+
+for tool in curl jq nvidia-smi ollama; do
+    command -v "$tool" >/dev/null || { echo "missing required tool: $tool" >&2; exit 2; }
+done
+
+mkdir -p "$OUT/responses"
+ollama show "$MODEL" >"$OUT/model.txt"
+nvidia-smi --query-gpu=timestamp,name,driver_version,memory.total,memory.free \
+    --format=csv,noheader >"$OUT/gpu-before.csv"
+
+payload="$OUT/payload.json"
+jq -n --arg model "$MODEL" --arg prompt "$PROMPT" \
+    --argjson ctx "$NUM_CTX" --argjson predict "$NUM_PREDICT" \
+    '{model:$model,prompt:$prompt,stream:false,think:false,keep_alive:"5m",
+      options:{num_ctx:$ctx,num_predict:$predict,temperature:0,seed:42}}' >"$payload"
+
+request() {
+    local destination="$1"
+    curl --silent --show-error --fail "$OLLAMA_URL/api/generate" \
+        -H 'Content-Type: application/json' --data-binary "@$payload" >"$destination"
+    jq -e '.done == true and (.eval_count | type == "number")' "$destination" >/dev/null
+}
+
+echo "warming $MODEL"
+request "$OUT/warmup.json"
+
+samples="$OUT/gpu-samples.csv"
+sample_gpu() {
+    while :; do
+        nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu \
+            --format=csv,noheader,nounits >>"$samples"
+        sleep 0.1
+    done
+}
+: >"$samples"
+sample_gpu &
+sampler_pid=$!
+trap 'kill "$sampler_pid" 2>/dev/null || true' EXIT INT TERM
+
+for run in $(seq 1 "$RUNS"); do
+    echo "measured run $run/$RUNS"
+    request "$OUT/responses/run-$run.json"
+done
+kill "$sampler_pid" 2>/dev/null || true
+wait "$sampler_pid" 2>/dev/null || true
+trap - EXIT INT TERM
+
+ollama ps >"$OUT/ollama-ps.txt"
+nvidia-smi --query-gpu=timestamp,memory.used,memory.free,utilization.gpu \
+    --format=csv,noheader >"$OUT/gpu-after.csv"
+
+jq -s --arg model "$MODEL" --argjson runs "$RUNS" \
+    --argjson num_ctx "$NUM_CTX" --argjson num_predict "$NUM_PREDICT" \
+    '{model:$model,runs:$runs,num_ctx:$num_ctx,num_predict:$num_predict,
+      samples:map({total_ms:(.total_duration/1e6),load_ms:(.load_duration/1e6),
+        prompt_tokens:.prompt_eval_count,prompt_tps:(.prompt_eval_count/(.prompt_eval_duration/1e9)),
+        generated_tokens:.eval_count,generation_tps:(.eval_count/(.eval_duration/1e9))}),
+      mean_generation_tps:(map(.eval_count/(.eval_duration/1e9))|add/length),
+      mean_total_ms:(map(.total_duration/1e6)|add/length)}' \
+    "$OUT"/responses/run-*.json >"$OUT/summary.json"
+
+peak_mib="$(awk -F, 'BEGIN { max=0 } { gsub(/ /,"",$2); if ($2+0 > max) max=$2+0 } END { print max }' "$samples")"
+jq --argjson peak_gpu_memory_mib "$peak_mib" '. + {peak_gpu_memory_mib:$peak_gpu_memory_mib}' \
+    "$OUT/summary.json" >"$OUT/summary.tmp"
+mv "$OUT/summary.tmp" "$OUT/summary.json"
+
+echo "results: $OUT"
+jq . "$OUT/summary.json"
