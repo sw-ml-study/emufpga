@@ -97,12 +97,57 @@ top-ten set, the same top-1 token, and absolute logit error at most 0.65 for
 those shared tokens. A future intermediate-value comparison should determine
 which quantized matrix kernels create the gap.
 
+## Block-zero reference
+
+The pinned oracle also supports `LLAMA_DUMP_DIR`. Its stable llama.cpp graph
+callback requests only `inp_embd`, `ffn_inp-0`, and `l_out-0`, then copies the
+evaluated F32 tensors to that directory. No upstream source modification is
+required. For the five-token oracle prompt, each file contains five contiguous
+4096-element vectors; position zero is the first 16,384 bytes.
+
+```sh
+mkdir -p /disk1/tmp/qwen3-block0-cpu
+LLAMA_DUMP_DIR=/disk1/tmp/qwen3-block0-cpu \
+  scripts/llama-logits-oracle \
+  /disk1/tmp/qwen3-8b-q6/Qwen3-8B-Q6_K.gguf \
+  'The capital of France is'
+
+cd components/cli
+SPM_QWEN_REFERENCE_DIR=/disk1/tmp/qwen3-block0-cpu \
+  cargo run --release -p spm-qwen3-slice -- \
+  /disk1/tmp/qwen3-8b-q6/Qwen3-8B-Q6_K.gguf 785
+```
+
+The complete-vector comparison gives:
+
+| Stage | Maximum absolute error | Mean absolute error | Cosine |
+|---|---:|---:|---:|
+| embedding | 0 | 0 | 1.000000000000 |
+| post-attention | 0.003290944 | 0.000642471 | 0.999941075717 |
+| block zero | 0.054967880 | 0.003724159 | 0.999939510587 |
+
+The Rust harness enforces respective maximum-error tolerances of 0, 0.005,
+and 0.06, plus cosine minima of 0.999999999, 0.9999, and 0.9999. Exact
+embedding agreement rules out row orientation and Q6_K decoding errors. The
+small error after several quantized matrix multiplies, and its growth through
+the MLP, is consistent with different floating-point accumulation order. It
+does not justify changing the model equations to imitate one CPU kernel.
+
+Reference artifact SHA-256 values (kept outside git because the full files
+include all five positions) are:
+
+```text
+inp_embd.f32  dd616ec086befd9912ce6feee9a9205701f73c307e62a6d46caae4b2ca5fb82a
+ffn_inp-0.f32 4b561e783caba3a9b72b65a2a082cdc49c835cc9b537315c974f4d30d7737d9a
+l_out-0.f32   7b631c7d44fe8073b571a8f9f2a20d203569b6dcc0ef086882b9e74d98112ebc
+```
+
 ## Next rung
 
 Extend the Rust Qwen3 forward harness in independently testable stages:
 
-1. obtain independent intermediate values for block zero and set tolerances;
-2. generalize RoPE, causal attention, and KV state to multiple positions;
+1. generalize RoPE, causal attention, and KV state to multiple positions;
+2. compare each position's block-zero output against callback artifacts;
 3. iterate all 36 blocks without materializing dequantized matrices;
 4. add final normalization/output projection and compare pinned logits.
 

@@ -25,7 +25,8 @@ if [[ ! -x "$binary" || tools/llama-logits/main.cpp -nt "$binary" ]]; then
         c++ -std=c++20 -O2 \
             -I"$llama_dir/include" -I"$llama_dir/ggml/include" \
             tools/llama-logits/main.cpp -o "$binary" \
-            -L"$build_dir/bin" -Wl,-rpath,"$build_dir/bin" -lllama -lggml
+            -L"$build_dir/bin" -Wl,-rpath,"$build_dir/bin" \
+            -lllama -lggml -lggml-base
     else
         c++ -std=c++20 -O2 \
             -I"$llama_dir/include" -I"$llama_dir/ggml/include" \

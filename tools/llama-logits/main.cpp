@@ -1,10 +1,13 @@
 #include "llama.h"
+#include "ggml.h"
+#include "ggml-backend.h"
 
 #include <algorithm>
 #include <bit>
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -12,6 +15,28 @@ struct scored_token {
     llama_token token;
     float logit;
 };
+
+struct dump_config {
+    const char * directory;
+};
+
+static bool dump_intermediate(ggml_tensor * tensor, bool ask, void * user_data) {
+    const std::string name = tensor->name;
+    const bool selected = name == "inp_embd" || name == "ffn_inp-0" || name == "l_out-0";
+    if (ask || !selected) {
+        return selected;
+    }
+    if (tensor->type != GGML_TYPE_F32) {
+        std::fprintf(stderr, "unexpected intermediate type for %s: %s\n", tensor->name, ggml_type_name(tensor->type));
+        return false;
+    }
+    std::vector<char> bytes(ggml_nbytes(tensor));
+    ggml_backend_tensor_get(tensor, bytes.data(), 0, bytes.size());
+    const auto * config = static_cast<dump_config *>(user_data);
+    std::ofstream output(std::string(config->directory) + "/" + name + ".f32", std::ios::binary);
+    output.write(bytes.data(), bytes.size());
+    return output.good();
+}
 
 int main(int argc, char ** argv) {
     if (argc != 3) {
@@ -43,6 +68,11 @@ int main(int argc, char ** argv) {
     context_params.n_batch = count;
     context_params.n_ubatch = count;
     context_params.no_perf = true;
+    dump_config dumps{std::getenv("LLAMA_DUMP_DIR")};
+    if (dumps.directory != nullptr) {
+        context_params.cb_eval = dump_intermediate;
+        context_params.cb_eval_user_data = &dumps;
+    }
     llama_context * context = llama_init_from_model(model, context_params);
     if (context == nullptr || llama_decode(context, llama_batch_get_one(tokens.data(), count)) != 0) {
         llama_free(context);

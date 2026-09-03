@@ -1,6 +1,7 @@
 use spm_gguf::{Content, decode_q6_k, read_tensor_range};
 use std::{env, path::Path};
 
+mod compare;
 mod math;
 mod weights;
 use math::{add, print_stats, rms_norm};
@@ -72,12 +73,22 @@ fn feed_forward(path: &Path, content: &Content, hidden: &[f32]) -> Result<Vec<f3
 
 fn run(path: &Path, token: usize) -> Result<(), String> {
     let content = spm_gguf::read(path)?;
+    let reference = env::var_os("SPM_QWEN_REFERENCE_DIR").map(std::path::PathBuf::from);
     let mut hidden = embedding(path, &content, token)?;
     print_stats("embedding", &hidden);
+    if let Some(directory) = &reference {
+        compare::check(directory, "inp_embd", &hidden, 0.0, 0.999_999_999)?;
+    }
     hidden = attention(path, &content, &hidden)?;
     print_stats("post_attention", &hidden);
+    if let Some(directory) = &reference {
+        compare::check(directory, "ffn_inp-0", &hidden, 0.005, 0.9999)?;
+    }
     hidden = feed_forward(path, &content, &hidden)?;
     print_stats("block_0", &hidden);
+    if let Some(directory) = &reference {
+        compare::check(directory, "l_out-0", &hidden, 0.06, 0.9999)?;
+    }
     Ok(())
 }
 

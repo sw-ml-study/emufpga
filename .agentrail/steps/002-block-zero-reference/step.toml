@@ -1,6 +1,6 @@
 number = 2
 slug = "block-zero-reference"
-status = "pending"
+status = "in-progress"
 description = "Establish independently observable Qwen3 block-zero intermediate values from ..."
 role = "legacy"
 context_files = []
