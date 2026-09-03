@@ -60,13 +60,42 @@ scripts/llama-logits-oracle \
   'The capital of France is'
 ```
 
-The binary is built under `/disk1/tmp`, not committed. Override
-`LLAMA_CPP_DIR` for another checkout. `LLAMA_LOGITS_GPU_LAYERS=99` requests
-CUDA offload, but the currently pinned build aborts during matrix multiply
-with `no kernel image is available for execution on the device`: it detects
-the RTX 5060 Ti (compute capability 12.0) but was compiled without a compatible
-kernel. Rebuild and repin llama.cpp for Blackwell before using GPU oracle
-results. CPU results remain the current deterministic reference.
+The oracle binary is built under `/disk1/tmp`, not committed. Override
+`LLAMA_CPP_DIR` for another checkout and `LLAMA_CPP_BUILD_DIR` for another
+build tree. On this host the wrapper selects the validated
+`/disk1/tmp/llama.cpp-sm120-build`; elsewhere it falls back to the checkout's
+`build` directory.
+
+## SM120 CUDA validation
+
+The older build detected the RTX 5060 Ti but aborted with `no kernel image is
+available for execution on the device`. The replacement preserves the same
+clean llama.cpp revision and uses a separate build directory:
+
+```sh
+cmake -S /disk1/github/ggml-org/llama.cpp \
+  -B /disk1/tmp/llama.cpp-sm120-build \
+  -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=120 \
+  -DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=OFF -DGGML_NATIVE=OFF
+cmake --build /disk1/tmp/llama.cpp-sm120-build \
+  --target llama-cli --parallel 8
+```
+
+Build environment: llama.cpp `6e6725459a892b49602b596339de4916c7c7965a`
+(version 6039), CUDA 13.3.73, CMake 4.4.2, GCC/G++ 16.2.1 with NVCC host
+compiler 15.3.0. With `LLAMA_LOGITS_GPU_LAYERS=99`, all 37/37 layers offload,
+the model uses 5921.78 MiB of CUDA model buffers, and observed whole-device
+peak memory is 6782 MiB.
+
+Three CUDA runs produced identical raw logit bits. Their result is recorded in
+`tools/llama-logits/qwen3-8b-q6-capital-sm120.golden`. CUDA and CPU select the
+same top token and the same top-ten token set, but not identical logits: among
+these ten tokens the largest absolute difference is about 0.565. This is much
+larger than a rounding-level tolerance, so CPU is the strict Rust correctness
+oracle. CUDA acceptance currently requires stable tokenization, the same
+top-ten set, the same top-1 token, and absolute logit error at most 0.65 for
+those shared tokens. A future intermediate-value comparison should determine
+which quantized matrix kernels create the gap.
 
 ## Next rung
 

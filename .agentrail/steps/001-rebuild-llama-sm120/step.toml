@@ -1,0 +1,9 @@
+number = 1
+slug = "rebuild-llama-sm120"
+status = "in-progress"
+description = "Rebuild and pin the existing Linux llama.cpp checkout for the RTX 5060 Ti (Bl..."
+role = "production"
+context_files = []
+created_at = "2026-09-02T14:30:23"
+task_type = "llama-cuda-build"
+commits = []
