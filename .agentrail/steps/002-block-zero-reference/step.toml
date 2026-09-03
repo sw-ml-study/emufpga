@@ -1,8 +1,9 @@
 number = 2
 slug = "block-zero-reference"
-status = "in-progress"
+status = "completed"
 description = "Establish independently observable Qwen3 block-zero intermediate values from ..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-02T18:05:20"
-commits = []
+completed_at = "2026-09-02T18:10:39"
+commits = ["cd2a19b908ab8ad13cba7c7803d77f84c319b769"]
