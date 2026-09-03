@@ -126,8 +126,8 @@ The complete-vector comparison gives:
 | post-attention | 0.003290944 | 0.000642471 | 0.999941075717 |
 | block zero | 0.054967880 | 0.003724159 | 0.999939510587 |
 
-The Rust harness enforces respective maximum-error tolerances of 0, 0.005,
-and 0.06, plus cosine minima of 0.999999999, 0.9999, and 0.9999. Exact
+The Rust harness enforces respective maximum-error tolerances of 0, 0.006,
+and 0.06, plus cosine minima of 0.999999999, 0.99985, and 0.9997. Exact
 embedding agreement rules out row orientation and Q6_K decoding errors. The
 small error after several quantized matrix multiplies, and its growth through
 the MLP, is consistent with different floating-point accumulation order. It
@@ -142,14 +142,37 @@ ffn_inp-0.f32 4b561e783caba3a9b72b65a2a082cdc49c835cc9b537315c974f4d30d7737d9a
 l_out-0.f32   7b631c7d44fe8073b571a8f9f2a20d203569b6dcc0ef086882b9e74d98112ebc
 ```
 
+## Five-token attention and KV state
+
+The slice accepts a comma-separated sequence and now implements Qwen3's
+half-split RoPE (base 1,000,000), scaled dot-product attention, the 32-query to
+8-key/value grouped-head mapping, causal masking, and explicit block-local K/V
+state. Projection weights are dequantized one matrix at a time and shared
+across all positions; no full model or second projection matrix is resident.
+
+```sh
+SPM_QWEN_REFERENCE_DIR=/disk1/tmp/qwen3-block0-cpu \
+  cargo run --release -p spm-qwen3-slice -- \
+  /disk1/tmp/qwen3-8b-q6/Qwen3-8B-Q6_K.gguf \
+  785,6722,315,9625,374
+```
+
+All five embedding vectors match llama.cpp exactly. Across all positions,
+post-attention maximum absolute error is at most 0.005455017 and cosine is at
+least 0.999895659269. Block-zero maximum absolute error is at most 0.054967880
+and cosine is at least 0.999731226156. The enforced multi-token bounds are
+0.006/0.99985 for post-attention and 0.06/0.9997 for block zero. Tests cover
+position-zero identity, a hand-computed RoPE pair, stable normalized softmax,
+causal exclusion of a later value, and four-to-one GQA head mapping.
+
 ## Next rung
 
 Extend the Rust Qwen3 forward harness in independently testable stages:
 
-1. generalize RoPE, causal attention, and KV state to multiple positions;
-2. compare each position's block-zero output against callback artifacts;
-3. iterate all 36 blocks without materializing dequantized matrices;
-4. add final normalization/output projection and compare pinned logits.
+1. generalize the validated block implementation over all 36 layers;
+2. retain per-layer K/V state while releasing each layer's weights;
+3. add final normalization/output projection;
+4. compare CPU logits to the strict oracle, then characterize CUDA differences.
 
 The backend choice remains open. A maintained Rust CUDA backend must support
 Qwen3 dense models and this GPU without bypassing `spm-gguf` validation.

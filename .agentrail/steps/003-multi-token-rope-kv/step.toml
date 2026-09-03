@@ -1,6 +1,6 @@
 number = 3
 slug = "multi-token-rope-kv"
-status = "pending"
+status = "in-progress"
 description = "Extend spm-qwen3-slice from one token at position zero to the fixed five-toke..."
 role = "legacy"
 context_files = []

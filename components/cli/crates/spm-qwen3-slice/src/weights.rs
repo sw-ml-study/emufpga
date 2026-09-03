@@ -22,12 +22,16 @@ pub fn load(path: &Path, content: &Content, name: &str) -> Result<Vec<f32>, Stri
     }
 }
 
-pub fn projection(
+pub fn projection_batch(
     path: &Path,
     content: &Content,
     name: &str,
     cols: usize,
-    input: &[f32],
-) -> Result<Vec<f32>, String> {
-    matvec(&load(path, content, name)?, cols, input)
+    inputs: &[Vec<f32>],
+) -> Result<Vec<Vec<f32>>, String> {
+    let weights = load(path, content, name)?;
+    inputs
+        .iter()
+        .map(|input| matvec(&weights, cols, input))
+        .collect()
 }
