@@ -1,0 +1,11 @@
+{
+  "task_type": "llama-cuda-build",
+  "state": {
+    "number": 1,
+    "step": "rebuild-llama-sm120"
+  },
+  "action": "Archived completed saga; initialized new saga; inspected CUDA/CMake/llama configuration; configured and built SM120 llama.cpp; ran repeated GPU oracle and memory sampling; compared golden output; ran full project gate",
+  "result": "success",
+  "reward": 1,
+  "timestamp": "2026-09-02T18:05:20"
+}
