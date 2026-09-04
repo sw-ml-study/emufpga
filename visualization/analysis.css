@@ -15,4 +15,7 @@ th:first-child, td:first-child { text-align: left; }
 summary { cursor: pointer; color: var(--cyan); font-weight: 700; }
 .evidence { margin-top: 10px; line-height: 1.55; }
 .evidence a { color: var(--cyan); }
+footer { height: auto; min-height: 54px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+footer a { color: var(--cyan); }
+#build-info { font-family: ui-monospace, monospace; }
 @media (max-width: 900px) { .cards, .tradeoffs { grid-template-columns: 1fr; } .case-head { align-items: start; gap: 15px; } }

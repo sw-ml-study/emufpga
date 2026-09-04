@@ -13,5 +13,11 @@ cp "$source_dir/style.css" "$output_dir/style.css"
 cp "$source_dir/analysis.css" "$output_dir/analysis.css"
 touch "$output_dir/.nojekyll"
 
+build_host=$(hostname -s)
+build_sha=$(git -C "$repo_dir" rev-parse --short=12 HEAD)
+build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"host":"%s","sha":"%s","timestamp":"%s"}\n' \
+    "$build_host" "$build_sha" "$build_timestamp" > "$output_dir/build-info.json"
+
 echo "Built static Pages site in $output_dir"
 echo "To publish: commit pages/ on main, then run scripts/deploy-pages"
