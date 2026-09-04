@@ -5,6 +5,7 @@ use crate::{
     weights,
 };
 use spm_gguf::Content;
+use spm_viz_trace::{ExpertEvent, Trace as VizTrace};
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -25,6 +26,7 @@ struct FullReport {
     peak_input: usize,
     expert_max: f32,
     combined_max: f32,
+    trace: Option<VizTrace>,
 }
 
 macro_rules! record_full {
@@ -53,6 +55,35 @@ macro_rules! print_full {
             $full.expert_max, $full.combined_max
         );
     }};
+}
+
+macro_rules! record_trace {
+    ($full:expr, $trace:expr, $report:expr, $layer:expr) => {
+        if let Some(viz) = $full.trace.as_mut() {
+            for expert in 0..32 {
+                let routed = $trace
+                    .routes
+                    .iter()
+                    .filter(|route| route.contains(&expert))
+                    .count();
+                viz.push(ExpertEvent {
+                    layer: u8::try_from($layer).map_err(|_| "layer does not fit trace")?,
+                    expert: u8::try_from(expert).map_err(|_| "expert does not fit trace")?,
+                    selected: routed > 0,
+                    routed_tokens: u16::try_from(routed).map_err(|_| "route count too large")?,
+                    packed_bytes: 1_314_816,
+                    decoded_bytes: if routed > 0 { 6_291_456 } else { 0 },
+                    layer_read_us: u64::try_from($report.read.as_micros())
+                        .map_err(|_| "read timing too large")?,
+                    layer_decode_us: u64::try_from($report.decode.as_micros())
+                        .map_err(|_| "decode timing too large")?,
+                    layer_compute_us: u64::try_from($report.compute.as_micros())
+                        .map_err(|_| "compute timing too large")?,
+                })
+                .map_err(str::to_owned)?;
+            }
+        }
+    };
 }
 
 macro_rules! print_spm_report {
@@ -98,6 +129,7 @@ macro_rules! run_spm_layer {
             println!("spm_layer={}", $layer);
             print_spm_report!(&report, emit_time, $normalized.len(), schedule);
             record_full!($full, &report, emit_time);
+            record_trace!($full, $trace, &report, $layer);
             $output = streamed;
             if report.expert_max > 0.002 || report.combined_max > 0.002 {
                 return Err("SPM execution differs from GGUF Rust oracle".into());
@@ -286,6 +318,13 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
     let reference_dir = env::var_os("SPM_GRANITE_REFERENCE_DIR").map(PathBuf::from);
     let mut hidden = embeddings(path, &content, tokens)?;
     let mut full = FullReport::default();
+    if env::var_os("SPM_GRANITE_TRACE_JSON").is_some() {
+        full.trace = Some(VizTrace {
+            model: "granite-3.1-1b-a400m-q6_k",
+            schedule: "all-expert",
+            events: Vec::new(),
+        });
+    }
     compare(reference_dir.as_deref(), "inp_embd", &hidden.concat(), 0.1)?;
     for layer in 0..LAYERS {
         hidden = block(
@@ -312,6 +351,9 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
     )?;
     if env::var_os("SPM_GRANITE_FULL_SPM_PATH").is_some() {
         print_full!(&full, tokens.len());
+    }
+    if let (Some(path), Some(trace)) = (env::var_os("SPM_GRANITE_TRACE_JSON"), &full.trace) {
+        fs::write(Path::new(&path), trace.to_json()).map_err(|error| error.to_string())?;
     }
     for (token, logit) in top {
         println!("{token} {logit:.9} {:08x}", logit.to_bits());

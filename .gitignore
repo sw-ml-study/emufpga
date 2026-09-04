@@ -1,6 +1,7 @@
 # Build products (one shared target/ for every component workspace,
 # see .cargo/config.toml).
 target/
+visualization/trace.json
 
 # macOS and editor noise
 .DS_Store

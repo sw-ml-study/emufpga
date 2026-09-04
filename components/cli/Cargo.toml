@@ -19,6 +19,7 @@ members = [
     "crates/spm-gguf-inspect",
     "crates/spm-qwen3-slice",
     "crates/spm-granite-moe",
+    "crates/spm-viz-trace",
     "crates/spm-order",
     "crates/spm-quantize",
     "crates/spm-bench",

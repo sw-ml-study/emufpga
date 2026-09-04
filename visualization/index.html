@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>emufpga serial MoE accelerator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div><span class="eyebrow">emufpga</span><h1>Serial MoE FPGA visual emulator</h1></div>
+    <div class="controls">
+      <button id="play">Pause</button><button id="step">Step</button>
+      <label>Speed <input id="speed" type="range" min="1" max="10" value="5"></label>
+      <label>Schedule <select id="schedule"><option value="serial">All-expert serial</option><option value="union">Selected union</option><option value="resident">Resident VRAM</option></select></label>
+    </div>
+  </header>
+  <main>
+    <section class="board-wrap">
+      <svg id="board" viewBox="0 0 1200 650" role="img" aria-label="Purpose-built serial MoE FPGA datapath">
+        <defs><filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <rect class="pcb" x="10" y="10" width="1180" height="630" rx="28"/>
+        <text class="silk title" x="38" y="52">SERIAL-MoE ACCELERATOR • Q6_K • 32 EXPERTS / TOP-8</text>
+        <g class="block storage" transform="translate(35 105)"><rect width="175" height="165" rx="14"/><text x="18" y="35">WEIGHT STREAM</text><text class="small" x="18" y="65">NVMe / DDR / PCIe</text><text class="value" x="18" y="108">210 B</text><text class="small" x="18" y="132">per Q6_K block</text></g>
+        <g class="block fifo" transform="translate(270 105)"><rect width="145" height="165" rx="14"/><text x="18" y="35">INPUT FIFO</text><g id="fifo-bars"></g><text class="small" x="18" y="142">backpressure</text></g>
+        <g class="block decoder" transform="translate(475 105)"><rect width="165" height="165" rx="14"/><text x="18" y="35">Q6_K DECODER</text><text class="value" x="18" y="88">210 → 1024 B</text><text class="small" x="18" y="118">256 f32 weights</text><text class="small" x="18" y="142">one block resident</text></g>
+        <g class="block mac" transform="translate(700 105)"><rect width="190" height="165" rx="14"/><text x="18" y="35">MAC LANES</text><g id="lanes"></g><text class="small" x="18" y="142">selected experts only</text></g>
+        <g class="block accum" transform="translate(950 105)"><rect width="205" height="165" rx="14"/><text x="18" y="35">ACCUMULATOR BRAM</text><text class="value" x="18" y="88">y += w × x</text><text class="small" x="18" y="118">resident activations</text><text class="small" x="18" y="142">weighted combine</text></g>
+        <path class="bus" d="M210 188H270M415 188H475M640 188H700M890 188H950"/>
+        <circle id="packet" r="12" cx="210" cy="188"/>
+        <g transform="translate(35 325)"><text class="silk" x="0" y="0">ROUTER ENABLE MASK</text><g id="experts"></g></g>
+        <g class="legend" transform="translate(775 335)"><rect width="380" height="250" rx="14"/><text x="20" y="35">CURRENT EVENT</text><text id="event-title" class="value" x="20" y="76">Layer 0 • Expert 0</text><text id="event-state" x="20" y="108">selected</text><text id="event-route" x="20" y="138">routed tokens: 1</text><text id="event-bytes" x="20" y="168">packed: 1,314,816 B</text><text id="event-timing" x="20" y="198">layer read/decode/compute</text><text id="scope" class="small" x="20" y="228">MEASURED layer totals</text></g>
+      </svg>
+      <div class="callout"><strong>This is the proposed programmed datapath.</strong> It emulates the serial-MoE accelerator we intend to synthesize—not a general FPGA floorplan.</div>
+    </section>
+    <aside>
+      <h2>Live counters</h2>
+      <div class="metric"><span>Layer / expert</span><b id="position">0 / 0</b></div>
+      <div class="metric"><span>Bytes crossing pins</span><b id="traffic">0</b></div>
+      <div class="metric"><span>Useful bytes</span><b id="useful">0</b></div>
+      <div class="metric"><span>Stream utilization</span><b id="utilization">0%</b></div>
+      <div class="metric"><span>Peak parameter block</span><b>210 B</b></div>
+      <div class="metric"><span>Full input path</span><b>132,306 B</b></div>
+      <h2>What to watch</h2>
+      <p>Green experts perform arithmetic. Gray experts still consume bandwidth in all-expert mode. Selected-union skips them, but requires routes before physical scheduling.</p>
+      <p>MAC lanes illuminate only for selected experts. The FIFO pulses when the scalar reference compute path cannot consume data as quickly as the warm file cache supplies it.</p>
+      <div class="status"><span class="dot measured"></span>Measured from Rust trace</div>
+      <div class="status"><span class="dot projected"></span>Projected schedule comparison</div>
+    </aside>
+  </main>
+  <footer>Validated: Q6_K bytes → 24 dynamic routes → chained expert outputs → final logits. Next: cycle-accurate RTL co-simulation.</footer>
+  <script src="app.js"></script>
+</body>
+</html>

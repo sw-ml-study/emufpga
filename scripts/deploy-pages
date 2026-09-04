@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Publish the committed, locally built pages/ tree. The temporary branch and
+# gh-pages are generated artifacts; all authored work remains on main.
+repo_dir=$(git rev-parse --show-toplevel)
+cd "$repo_dir"
+
+if ! git diff --quiet -- pages || ! git diff --cached --quiet -- pages; then
+    echo "pages/ has uncommitted changes; build and commit it on main first" >&2
+    exit 1
+fi
+
+git branch -D _pages_deploy 2>/dev/null || true
+git subtree split --prefix pages -b _pages_deploy HEAD
+git push --force origin _pages_deploy:gh-pages
+git branch -D _pages_deploy
+
+echo "Published committed pages/ to gh-pages"

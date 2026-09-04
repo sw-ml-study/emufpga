@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+source_dir="$repo_dir/visualization"
+output_dir="$repo_dir/pages"
+
+mkdir -p "$output_dir"
+find "$output_dir" -mindepth 1 -maxdepth 1 -type f -delete
+cp "$source_dir/index.html" "$output_dir/index.html"
+cp "$source_dir/app.js" "$output_dir/app.js"
+cp "$source_dir/style.css" "$output_dir/style.css"
+touch "$output_dir/.nojekyll"
+
+echo "Built static Pages site in $output_dir"
+echo "To publish: commit pages/ on main, then run scripts/deploy-pages"

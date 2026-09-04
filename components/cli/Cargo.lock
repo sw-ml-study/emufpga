@@ -762,6 +762,7 @@ dependencies = [
  "spm-linear",
  "spm-stream-file",
  "spm-stream-groups",
+ "spm-viz-trace",
 ]
 
 [[package]]
@@ -860,6 +861,10 @@ dependencies = [
 
 [[package]]
 name = "spm-stream-metrics"
+version = "0.1.0"
+
+[[package]]
+name = "spm-viz-trace"
 version = "0.1.0"
 
 [[package]]
