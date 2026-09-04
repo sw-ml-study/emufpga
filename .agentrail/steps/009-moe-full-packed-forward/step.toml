@@ -1,0 +1,8 @@
+number = 9
+slug = "moe-full-packed-forward"
+status = "pending"
+description = "Extend the validated packed Q6_K .spm MoE schedule from Granite block 0 throu..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-03T18:54:44"
+commits = []
