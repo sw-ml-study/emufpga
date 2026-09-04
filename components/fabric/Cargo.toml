@@ -9,6 +9,7 @@
 members = [
     "crates/fabric-model",
     "crates/fabric-report",
+    "crates/q6-pipeline",
 ]
 resolver = "2"
 

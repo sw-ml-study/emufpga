@@ -26,6 +26,9 @@ figcaption span { min-height: 38px; margin-top: 5px; color: var(--muted); font-s
 .bar.resident, .line-resident { background: var(--amber); stroke: var(--amber); }
 .bar.serial, .line-serial { background: var(--cyan); stroke: var(--cyan); }
 .chart-takeaway { min-height: 48px; padding: 9px; border-left: 3px solid var(--green); color: var(--ink); font-size: 12px; line-height: 1.45; }
+.cycle-stack { display: flex; height: 48px; margin: 32px 0 14px; overflow: hidden; border-radius: 6px; font: 11px ui-monospace; }
+.cycle-stack span { display: grid; place-items: center; color: #031315; }.cycle-stack span:nth-child(1) { background: var(--amber); }.cycle-stack span:nth-child(2) { background: var(--cyan); }.cycle-stack span:nth-child(3) { background: var(--green); }
+.cycle-total { text-align: center; font: 12px ui-monospace; }
 #throughput-chart { width: 100%; margin-top: 6px; }
 .chart-grid { stroke: #194348; stroke-width: 1; }.chart-line { fill: none; stroke-width: 4; }.chart-point { stroke: #031315; stroke-width: 2; }.chart-label { fill: var(--muted); font: 11px ui-monospace; }
 footer { height: auto; min-height: 54px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

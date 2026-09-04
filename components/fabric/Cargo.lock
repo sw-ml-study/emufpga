@@ -28,6 +28,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "q6-pipeline"
+version = "0.1.0"
+dependencies = [
+ "spm-gguf",
+]
+
+[[package]]
 name = "spm-accum"
 version = "0.1.0"
 
@@ -65,6 +72,10 @@ dependencies = [
  "spm-stream-groups",
  "spm-stream-metrics",
 ]
+
+[[package]]
+name = "spm-gguf"
+version = "0.1.0"
 
 [[package]]
 name = "spm-header"

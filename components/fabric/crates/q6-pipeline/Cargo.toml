@@ -1,0 +1,11 @@
+[package]
+name = "q6-pipeline"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+spm-gguf = { path = "../../../cli/crates/spm-gguf" }
