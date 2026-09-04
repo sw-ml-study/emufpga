@@ -13,7 +13,11 @@ const binary = bytes => bytes >= 1073741824 ? `${(bytes/1073741824).toFixed(2)} 
 
 function buildAnalysis() {
   $("bench").innerHTML=benchmark.map(r=>`<tr><td>${r[0]}</td><td>${r[1].toFixed(2)} MB</td><td>${r[2].toFixed(2)} MB</td><td>${r[3].toFixed(1)}</td><td>${r[4].toFixed(1)}</td><td>${r[5]}/32</td></tr>`).join("");
-  const update=()=>{const kv=Number($("context").value)*49152;$("resident-memory").textContent=`${binary(1099212096+kv)} minimum`;$("serial-memory").textContent=`${binary(kv)} KV + 129 KiB`;$("union-memory").textContent=`${binary(kv)} KV + 129 KiB`;};
+  const bars=(items,max)=>items.map(i=>`<div class="bar-row"><span>${i[0]}</span><div class="bar-track"><div class="bar ${i[3]}" style="width:${100*i[1]/max}%"></div></div><b>${i[2]}</b></div>`).join("");
+  $("traffic-chart").innerHTML=benchmark.flatMap(r=>[[`B${r[0]} all`,r[1],`${r[1].toFixed(1)} MB`,"resident"],[`B${r[0]} union`,r[2],`${r[2].toFixed(1)} MB`,"serial"]]).map(i=>bars([i],42.21)).join("");
+  const points=(column)=>benchmark.map((r,i)=>`${42+i*88},${175-(r[column]-10)*7}`).join(" ");
+  $("throughput-chart").innerHTML=`<path class="chart-grid" d="M38 20V175H430M38 105H430M38 35H430"/><polyline class="chart-line line-resident" points="${points(3)}"/><polyline class="chart-line line-serial" points="${points(4)}"/>${benchmark.map((r,i)=>`<text class="chart-label" x="${34+i*88}" y="195">B${r[0]}</text>`).join("")}<text class="chart-label" x="48" y="32">amber all-expert · cyan selected-union · tok/s</text>`;
+  const update=()=>{const kv=Number($("context").value)*49152,resident=1099212096+kv,serial=132306+kv;$("resident-memory").textContent=`${binary(resident)} minimum`;$("serial-memory").textContent=`${binary(kv)} KV + 129 KiB`;$("union-memory").textContent=`${binary(kv)} KV + 129 KiB`;$("memory-chart").innerHTML=bars([["resident",resident,binary(resident),"resident"],["serial",serial,binary(serial),"serial"]],resident);};
   $("context").onchange=update; update();
 }
 

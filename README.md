@@ -4,6 +4,14 @@ A Serial Parameter Machine (SPM) research vehicle: a behavioral FPGA
 emulator plus a resource budget, calibrated to the Gowin parts on Sipeed
 Tang Nano boards, driving a streaming low-bit tensor engine.
 
+**[Open the live serial-MoE FPGA visual emulator](https://sw-ml-study.github.io/emufpga/)**
+
+[![Serial-MoE FPGA visual emulator showing the weight stream, FIFO, Q6_K decoder, MAC lanes, accumulator BRAM, router mask, and measured counters](docs/assets/serial-moe-fpga-demo.png)](https://sw-ml-study.github.io/emufpga/)
+
+The live view animates the purpose-built datapath and presents graphical
+memory, traffic, and throughput comparisons with measured/derived/projected
+provenance. Click the image to interact with schedules and context sizes.
+
 ## The idea
 
 Conventional inference treats gigantic immutable weight matrices as
