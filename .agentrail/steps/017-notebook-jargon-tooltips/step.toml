@@ -1,8 +1,9 @@
 number = 17
 slug = "notebook-jargon-tooltips"
-status = "in-progress"
+status = "completed"
 description = "Correct the Idea page SVG so tiny buffer and decode + MAC labels fit fully in..."
 role = "production"
 context_files = []
 created_at = "2026-09-04T13:54:41"
-commits = []
+completed_at = "2026-09-04T14:49:11"
+commits = ["5c3d37d434639eb0a842c69e9b258c1f6997f123"]

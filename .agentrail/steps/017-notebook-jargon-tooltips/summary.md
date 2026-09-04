@@ -1,0 +1,1 @@
+Kept the Idea-page tiny-buffer and decode-plus-MAC labels fully inside their diagram boxes; added hover, native, and keyboard-focus definitions for MoE, MAC, GPU, and FPGA; added a compact Lab glossary; rebuilt Pages and README capture; visually verified desktop and narrow layouts; passed the full repository gate.
