@@ -1,6 +1,6 @@
 number = 11
 slug = "moe-rtl-cosim"
-status = "pending"
+status = "in-progress"
 description = "Build the next honest validation layer for the purpose-built serial-MoE FPGA ..."
 role = "validation"
 context_files = []

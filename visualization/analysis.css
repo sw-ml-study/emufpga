@@ -1,0 +1,18 @@
+.case { padding: 34px 5vw; border-top: 1px solid #17464a; background: #051a1d; }
+.case-head { display: flex; align-items: end; justify-content: space-between; }
+.case h2 { margin: .2rem 0; font-size: 28px; }
+.verdict { max-width: 1000px; font-size: 17px; line-height: 1.55; }
+.cards, .tradeoffs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
+.cards article, .tradeoffs article, .evidence { padding: 18px; background: var(--panel); border: 1px solid #24585e; border-radius: 10px; }
+.cards b { display: block; color: var(--cyan); font: 700 21px ui-monospace; }
+.cards em, .note { color: var(--muted); font-size: 12px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: var(--panel); }
+th, td { text-align: right; padding: 10px; border-bottom: 1px solid #1b464a; font: 13px ui-monospace; }
+th:first-child, td:first-child { text-align: left; }
+.pro { color: var(--green); }
+.con { color: var(--amber); }
+summary { cursor: pointer; color: var(--cyan); font-weight: 700; }
+.evidence { margin-top: 10px; line-height: 1.55; }
+.evidence a { color: var(--cyan); }
+@media (max-width: 900px) { .cards, .tradeoffs { grid-template-columns: 1fr; } .case-head { align-items: start; gap: 15px; } }

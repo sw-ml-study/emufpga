@@ -8,6 +8,14 @@ const fallback = Array.from({length: 32}, (_, expert) => ({
 }));
 let events = fallback, frame = 0, playing = true, timer, traffic = 0, useful = 0;
 const $ = id => document.getElementById(id);
+const benchmark = [[1,42.21,10.65,13.0,12.9,8],[4,42.21,25.12,18.2,18.0,19],[8,42.21,36.95,19.4,18.5,28],[16,42.21,36.95,21.5,22.2,28],[32,42.21,36.95,26.1,24.9,28]];
+const binary = bytes => bytes >= 1073741824 ? `${(bytes/1073741824).toFixed(2)} GiB` : bytes >= 1048576 ? `${(bytes/1048576).toFixed(1)} MiB` : `${Math.round(bytes/1024)} KiB`;
+
+function buildAnalysis() {
+  $("bench").innerHTML=benchmark.map(r=>`<tr><td>${r[0]}</td><td>${r[1].toFixed(2)} MB</td><td>${r[2].toFixed(2)} MB</td><td>${r[3].toFixed(1)}</td><td>${r[4].toFixed(1)}</td><td>${r[5]}/32</td></tr>`).join("");
+  const update=()=>{const kv=Number($("context").value)*49152;$("resident-memory").textContent=`${binary(1099212096+kv)} minimum`;$("serial-memory").textContent=`${binary(kv)} KV + 129 KiB`;$("union-memory").textContent=`${binary(kv)} KV + 129 KiB`;};
+  $("context").onchange=update; update();
+}
 
 function buildBoard() {
   for (let i=0;i<32;i++) {
@@ -49,4 +57,4 @@ $("play").onclick=()=>{playing=!playing;$("play").textContent=playing?"Pause":"P
 $("step").onclick=()=>{frame++;render()}; $("speed").oninput=restart;
 $("schedule").onchange=()=>{frame=traffic=useful=0;render()};
 
-buildBoard(); fetch("trace.json").then(r=>r.ok?r.json():Promise.reject()).then(t=>{events=t.events;render()}).catch(()=>render()); restart();
+buildBoard(); buildAnalysis(); fetch("trace.json").then(r=>r.ok?r.json():Promise.reject()).then(t=>{events=t.events;render()}).catch(()=>render()); restart();

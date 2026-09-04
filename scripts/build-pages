@@ -10,6 +10,7 @@ find "$output_dir" -mindepth 1 -maxdepth 1 -type f -delete
 cp "$source_dir/index.html" "$output_dir/index.html"
 cp "$source_dir/app.js" "$output_dir/app.js"
 cp "$source_dir/style.css" "$output_dir/style.css"
+cp "$source_dir/analysis.css" "$output_dir/analysis.css"
 touch "$output_dir/.nojekyll"
 
 echo "Built static Pages site in $output_dir"
