@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lab — emufpga serial MoE accelerator</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="analysis.css">
+</head>
+<body>
+  <nav class="notebook-nav" aria-label="Notebook pages"><a href="index.html">Idea</a><a href="how.html">How it works</a><a href="experiments.html">Experiments</a><a href="results.html">Results</a><a href="hypothesis.html">Hypothesis</a><a class="active" href="lab.html">Lab</a><a href="https://github.com/sw-ml-study/emufpga">GitHub ↗</a></nav>
+  <header>
+    <div><span class="eyebrow">emufpga · detailed instrument</span><h1>Engineering Lab</h1><a class="jump" href="#intro">Read the experiment context ↓</a></div>
+  </header>
+  <section id="intro" class="intro" aria-labelledby="intro-title">
+    <div class="intro-lead"><span class="eyebrow">The experiment in 60 seconds</span><h2 id="intro-title">Use the GPU we already own—even when the model is too large for it.</h2><p>emufpga investigates whether immutable MoE expert weights can flow serially from cheap storage while a small or old GPU keeps attention, KV cache, and active state. The alternative to beat is ordinary CPU/System-RAM offload on the same reused machine—not a new high-end GPU.</p><strong>Current verdict: mechanics validated; deployment advantage not yet measured.</strong></div>
+    <div class="intro-cards">
+      <article><span>1 · WHAT IS THIS?</span><h3>A serial expert-supply experiment</h3><p>Route requests first, fetch only the experts they need, and reuse each fetched expert across concurrent requests. CPU, GPU, FPGA, storage, and control hardware can each do the work they suit.</p></article>
+      <article><span>2 · WHAT DO WE MEASURE?</span><h3>Capacity, correct work, and service rate</h3><p>Can an oversized model run? For 1/2/4/8 independent agents: correct tasks/hour, tokens/s, TTFT and p95 latency, RAM/VRAM, bytes moved, watts, and tasks/kWh—compared with CPU/RAM offload.</p></article>
+      <article><span>3 · WHAT DO WE PREDICT?</span><h3>A conditional capacity win</h3><p>Serial staging should win when the model exceeds VRAM, selected experts avoid enough traffic, and batching reuses weights. It may lose when storage is slow, routes touch most experts, KV dominates, or transfer overhead exceeds saved compute.</p></article>
+    </div>
+    <div class="intro-rule"><b>Success:</b> an oversized MoE, four independent agents at ≥2 generated tokens/s each, unchanged correctness, and ≥25% more correct tasks/hour than CPU/RAM offload on the same old host. <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/claim-scorecard.md">Why these thresholds?</a></div>
+  </section>
+  <main>
+    <section class="board-wrap">
+      <div class="board-controls"><div><span class="eyebrow">Serial datapath animation</span><strong>Playback controls</strong></div><div class="controls">
+        <button id="play">Pause</button><button id="step">Step</button>
+        <label>Speed <input id="speed" type="range" min="1" max="10" value="5"></label>
+        <label>Schedule <select id="schedule"><option value="serial">All-expert serial</option><option value="union">Selected union</option><option value="resident">Resident VRAM</option></select></label>
+      </div></div>
+      <svg id="board" viewBox="0 0 1200 650" role="img" aria-label="Purpose-built serial MoE FPGA datapath">
+        <defs><filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <rect class="pcb" x="10" y="10" width="1180" height="630" rx="28"/>
+        <text class="silk title" x="38" y="52">SERIAL-MoE ACCELERATOR • Q6_K • 32 EXPERTS / TOP-8</text>
+        <g class="block storage" transform="translate(35 105)"><rect width="175" height="165" rx="14"/><text x="18" y="35">WEIGHT STREAM</text><text class="small" x="18" y="65">NVMe / DDR / PCIe</text><text class="value" x="18" y="108">210 B</text><text class="small" x="18" y="132">per Q6_K block</text></g>
+        <g class="block fifo" transform="translate(270 105)"><rect width="145" height="165" rx="14"/><text x="18" y="35">INPUT FIFO</text><g id="fifo-bars"></g><text class="small" x="18" y="142">backpressure</text></g>
+        <g class="block decoder" transform="translate(475 105)"><rect width="165" height="165" rx="14"/><text x="18" y="35">Q6_K DECODER</text><text class="value" x="18" y="88">210 → 1024 B</text><text class="small" x="18" y="118">256 f32 weights</text><text class="small" x="18" y="142">one block resident</text></g>
+        <g class="block mac" transform="translate(700 105)"><rect width="190" height="165" rx="14"/><text x="18" y="35">MAC LANES</text><g id="lanes"></g><text class="small" x="18" y="142">selected experts only</text></g>
+        <g class="block accum" transform="translate(950 105)"><rect width="205" height="165" rx="14"/><text x="18" y="35">ACCUMULATOR BRAM</text><text class="value" x="18" y="88">y += w × x</text><text class="small" x="18" y="118">resident activations</text><text class="small" x="18" y="142">weighted combine</text></g>
+        <path class="bus" d="M210 188H270M415 188H475M640 188H700M890 188H950"/>
+        <circle id="packet" r="12" cx="210" cy="188"/>
+        <g transform="translate(35 325)"><text class="silk" x="0" y="0">ROUTER ENABLE MASK</text><g id="experts"></g></g>
+        <g class="legend" transform="translate(775 335)"><rect width="380" height="250" rx="14"/><text x="20" y="35">CURRENT EVENT</text><text id="event-title" class="value" x="20" y="76">Layer 0 • Expert 0</text><text id="event-state" x="20" y="108">selected</text><text id="event-route" x="20" y="138">routed tokens: 1</text><text id="event-bytes" x="20" y="168">packed: 1,314,816 B</text><text id="event-timing" x="20" y="198">layer read/decode/compute</text><text id="scope" class="small" x="20" y="228">MEASURED layer totals</text></g>
+      </svg>
+      <div class="callout"><strong>This is the proposed programmed datapath.</strong> It emulates the serial-MoE accelerator we intend to synthesize—not a general FPGA floorplan.</div>
+    </section>
+    <aside>
+      <h2>Live counters</h2>
+      <div class="metric"><span>Layer / expert</span><b id="position">0 / 0</b></div>
+      <div class="metric"><span>Bytes crossing pins</span><b id="traffic">0</b></div>
+      <div class="metric"><span>Useful bytes</span><b id="useful">0</b></div>
+      <div class="metric"><span>Stream utilization</span><b id="utilization">0%</b></div>
+      <div class="metric"><span>Peak parameter block</span><b>210 B</b></div>
+      <div class="metric"><span>Full input path</span><b>132,306 B</b></div>
+      <h2>What to watch</h2>
+      <p>Green experts perform arithmetic. Gray experts still consume bandwidth in all-expert mode. Selected-union skips them, but requires routes before physical scheduling.</p>
+      <p>MAC lanes illuminate only for selected experts. The FIFO pulses when the scalar reference compute path cannot consume data as quickly as the warm file cache supplies it.</p>
+      <div class="status"><span class="dot measured"></span>Measured from Rust trace</div>
+      <div class="status"><span class="dot projected"></span>Projected schedule comparison</div>
+    </aside>
+  </main>
+  <section class="case" aria-labelledby="case-title">
+    <div class="case-head"><div><span class="eyebrow">Engineering case</span><h2 id="case-title">Capacity saved; bandwidth spent</h2></div><label>Context <select id="context"><option>32</option><option>1024</option><option>4096</option><option>8192</option><option selected>32768</option><option>131072</option></select> tokens</label></div>
+    <p class="verdict"><strong>Conclusion:</strong> serial execution is a capacity strategy, not an automatic speedup. It wins when weights do not fit near compute and compression, batching, caching, or route-aware fetch keep transferred bytes useful.</p>
+    <section class="claim-strip" aria-labelledby="claim-title"><div><span class="eyebrow">Current claim</span><h3 id="claim-title">Correct serial mechanics: yes. Oversized-MoE serving advantage: not measured.</h3><p>Goal: reuse a small/old GPU to serve a model it cannot hold, at a useful rate faster than CPU/System-RAM offload—not beat a modern resident GPU.</p></div><div class="claim-states"><span class="measured-state">MEASURED<br><b>correctness · bytes · host timing</b></span><span class="simulated-state">SIMULATED<br><b>pipeline cycles</b></span><span class="missing-state">TO MEASURE<br><b>independent agents · CPU-offload baseline · power</b></span></div><a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/claim-scorecard.md">Success / failure scorecard →</a></section>
+    <section class="lab"><h3>Scenario laboratory <small>DERIVED / PROJECTED—change assumptions</small></h3><div class="knobs">
+      <label>Model GiB<input id="model-gib" type="number" min="0.1" step="0.1" value="1.024"></label><label>Fast memory GiB<input id="budget-gib" type="number" min="0.1" step="1" value="16"></label><label>Total experts<input id="total-experts" type="number" min="1" value="32"></label><label>Active experts<input id="active-experts" type="number" min="1" value="8"></label><label>Batch<input id="batch" type="number" min="1" value="1"></label><label>Context<input id="lab-context" type="number" min="1" value="32768"></label><label>KV bytes/token<input id="kv-bytes" type="number" min="0" value="49152"></label><label>Storage GB/s<input id="storage-gbps" type="number" min="0.01" step="0.1" value="3"></label><label>Compute TOPS<input id="compute-tops" type="number" min="0.01" step="0.1" value="1"></label><label>Active params B<input id="active-params" type="number" min="0.01" step="0.1" value="0.4"></label><label>Hypothetical clock MHz<input id="clock-mhz" type="number" min="1" value="100"></label>
+    </div><div id="decision" class="decision"></div><div class="lab-graphs"><figure><figcaption><strong>Fast-memory fit</strong><span>Weights + KV compared with the selected capacity budget.</span></figcaption><div id="fit-graph" class="bar-chart"></div></figure><figure><figcaption><strong>Projected throughput ceiling</strong><span>Minimum of storage and arithmetic ceilings; not measured runtime.</span></figcaption><div id="ceiling-graph" class="bar-chart"></div></figure><figure><figcaption><strong>Traffic usefulness</strong><span>Uses empirical Granite union data for matching B1–B6 scenarios; otherwise analytical.</span></figcaption><div id="usefulness-graph" class="donut-row"></div></figure></div><div id="warnings" class="warnings"></div></section>
+    <div class="cards">
+      <article><h3>Resident GPU</h3><b id="resident-memory"></b><p>All 1.024 GiB of model data near compute, plus KV. Lowest fetch latency; highest scarce-memory demand.</p><em>DERIVED CAPACITY FLOOR—not allocator peak</em></article>
+      <article><h3>Blind serial</h3><b id="serial-memory"></b><p>Forward-only tape: 42.21 MB/layer at batch 1; 25.2% of expert bytes are useful.</p><em>MEASURED BYTES; host timing</em></article>
+      <article><h3>Selected union</h3><b id="union-memory"></b><p>10.65 MB/layer at batch 1, but routes and expert-addressable fetching must come first.</p><em>MEASURED COMPARISON LAYOUT</em></article>
+    </div>
+    <div class="charts">
+      <figure><figcaption><strong>Nearby memory</strong><span>Streaming removes the fixed model-weight block; KV grows either way.</span></figcaption><div id="memory-chart" class="bar-chart"></div><p class="chart-takeaway">At short context, weights dominate. At long context, KV becomes the next capacity wall.</p></figure>
+      <figure><figcaption><strong>Observed expert union</strong><span>MEASURED: five prompts × 24 layers. Cyan is observed; amber is the independent-routing formula.</span></figcaption><div id="traffic-chart" class="bar-chart"></div><p class="chart-takeaway" id="routing-takeaway">Loading empirical routing distribution…</p></figure>
+      <figure><figcaption><strong>Repeated scalar throughput</strong><span>MEASURED: median of seven warm runs; whisker text shows min–max.</span></figcaption><svg id="throughput-chart" viewBox="0 0 440 210" role="img" aria-label="Measured tokens per second by batch"></svg><p class="chart-takeaway" id="timing-takeaway">Loading repeated timing distribution…</p></figure>
+      <figure><figcaption><strong>Hardware-shaped block cycles</strong><span>SIMULATED: 16 fetch B/cycle · 8 decode lanes · 16 MAC lanes.</span></figcaption><div class="cycle-stack"><span style="flex:14">fetch 14</span><span style="flex:32">decode 32</span><span style="flex:16">MAC 16</span></div><div class="cycle-total">selected: <b>62 cycles</b> · unselected: <b>46 cycles</b></div><p class="chart-takeaway">Selection gates 16 MAC cycles, but every blind-stream block still pays fetch and decode. Cycles become seconds only after physical clock measurement.</p></figure>
+      <figure><figcaption><strong>Measured storage bandwidth</strong><span>Seven reads per case on this host. Bars show median; text shows p10–p90.</span></figcaption><div id="storage-chart" class="bar-chart">Loading storage distributions…</div><p class="chart-takeaway" id="storage-takeaway">Direct I/O is a cache-bypass proxy, not a power-on cold read.</p></figure>
+      <figure><figcaption><strong>Observed asynchronous prefetch</strong><span>MEASURED: B1 expert phase, seven runs. Positive is faster; negative is regression.</span></figcaption><div id="prefetch-chart" class="delta-chart">Loading prefetch matrix…</div><p class="chart-takeaway" id="prefetch-takeaway">Double buffering must earn its thread and queue overhead.</p></figure>
+    </div>
+    <details><summary>Show measured timing distribution</summary><div class="table-wrap"><table><thead><tr><th>Batch</th><th>All-expert median (min–max) tok/s</th><th>Selected-union median (min–max) tok/s</th><th colspan="3">Sample</th></tr></thead><tbody id="bench"></tbody></table></div></details>
+    <p class="note">Warm Linux page cache, release scalar Rust, expert sweep only. Host throughput and hardware-shaped cycles are different experiments. Emission and cold-media time are excluded.</p>
+    <div class="tradeoffs"><article><h3>Resident GPU</h3><p class="pro">+ Lowest latency, wide local bandwidth, mature kernels.</p><p class="con">− Entire model consumes VRAM; weights compete with contexts.</p></article><article><h3>Blind serial</h3><p class="pro">+ Tiny residency, simplest controller, no expert seek.</p><p class="con">− Wastes 75% of expert traffic for top-8-of-32 at batch 1.</p></article><article><h3>Selected union</h3><p class="pro">+ Avoids unused bytes and reuses experts across routed tokens.</p><p class="con">− Indexed fetch or preprocessing; savings shrink as batches touch most experts.</p></article></div>
+    <details open><summary>Evidence, math, and limits</summary><div class="evidence"><p><strong>Capacity:</strong> resident floor = 1,099,212,096 model bytes + context × 49,152 F16 KV bytes. Serial substitutes a measured 132,306-byte input path for resident model bytes. Runtime workspaces and activations are additional.</p><p><strong>Speed:</strong> time ≥ max(bytes ÷ bandwidth, operations ÷ compute rate). Physical FPGA seconds remain unknown until synthesis establishes clock and memory bandwidth.</p><p><a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/moe-memory-economics.md">Memory ledger</a> · <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/moe-q6-benchmark.md">Benchmark method</a> · <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/moe-full-packed-forward.md">Correctness evidence</a> · <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/analyze-HLS4ML.md">HLS4ML analysis</a> · <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/serial-processing-eli5.md">Other streams</a></p></div></details>
+  </section>
+  <section class="architectures" aria-labelledby="architecture-title">
+    <div class="architecture-head"><div><span class="eyebrow">Proposed hardware experiments</span><h2 id="architecture-title">Follow each byte, then measure the bottleneck</h2></div><label>Architecture <select id="architecture-select"><option value="baseline">CPU + DRAM baseline</option><option value="gpu">GPU staged experts</option><option value="pmem">PMEM capacity tier</option><option value="fpga" selected>FPGA serial coprocessor</option><option value="pio">MCU / PIO transport helper</option></select></label></div>
+    <p id="architecture-thesis" class="verdict"></p>
+    <div class="flow-layout"><svg id="architecture-board" viewBox="0 0 1080 560" role="img" aria-label="Proposed heterogeneous MoE data flow"><defs><marker id="arrow-weights" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z"/></marker><marker id="arrow-activation" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z"/></marker><marker id="arrow-kv" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z"/></marker><marker id="arrow-control" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z"/></marker></defs><g id="architecture-edges"></g><g id="architecture-nodes"></g></svg><aside class="flow-key"><strong id="architecture-state"></strong><span><i class="weight-key"></i>fixed packed weights</span><span><i class="activation-key"></i>prompt / activations / outputs</span><span><i class="kv-key"></i>growing KV cache</span><span><i class="control-key"></i>routes / DMA / backpressure</span><p>Moving dots show direction, not measured rate. Line labels name the payload. A dim box is not used in the selected experiment.</p></aside></div>
+  </section>
+  <footer><span>© 2026 Software Wrighter · <a href="https://github.com/sw-ml-study/emufpga/blob/main/LICENSE">MIT License</a> · <a href="https://github.com/sw-ml-study/emufpga">GitHub</a></span><span id="build-info">local source view · build provenance unavailable</span></footer>
+  <script src="economics.js"></script><script src="architectures.js"></script><script src="app.js"></script>
+</body>
+</html>

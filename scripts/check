@@ -89,7 +89,9 @@ echo "=== repository size ==="
 echo "=== visualization calculations ==="
 node visualization/economics.test.js
 node visualization/architectures.test.js
+node visualization/notebook.test.js
 node --check visualization/app.js
+node --check visualization/notebook.js
 node --check scripts/analyze-storage.mjs
 node scripts/check-routing-data.mjs
 node scripts/check-storage-data.mjs

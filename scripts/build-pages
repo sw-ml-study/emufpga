@@ -7,7 +7,11 @@ output_dir="$repo_dir/pages"
 
 mkdir -p "$output_dir"
 find "$output_dir" -mindepth 1 -maxdepth 1 -type f -delete
-cp "$source_dir/index.html" "$output_dir/index.html"
+cp "$source_dir/index.html" "$source_dir/how.html" "$source_dir/experiments.html" \
+    "$source_dir/results.html" "$source_dir/hypothesis.html" "$source_dir/lab.html" \
+    "$output_dir/"
+cp "$source_dir/notebook.js" "$output_dir/notebook.js"
+cp "$source_dir/notebook.css" "$output_dir/notebook.css"
 cp "$source_dir/app.js" "$output_dir/app.js"
 cp "$source_dir/style.css" "$output_dir/style.css"
 cp "$source_dir/analysis.css" "$output_dir/analysis.css"
