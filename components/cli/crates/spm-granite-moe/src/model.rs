@@ -13,6 +13,25 @@ use std::{
 const WIDTH: usize = 1024;
 const LAYERS: usize = 24;
 
+macro_rules! print_spm_report {
+    ($report:expr, $emit:expr, $batch:expr, $schedule:expr) => {{
+        let report = $report;
+        let execution = report.read + report.decode + report.compute;
+        let token_count = u32::try_from($batch).map_err(|_| "batch too large")?;
+        let byte_count = u32::try_from(report.bytes).map_err(|_| "artifact too large")?;
+        let tokens_per_second = f64::from(token_count) / execution.as_secs_f64();
+        let read_gbps = f64::from(byte_count) / report.read.as_secs_f64() / 1_000_000_000.0;
+        println!(
+            "spm_q6 schedule={} batch={} selected={} bytes={} useful={} streams={} rewinds=0 resident={} peak_input={} emit_ms={:.3} warm_read_ms={:.3} decode_ms={:.3} compute_ms={:.3} read_gbps={read_gbps:.3} tokens_s={tokens_per_second:.3} cold_read=unmeasured expert_max={:.8} combined_max={:.8}",
+            $schedule, $batch, report.selected_experts, report.bytes, report.useful,
+            report.streams, report.resident, report.peak_input,
+            $emit.as_secs_f64() * 1_000.0, report.read.as_secs_f64() * 1_000.0,
+            report.decode.as_secs_f64() * 1_000.0, report.compute.as_secs_f64() * 1_000.0,
+            report.expert_max, report.combined_max
+        );
+    }};
+}
+
 fn embeddings(path: &Path, content: &Content, tokens: &[usize]) -> Result<Vec<Vec<f32>>, String> {
     let info = weights::tensor(content, "token_embd.weight")?;
     let row_bytes = (WIDTH / 256) * 210;
@@ -175,16 +194,14 @@ fn block(
     if layer == 0 {
         compare_trace(reference, &trace)?;
         if let Some(output) = env::var_os("SPM_GRANITE_SPM_PATH") {
-            let report = layout::verify(path, content, Path::new(&output), &normalized[0], &trace)?;
-            println!(
-                "spm_layout bytes={} useful={} streams={} rewinds=0 resident={} expert_max={:.8} combined_max={:.8}",
-                report.bytes,
-                report.useful,
-                report.streams,
-                report.resident,
-                report.expert_max,
-                report.combined_max
-            );
+            let (report, emit_ns) =
+                layout::verify(path, content, Path::new(&output), &normalized, &trace)?;
+            let schedule = if env::var_os("SPM_GRANITE_SELECTED_UNION").is_some() {
+                "selected-union"
+            } else {
+                "all-expert"
+            };
+            print_spm_report!(&report, emit_ns, normalized.len(), schedule);
             if report.expert_max > 0.000_1 || report.combined_max > 0.000_1 {
                 return Err("SPM execution differs from GGUF Rust oracle".into());
             }
@@ -207,6 +224,9 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
     compare(reference_dir.as_deref(), "inp_embd", &hidden.concat(), 0.1)?;
     for layer in 0..LAYERS {
         hidden = block(path, &content, &hidden, layer, reference_dir.as_deref())?;
+        if layer == 0 && env::var_os("SPM_GRANITE_BLOCK0_ONLY").is_some() {
+            return Ok(());
+        }
     }
     let norm = weights::load(path, &content, "output_norm.weight")?;
     let final_hidden = rms_norm(hidden.last().ok_or("missing final token")?, &norm);

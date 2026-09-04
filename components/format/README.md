@@ -36,8 +36,10 @@ f32 group of four is sixteen.
 | ---: | --- | --- |
 | 1 | `Ternary2F32I32` | `ceil(n / 4)` |
 | 2 | `F32` | `n * 4` |
+| 3 | `Bf16` | `n * 2` |
+| 4 | `Q6K` | `ceil(n / 256) * 210` |
 
-For `F32` the group scale is inert: the weights carry their own
+For `F32`, `Bf16`, and `Q6K` the group scale is inert: the weights carry their own
 magnitude, so writers emit 1.0 and readers ignore it.
 
 Built by saga 1 step 2 (spm-format) and saga 2 step 1

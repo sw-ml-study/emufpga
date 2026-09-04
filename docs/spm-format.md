@@ -67,6 +67,8 @@ independent choices.
 | 0    | reserved | -- |
 | 1    | `Ternary2F32I32` -- 2-bit ternary weights, `f32` group scales, `i32` accumulators | `ceil(n / 4)` |
 | 2    | `F32` -- dense `f32` weights, four bytes each, no packing | `n * 4` |
+| 3    | `Bf16` -- dense `bfloat16` weights | `n * 2` |
+| 4    | `Q6K` -- one GGML Q6_K block | `ceil(n / 256) * 210` |
 
 **The payload length of a group depends on its stream's encoding**, and
 readers must consult it per stream rather than per file. A file may
@@ -75,7 +77,7 @@ f32 group of four is sixteen, and a reader that applied one rule to
 the whole file would misalign on the second stream and return garbage
 rather than an error.
 
-For the `F32` profile the group scale is **inert**. The weights carry
+For the `F32`, `Bf16`, and `Q6K` profiles the group scale is **inert**. The weights carry
 their own magnitude, so writers emit `1.0` and readers ignore it. The
 field is not removed for this profile on purpose: the group structure
 is what makes the stream self-describing, and an encoding that skipped
@@ -97,6 +99,10 @@ Consecutive positions walk DOWN a column, so the engine holds one
 activation `x[j]` resident while an entire column of weights streams
 past, accumulating into `rows` accumulators. That is the whole reason
 the layout exists -- see docs/plan.md section 2.
+
+`Q6K` is the explicit exception: blocks retain GGML source row-major order so
+they can be copied without requantization. Its consumer maps decoded position
+`k` to `W[k / cols][k % cols]`.
 
 ## Payload
 

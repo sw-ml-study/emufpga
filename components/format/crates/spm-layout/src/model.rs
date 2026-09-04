@@ -32,6 +32,11 @@ pub enum Encoding {
     /// The group scale is **inert**, as for [`Self::F32`]: the weights
     /// carry their own magnitude.
     Bf16,
+    /// GGML `Q6_K` blocks in source row-major order: 256 weights in 210 bytes.
+    ///
+    /// The quantization scale is internal to each `Q6_K` block. The outer `.spm`
+    /// group scale is therefore inert, as for the dense profiles.
+    Q6K,
 }
 
 impl Encoding {
@@ -42,6 +47,7 @@ impl Encoding {
             Self::Ternary2F32I32 => 1,
             Self::F32 => 2,
             Self::Bf16 => 3,
+            Self::Q6K => 4,
         }
     }
 
@@ -59,6 +65,7 @@ impl Encoding {
             Self::Ternary2F32I32 => count.div_ceil(4),
             Self::F32 => count * 4,
             Self::Bf16 => count * 2,
+            Self::Q6K => count.div_ceil(256) * 210,
         }
     }
 
@@ -88,6 +95,7 @@ impl Encoding {
             1 => Ok(Self::Ternary2F32I32),
             2 => Ok(Self::F32),
             3 => Ok(Self::Bf16),
+            4 => Ok(Self::Q6K),
             code => Err(LayoutError::UnknownEncoding { code }),
         }
     }

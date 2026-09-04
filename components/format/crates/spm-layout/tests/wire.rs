@@ -48,3 +48,10 @@ fn short_input_is_refused() {
         Err(LayoutError::TooShort { available: 16 })
     );
 }
+
+#[test]
+fn q6_k_profile_keeps_the_ggml_block_size() {
+    assert_eq!(Encoding::Q6K.code(), 4);
+    assert_eq!(Encoding::Q6K.bytes_for(256), 210);
+    assert_eq!(Encoding::from_code(4), Ok(Encoding::Q6K));
+}

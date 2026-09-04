@@ -72,6 +72,26 @@ pub fn expert_matrix(
     decode_q6_k(&bytes)
 }
 
+pub fn expert_bytes(
+    path: &Path,
+    content: &Content,
+    name: &str,
+    cols: usize,
+    rows: usize,
+    expert: usize,
+) -> Result<Vec<u8>, String> {
+    let info = tensor(content, name)?;
+    if info.dtype != 14 || cols % 256 != 0 {
+        return Err(format!("tensor {name} is not row-aligned Q6_K"));
+    }
+    let size = rows
+        .checked_mul(cols / 256)
+        .and_then(|n| n.checked_mul(210))
+        .ok_or("expert size overflow")?;
+    let start = expert.checked_mul(size).ok_or("expert offset overflow")?;
+    read_tensor_range(path, info, start as u64, size as u64, size as u64)
+}
+
 pub fn project_stream(
     path: &Path,
     content: &Content,
