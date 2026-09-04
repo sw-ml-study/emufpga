@@ -1,8 +1,9 @@
 number = 6
 slug = "moe-spm-layout"
-status = "in-progress"
+status = "completed"
 description = "Convert the validated Granite MoE router and selected-expert schedule into an..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-03T18:21:51"
-commits = []
+completed_at = "2026-09-03T18:29:29"
+commits = ["1a38af03d7fa5394deba2376d7c8e2d722e7113a"]

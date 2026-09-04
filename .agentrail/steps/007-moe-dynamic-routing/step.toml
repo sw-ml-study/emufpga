@@ -1,0 +1,8 @@
+number = 7
+slug = "moe-dynamic-routing"
+status = "pending"
+description = "Validate a runtime-dynamic MoE schedule without specializing the .spm file to..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-03T18:29:30"
+commits = []
