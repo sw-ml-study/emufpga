@@ -10,11 +10,6 @@
 <body>
   <header>
     <div><span class="eyebrow">emufpga</span><h1>Can old hardware run oversized MoE models well enough?</h1><a class="jump" href="#intro">Start with the experiment ↓</a></div>
-    <div class="controls">
-      <button id="play">Pause</button><button id="step">Step</button>
-      <label>Speed <input id="speed" type="range" min="1" max="10" value="5"></label>
-      <label>Schedule <select id="schedule"><option value="serial">All-expert serial</option><option value="union">Selected union</option><option value="resident">Resident VRAM</option></select></label>
-    </div>
   </header>
   <section id="intro" class="intro" aria-labelledby="intro-title">
     <div class="intro-lead"><span class="eyebrow">The experiment in 60 seconds</span><h2 id="intro-title">Use the GPU we already own—even when the model is too large for it.</h2><p>emufpga investigates whether immutable MoE expert weights can flow serially from cheap storage while a small or old GPU keeps attention, KV cache, and active state. The alternative to beat is ordinary CPU/System-RAM offload on the same reused machine—not a new high-end GPU.</p><strong>Current verdict: mechanics validated; deployment advantage not yet measured.</strong></div>
@@ -27,6 +22,11 @@
   </section>
   <main>
     <section class="board-wrap">
+      <div class="board-controls"><div><span class="eyebrow">Serial datapath animation</span><strong>Playback controls</strong></div><div class="controls">
+        <button id="play">Pause</button><button id="step">Step</button>
+        <label>Speed <input id="speed" type="range" min="1" max="10" value="5"></label>
+        <label>Schedule <select id="schedule"><option value="serial">All-expert serial</option><option value="union">Selected union</option><option value="resident">Resident VRAM</option></select></label>
+      </div></div>
       <svg id="board" viewBox="0 0 1200 650" role="img" aria-label="Purpose-built serial MoE FPGA datapath">
         <defs><filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
         <rect class="pcb" x="10" y="10" width="1180" height="630" rx="28"/>
