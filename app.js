@@ -58,3 +58,4 @@ $("step").onclick=()=>{frame++;render()}; $("speed").oninput=restart;
 $("schedule").onchange=()=>{frame=traffic=useful=0;render()};
 
 buildBoard(); buildAnalysis(); fetch("trace.json").then(r=>r.ok?r.json():Promise.reject()).then(t=>{events=t.events;render()}).catch(()=>render()); restart();
+fetch("build-info.json").then(r=>r.ok?r.json():Promise.reject()).then(b=>{$("build-info").textContent=`built on ${b.host} · ${b.sha} · ${b.timestamp}`}).catch(()=>{});
