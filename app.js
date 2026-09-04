@@ -41,6 +41,8 @@ function renderTiming(data){const all=data.groups.filter(g=>g.schedule==="all-ex
 
 function renderStorage(data){const rows=data.groups.filter(g=>g.mode==="direct"),max=Math.max(...rows.map(g=>g.gb_s.p90));$("storage-chart").innerHTML=rows.map(g=>`<div class="bar-row storage-row"><span>${g.tier}</span><div class="bar-track"><div class="bar ${g.tier.includes("selected")?"serial":"resident"}" style="width:${100*g.gb_s.p50/max}%"></div></div><b>${g.gb_s.p50.toFixed(2)} <small>(${g.gb_s.p10.toFixed(2)}–${g.gb_s.p90.toFixed(2)}) GB/s</small></b></div>`).join("");const hdd=data.overlap.find(x=>x.tier==="hdd-all"&&x.mode==="direct"),nvme=data.overlap.find(x=>x.tier==="nvme-all"&&x.mode==="direct");$("storage-takeaway").textContent=`Cache-bypass median: HDD ${rows.find(x=>x.tier==="hdd-all").gb_s.p50.toFixed(2)} GB/s; NVMe ${rows.find(x=>x.tier==="nvme-all").gb_s.p50.toFixed(2)} GB/s. Idealized B1 overlap ceiling: ${hdd.maximum_saving_percent.toFixed(0)}% and ${nvme.maximum_saving_percent.toFixed(0)}%; this is not implemented runtime speedup.`;}
 
+function renderPrefetch(data){const rows=data.groups.filter(g=>g.backend==="prefetch");$("prefetch-chart").innerHTML=rows.map(g=>{const v=g.speedup_percent,side=v>=0?"gain":"loss";return `<div class="delta-row"><span>${g.tier} ${g.schedule}<small>${g.cache}</small></span><div class="delta-track"><i class="${side}" style="width:${Math.min(50,Math.abs(v)*3)}%;${v>=0?"left:50%":"right:50%"}"></i></div><b class="${side}">${v>=0?"+":""}${v.toFixed(1)}%</b></div>`}).join("");const values=rows.map(x=>x.speedup_percent);$("prefetch-takeaway").textContent=`Observed range ${Math.min(...values).toFixed(1)}% to +${Math.max(...values).toFixed(1)}%. Cache-bypass cases gained 2–5%; warm cases were noisy/mixed. Correctness stayed within the 0.002 gate.`;}
+
 function buildBoard() {
   for (let i=0;i<32;i++) {
     const x=(i%8)*82, y=Math.floor(i/8)*54+22;
@@ -94,3 +96,4 @@ fetch("build-info.json").then(r=>r.ok?r.json():Promise.reject()).then(b=>{$("bui
 fetch("routing-analysis.json").then(r=>r.ok?r.json():Promise.reject()).then(renderRoutingAnalysis).catch(()=>{});
 fetch("granite-timing.json").then(r=>r.ok?r.json():Promise.reject()).then(renderTiming).catch(()=>{});
 fetch("storage-tier-analysis.json").then(r=>r.ok?r.json():Promise.reject()).then(renderStorage).catch(()=>{});
+fetch("prefetch-analysis.json").then(r=>r.ok?r.json():Promise.reject()).then(renderPrefetch).catch(()=>{});
