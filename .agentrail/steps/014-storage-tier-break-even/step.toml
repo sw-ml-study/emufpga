@@ -1,6 +1,6 @@
 number = 14
 slug = "storage-tier-break-even"
-status = "pending"
+status = "in-progress"
 description = "Measure the storage side of the serial-MoE break-even without FPGA programmin..."
 role = "validation"
 context_files = []
