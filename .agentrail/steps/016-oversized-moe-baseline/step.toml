@@ -1,0 +1,8 @@
+number = 16
+slug = "oversized-moe-baseline"
+status = "pending"
+description = "Select and pin the next two model targets: a sub-12-GiB MoE qualification mod..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-04T11:25:13"
+commits = []
