@@ -1,6 +1,6 @@
 number = 13
 slug = "moe-routing-distributions"
-status = "pending"
+status = "in-progress"
 description = "Replace the dashboard's uniform-independent MoE routing assumption and single..."
 role = "validation"
 context_files = []

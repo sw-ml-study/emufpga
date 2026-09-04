@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+model=${1:-/disk1/tmp/granite-3.1-1b-a400m-q6/granite-3.1-1b-a400m-instruct-Q6_K.gguf}
+out=${2:-/disk1/tmp/emufpga-granite-routing}
+mkdir -p "$out"
+
+measure() {
+    local name=$1 tokens=$2
+    SPM_GRANITE_ROUTING_JSON="$out/$name.json" "$root/scripts/serial.sh" \
+        cargo run --quiet --release --manifest-path "$root/components/cli/Cargo.toml" \
+        -p spm-granite-moe -- "$model" "$tokens"
+}
+
+measure hello 8279
+measure capital 1318,18926,432,45600,438
+measure rust 2538,312,19281,667,32
+measure science 37394,30680,2817,14425,9639,32
+measure math 36,474,225,36,280,225
+node "$root/scripts/analyze-granite-routing.mjs" "$out" "$root/docs/data/granite-routing-analysis.json"
+echo "Wrote docs/data/granite-routing-analysis.json"

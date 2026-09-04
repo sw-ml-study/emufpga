@@ -1,0 +1,185 @@
+{
+  "schema": "emufpga.moe-timing.v1",
+  "provenance": {
+    "model": "granite-3.1-1b-a400m-q6_k",
+    "host": "large12",
+    "mode": "release scalar Rust; warm Linux page cache; block 0 expert sweep only",
+    "caveat": "phase timers exclude router, attention, emission, cold media, and end-to-end generation"
+  },
+  "groups": [
+    {
+      "schedule": "all-expert",
+      "batch": 1,
+      "runs": 7,
+      "warm_read_ms": {
+        "p50": 14.172,
+        "p90": 14.715,
+        "min": 13.846,
+        "max": 15.912
+      },
+      "decode_ms": {
+        "p50": 8.795,
+        "p90": 8.873,
+        "min": 8.535,
+        "max": 9.201
+      },
+      "compute_ms": {
+        "p50": 68.504,
+        "p90": 70.135,
+        "min": 65.126,
+        "max": 76.81
+      },
+      "tokens_s": {
+        "p50": 10.984,
+        "p90": 11.231,
+        "min": 9.844,
+        "max": 11.428
+      }
+    },
+    {
+      "schedule": "all-expert",
+      "batch": 4,
+      "runs": 7,
+      "warm_read_ms": {
+        "p50": 15.773,
+        "p90": 16.033,
+        "min": 14.569,
+        "max": 16.301
+      },
+      "decode_ms": {
+        "p50": 20.987,
+        "p90": 22.912,
+        "min": 20.731,
+        "max": 22.945
+      },
+      "compute_ms": {
+        "p50": 216.895,
+        "p90": 229.296,
+        "min": 209.376,
+        "max": 235.524
+      },
+      "tokens_s": {
+        "p50": 15.753,
+        "p90": 16.213,
+        "min": 14.558,
+        "max": 16.296
+      }
+    },
+    {
+      "schedule": "all-expert",
+      "batch": 8,
+      "runs": 7,
+      "warm_read_ms": {
+        "p50": 15.688,
+        "p90": 16.23,
+        "min": 15.492,
+        "max": 16.815
+      },
+      "decode_ms": {
+        "p50": 33.041,
+        "p90": 33.136,
+        "min": 32.265,
+        "max": 33.669
+      },
+      "compute_ms": {
+        "p50": 406.297,
+        "p90": 463.742,
+        "min": 398.687,
+        "max": 478.2
+      },
+      "tokens_s": {
+        "p50": 17.593,
+        "p90": 17.874,
+        "min": 15.132,
+        "max": 17.919
+      }
+    },
+    {
+      "schedule": "selected-union",
+      "batch": 1,
+      "runs": 7,
+      "warm_read_ms": {
+        "p50": 3.802,
+        "p90": 4.101,
+        "min": 3.673,
+        "max": 4.183
+      },
+      "decode_ms": {
+        "p50": 8.676,
+        "p90": 8.976,
+        "min": 8.504,
+        "max": 9.047
+      },
+      "compute_ms": {
+        "p50": 69.342,
+        "p90": 80.086,
+        "min": 65.192,
+        "max": 82.468
+      },
+      "tokens_s": {
+        "p50": 12.226,
+        "p90": 12.833,
+        "min": 10.458,
+        "max": 12.92
+      }
+    },
+    {
+      "schedule": "selected-union",
+      "batch": 4,
+      "runs": 7,
+      "warm_read_ms": {
+        "p50": 9.297,
+        "p90": 9.408,
+        "min": 9.156,
+        "max": 9.914
+      },
+      "decode_ms": {
+        "p50": 20.936,
+        "p90": 21.322,
+        "min": 20.739,
+        "max": 21.817
+      },
+      "compute_ms": {
+        "p50": 219.982,
+        "p90": 227.346,
+        "min": 202.284,
+        "max": 229.903
+      },
+      "tokens_s": {
+        "p50": 15.973,
+        "p90": 16.218,
+        "min": 15.378,
+        "max": 17.129
+      }
+    },
+    {
+      "schedule": "selected-union",
+      "batch": 8,
+      "runs": 7,
+      "warm_read_ms": {
+        "p50": 13.76,
+        "p90": 14.68,
+        "min": 13.402,
+        "max": 15.769
+      },
+      "decode_ms": {
+        "p50": 32.584,
+        "p90": 33.979,
+        "min": 30.903,
+        "max": 34.493
+      },
+      "compute_ms": {
+        "p50": 409.255,
+        "p90": 444.007,
+        "min": 391.514,
+        "max": 447.865
+      },
+      "tokens_s": {
+        "p50": 17.616,
+        "p90": 18.109,
+        "min": 16.06,
+        "max": 18.275
+      }
+    }
+  ]
+}

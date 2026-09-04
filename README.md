@@ -182,8 +182,9 @@ would have been unfalsifiable anyway.
 - [docs/moe-memory-economics.md](docs/moe-memory-economics.md) -- MoE memory and bandwidth ledger
 - [docs/moe-q6-benchmark.md](docs/moe-q6-benchmark.md) -- packed Q6_K MoE benchmark
 - [docs/moe-full-packed-forward.md](docs/moe-full-packed-forward.md) -- full chained packed-MoE validation
+- [docs/moe-routing-distributions.md](docs/moe-routing-distributions.md) -- empirical routing unions and repeated timing distributions
 - [docs/moe-rtl-cosim.md](docs/moe-rtl-cosim.md) -- hardware-shaped Q6_K cycle validation
-- [docs/hls4ml-applicability.md](docs/hls4ml-applicability.md) -- what published HLS/FPGA findings do and do not validate here
+- [docs/analyze-HLS4ML.md](docs/analyze-HLS4ML.md) -- what published HLS/FPGA findings do and do not validate here
 - [live visualization](https://sw-ml-study.github.io/emufpga/) ([local instructions](visualization/README.md)) -- animated serial-MoE FPGA datapath
 - [docs/serial-processing-eli5.md](docs/serial-processing-eli5.md) -- what else can stream and complementary approaches
 - [docs/postmortem-1.md](docs/postmortem-1.md) -- what went wrong, and what caught it

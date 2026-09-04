@@ -5,7 +5,7 @@ use crate::{
     weights,
 };
 use spm_gguf::Content;
-use spm_viz_trace::{ExpertEvent, Trace as VizTrace};
+use spm_viz_trace::{ExpertEvent, RouteEvent, RoutingTrace, Trace as VizTrace};
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -27,6 +27,59 @@ struct FullReport {
     expert_max: f32,
     combined_max: f32,
     trace: Option<VizTrace>,
+    routing: Option<RoutingTrace>,
+}
+
+macro_rules! record_routing {
+    ($full:expr, $trace:expr, $layer:expr) => {
+        if let Some(routing) = $full.routing.as_mut() {
+            for (token, experts) in $trace.routes.iter().enumerate() {
+                let experts: [u8; 8] = experts
+                    .iter()
+                    .map(|expert| u8::try_from(*expert).map_err(|_| "expert ID does not fit u8"))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .try_into()
+                    .map_err(|_| "route does not contain eight experts")?;
+                routing
+                    .push(RouteEvent {
+                        layer: u8::try_from($layer).map_err(|_| "layer does not fit u8")?,
+                        token: u16::try_from(token).map_err(|_| "token does not fit u16")?,
+                        experts,
+                    })
+                    .map_err(str::to_owned)?;
+            }
+        }
+    };
+}
+
+macro_rules! configure_reports {
+    ($full:expr) => {{
+        if env::var_os("SPM_GRANITE_TRACE_JSON").is_some() {
+            $full.trace = Some(VizTrace {
+                model: "granite-3.1-1b-a400m-q6_k",
+                schedule: "all-expert",
+                events: Vec::new(),
+            });
+        }
+        if env::var_os("SPM_GRANITE_ROUTING_JSON").is_some() {
+            $full.routing = Some(RoutingTrace {
+                model: "granite-3.1-1b-a400m-q6_k",
+                events: Vec::new(),
+            });
+        }
+    }};
+}
+
+macro_rules! write_reports {
+    ($full:expr) => {{
+        if let (Some(path), Some(trace)) = (env::var_os("SPM_GRANITE_TRACE_JSON"), &$full.trace) {
+            fs::write(Path::new(&path), trace.to_json()).map_err(|error| error.to_string())?;
+        }
+        if let (Some(path), Some(trace)) = (env::var_os("SPM_GRANITE_ROUTING_JSON"), &$full.routing)
+        {
+            fs::write(Path::new(&path), trace.to_json()).map_err(|error| error.to_string())?;
+        }
+    }};
 }
 
 macro_rules! record_full {
@@ -298,6 +351,7 @@ fn block(
         compare(reference, "ffn_norm-0", &normalized.concat(), 2.0)?;
     }
     let trace = moe::run(path, content, &normalized, layer)?;
+    record_routing!(full, &trace, layer);
     let mut moe_output = trace.output.clone();
     if layer == 0 {
         compare_trace(reference, &trace)?;
@@ -318,13 +372,7 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
     let reference_dir = env::var_os("SPM_GRANITE_REFERENCE_DIR").map(PathBuf::from);
     let mut hidden = embeddings(path, &content, tokens)?;
     let mut full = FullReport::default();
-    if env::var_os("SPM_GRANITE_TRACE_JSON").is_some() {
-        full.trace = Some(VizTrace {
-            model: "granite-3.1-1b-a400m-q6_k",
-            schedule: "all-expert",
-            events: Vec::new(),
-        });
-    }
+    configure_reports!(full);
     compare(reference_dir.as_deref(), "inp_embd", &hidden.concat(), 0.1)?;
     for layer in 0..LAYERS {
         hidden = block(
@@ -352,9 +400,7 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
     if env::var_os("SPM_GRANITE_FULL_SPM_PATH").is_some() {
         print_full!(&full, tokens.len());
     }
-    if let (Some(path), Some(trace)) = (env::var_os("SPM_GRANITE_TRACE_JSON"), &full.trace) {
-        fs::write(Path::new(&path), trace.to_json()).map_err(|error| error.to_string())?;
-    }
+    write_reports!(full);
     for (token, logit) in top {
         println!("{token} {logit:.9} {:08x}", logit.to_bits());
     }

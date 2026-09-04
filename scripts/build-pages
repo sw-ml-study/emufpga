@@ -12,6 +12,8 @@ cp "$source_dir/app.js" "$output_dir/app.js"
 cp "$source_dir/style.css" "$output_dir/style.css"
 cp "$source_dir/analysis.css" "$output_dir/analysis.css"
 cp "$source_dir/economics.js" "$output_dir/economics.js"
+cp "$repo_dir/docs/data/granite-routing-analysis.json" "$output_dir/routing-analysis.json"
+cp "$repo_dir/docs/data/granite-timing.json" "$output_dir/granite-timing.json"
 touch "$output_dir/.nojekyll"
 
 build_host=$(hostname -s)

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+model=${1:-/disk1/tmp/granite-3.1-1b-a400m-q6/granite-3.1-1b-a400m-instruct-Q6_K.gguf}
+log=${2:-/disk1/tmp/emufpga-granite-timing.log}
+: > "$log"
+export SPM_GRANITE_SPM_PATH=${SPM_GRANITE_SPM_PATH:-/disk1/tmp/granite-moe-block0-q6.spm}
+export SPM_GRANITE_BLOCK0_ONLY=1
+
+run() {
+    "$root/scripts/serial.sh" cargo run --quiet --release \
+        --manifest-path "$root/components/cli/Cargo.toml" -p spm-granite-moe -- \
+        "$model" "$1" >> "$log"
+}
+for schedule in all selected; do
+    if [[ $schedule == selected ]]; then export SPM_GRANITE_SELECTED_UNION=1; else unset SPM_GRANITE_SELECTED_UNION || true; fi
+    for tokens in 1318 1318,18926,432,45600 1318,18926,432,45600,438,8279,322,43908; do
+        for _ in 1 2 3 4 5 6 7; do run "$tokens"; done
+    done
+done
+node "$root/scripts/analyze-granite-timing.mjs" "$log" "$root/docs/data/granite-timing.json"
+echo "Wrote docs/data/granite-timing.json"

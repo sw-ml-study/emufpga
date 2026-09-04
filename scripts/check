@@ -89,6 +89,9 @@ echo "=== repository size ==="
 echo "=== visualization calculations ==="
 node visualization/economics.test.js
 node --check visualization/app.js
+node scripts/check-routing-data.mjs
+node --check scripts/analyze-granite-routing.mjs
+node --check scripts/analyze-granite-timing.mjs
 
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"

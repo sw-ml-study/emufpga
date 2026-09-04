@@ -1,4 +1,4 @@
-use spm_viz_trace::{ExpertEvent, Trace, next_frame};
+use spm_viz_trace::{ExpertEvent, RouteEvent, RoutingTrace, Trace, next_frame};
 
 fn event() -> ExpertEvent {
     ExpertEvent {
@@ -59,4 +59,32 @@ fn trace_refuses_more_than_one_event_per_expert_and_layer() {
         trace.push(event()).expect("within bound");
     }
     assert!(trace.push(event()).is_err());
+}
+
+#[test]
+fn routing_trace_has_a_bounded_inert_schema() {
+    let mut trace = RoutingTrace {
+        model: "granite-test",
+        events: Vec::new(),
+    };
+    trace
+        .push(RouteEvent {
+            layer: 2,
+            token: 7,
+            experts: [1, 3, 5, 7, 9, 11, 13, 15],
+        })
+        .unwrap();
+    assert_eq!(
+        trace.to_json(),
+        "{\"schema\":\"emufpga.moe-routing.v1\",\"model\":\"granite-test\",\"events\":[{\"layer\":2,\"token\":7,\"experts\":[1,3,5,7,9,11,13,15]}]}"
+    );
+    assert!(
+        trace
+            .push(RouteEvent {
+                layer: 0,
+                token: 0,
+                experts: [32; 8]
+            })
+            .is_err()
+    );
 }

@@ -1,0 +1,293 @@
+{
+  "schema": "emufpga.moe-routing-analysis.v1",
+  "provenance": {
+    "model": "granite-3.1-1b-a400m-q6_k",
+    "model_sha256": "4566cfa92be10888026bd3663c83d64e91cd91f874dfb3607596587ff1c8f67f",
+    "implementation": "Rust spm-granite-moe full 24-layer forward",
+    "scope": "five hand-selected prompts; prompt tokens only; no generated tokens"
+  },
+  "corpus": [
+    {
+      "id": "hello",
+      "text": "Hello",
+      "tokens": [
+        8279
+      ],
+      "route_events": 24
+    },
+    {
+      "id": "capital",
+      "text": "The capital of France is",
+      "tokens": [
+        1318,
+        18926,
+        432,
+        45600,
+        438
+      ],
+      "route_events": 120
+    },
+    {
+      "id": "rust",
+      "text": "Write a Rust function.",
+      "tokens": [
+        2538,
+        312,
+        19281,
+        667,
+        32
+      ],
+      "route_events": 120
+    },
+    {
+      "id": "science",
+      "text": "Explain photosynthesis simply.",
+      "tokens": [
+        37394,
+        30680,
+        2817,
+        14425,
+        9639,
+        32
+      ],
+      "route_events": 144
+    },
+    {
+      "id": "math",
+      "text": "2 + 2 = ",
+      "tokens": [
+        36,
+        474,
+        225,
+        36,
+        280,
+        225
+      ],
+      "route_events": 144
+    }
+  ],
+  "totals": {
+    "prompts": 5,
+    "tokens": 23,
+    "layers": 24,
+    "assignments": 4416
+  },
+  "popularity": [
+    {
+      "expert": 13,
+      "count": 191,
+      "share": 0.043251811594202896
+    },
+    {
+      "expert": 8,
+      "count": 167,
+      "share": 0.03781702898550725
+    },
+    {
+      "expert": 31,
+      "count": 167,
+      "share": 0.03781702898550725
+    },
+    {
+      "expert": 26,
+      "count": 165,
+      "share": 0.03736413043478261
+    },
+    {
+      "expert": 25,
+      "count": 160,
+      "share": 0.036231884057971016
+    },
+    {
+      "expert": 3,
+      "count": 159,
+      "share": 0.036005434782608696
+    },
+    {
+      "expert": 4,
+      "count": 159,
+      "share": 0.036005434782608696
+    },
+    {
+      "expert": 19,
+      "count": 158,
+      "share": 0.035778985507246376
+    },
+    {
+      "expert": 28,
+      "count": 158,
+      "share": 0.035778985507246376
+    },
+    {
+      "expert": 24,
+      "count": 149,
+      "share": 0.033740942028985504
+    },
+    {
+      "expert": 18,
+      "count": 145,
+      "share": 0.03283514492753623
+    },
+    {
+      "expert": 5,
+      "count": 143,
+      "share": 0.03238224637681159
+    },
+    {
+      "expert": 9,
+      "count": 141,
+      "share": 0.03192934782608696
+    },
+    {
+      "expert": 30,
+      "count": 138,
+      "share": 0.03125
+    },
+    {
+      "expert": 6,
+      "count": 137,
+      "share": 0.03102355072463768
+    },
+    {
+      "expert": 17,
+      "count": 136,
+      "share": 0.030797101449275364
+    },
+    {
+      "expert": 21,
+      "count": 135,
+      "share": 0.030570652173913044
+    },
+    {
+      "expert": 16,
+      "count": 133,
+      "share": 0.030117753623188404
+    },
+    {
+      "expert": 0,
+      "count": 132,
+      "share": 0.029891304347826088
+    },
+    {
+      "expert": 1,
+      "count": 132,
+      "share": 0.029891304347826088
+    },
+    {
+      "expert": 10,
+      "count": 132,
+      "share": 0.029891304347826088
+    },
+    {
+      "expert": 23,
+      "count": 132,
+      "share": 0.029891304347826088
+    },
+    {
+      "expert": 2,
+      "count": 131,
+      "share": 0.029664855072463768
+    },
+    {
+      "expert": 20,
+      "count": 130,
+      "share": 0.029438405797101448
+    },
+    {
+      "expert": 7,
+      "count": 125,
+      "share": 0.028306159420289856
+    },
+    {
+      "expert": 29,
+      "count": 121,
+      "share": 0.02740036231884058
+    },
+    {
+      "expert": 12,
+      "count": 118,
+      "share": 0.026721014492753624
+    },
+    {
+      "expert": 27,
+      "count": 116,
+      "share": 0.026268115942028984
+    },
+    {
+      "expert": 22,
+      "count": 108,
+      "share": 0.024456521739130436
+    },
+    {
+      "expert": 15,
+      "count": 106,
+      "share": 0.024003623188405796
+    },
+    {
+      "expert": 11,
+      "count": 97,
+      "share": 0.021965579710144928
+    },
+    {
+      "expert": 14,
+      "count": 95,
+      "share": 0.021512681159420288
+    }
+  ],
+  "union_curve": [
+    {
+      "batch": 1,
+      "samples": 120,
+      "observed_mean": 8,
+      "observed_min": 8,
+      "observed_max": 8,
+      "independent_mean": 8,
+      "observed_traffic_fraction": 0.25
+    },
+    {
+      "batch": 2,
+      "samples": 96,
+      "observed_mean": 13.510416666666666,
+      "observed_min": 10,
+      "observed_max": 16,
+      "independent_mean": 14,
+      "observed_traffic_fraction": 0.4222005208333333
+    },
+    {
+      "batch": 3,
+      "samples": 96,
+      "observed_mean": 16.791666666666668,
+      "observed_min": 12,
+      "observed_max": 21,
+      "independent_mean": 18.5,
+      "observed_traffic_fraction": 0.5247395833333334
+    },
+    {
+      "batch": 4,
+      "samples": 96,
+      "observed_mean": 18.3125,
+      "observed_min": 13,
+      "observed_max": 24,
+      "independent_mean": 21.875,
+      "observed_traffic_fraction": 0.572265625
+    },
+    {
+      "batch": 5,
+      "samples": 96,
+      "observed_mean": 20.697916666666668,
+      "observed_min": 14,
+      "observed_max": 27,
+      "independent_mean": 24.40625,
+      "observed_traffic_fraction": 0.6468098958333334
+    },
+    {
+      "batch": 6,
+      "samples": 48,
+      "observed_mean": 21,
+      "observed_min": 14,
+      "observed_max": 26,
+      "independent_mean": 26.3046875,
+      "observed_traffic_fraction": 0.65625
+    }
+  ]
+}

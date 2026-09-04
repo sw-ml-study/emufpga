@@ -1,4 +1,4 @@
-# What hls4ml changes—and does not change—for emufpga
+# Analysis: what HLS4ML changes—and does not change—for emufpga
 
 Paper reviewed: [hls4ml: A Flexible, Open-Source Platform for Deep Learning
 Acceleration on Reconfigurable Hardware](https://arxiv.org/html/2512.01463v1)

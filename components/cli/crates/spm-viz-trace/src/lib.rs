@@ -22,6 +22,66 @@ pub struct Trace {
     pub events: Vec<ExpertEvent>,
 }
 
+/// The selected experts for one token at one transformer layer.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteEvent {
+    pub layer: u8,
+    pub token: u16,
+    pub experts: [u8; 8],
+}
+
+/// A bounded, inert routing trace suitable for checked-in empirical data.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoutingTrace {
+    pub model: &'static str,
+    pub events: Vec<RouteEvent>,
+}
+
+impl RoutingTrace {
+    pub const MAX_EVENTS: usize = 24 * 128;
+
+    /// Adds one route while bounding data derived from an untrusted invocation.
+    ///
+    /// # Errors
+    /// Returns an error for an out-of-range expert or after the event bound.
+    pub fn push(&mut self, event: RouteEvent) -> Result<(), &'static str> {
+        if self.events.len() == Self::MAX_EVENTS {
+            return Err("routing trace exceeds 3,072 events");
+        }
+        if event.experts.iter().any(|expert| *expert >= 32) {
+            return Err("routing trace expert is outside 0..32");
+        }
+        self.events.push(event);
+        Ok(())
+    }
+
+    /// Renders schema v1 without executable serialization or dependencies.
+    #[must_use]
+    pub fn to_json(&self) -> String {
+        let events = self
+            .events
+            .iter()
+            .map(|event| {
+                let experts = event
+                    .experts
+                    .iter()
+                    .map(u8::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",");
+                format!(
+                    "{{\"layer\":{},\"token\":{},\"experts\":[{experts}]}}",
+                    event.layer, event.token
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        format!(
+            "{{\"schema\":\"emufpga.moe-routing.v1\",\"model\":\"{}\",\"events\":[{events}]}}",
+            self.model
+        )
+    }
+}
+
 impl Trace {
     pub const MAX_EVENTS: usize = 24 * 32;
 
