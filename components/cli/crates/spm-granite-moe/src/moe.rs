@@ -3,7 +3,7 @@ use crate::{
     weights,
 };
 use spm_gguf::Content;
-use std::{collections::BTreeSet, path::Path};
+use std::{collections::BTreeSet, env, path::Path};
 
 const WIDTH: usize = 1024;
 const FF: usize = 512;
@@ -138,6 +138,20 @@ pub fn run(
     )?;
     let mut trace = route(logits);
     let experts: BTreeSet<_> = trace.routes.iter().flatten().copied().collect();
+    if layer == 0 && env::var_os("SPM_GRANITE_BATCH_REPORT").is_some() {
+        let assignments = input.len() * USED;
+        let heap_payload = assignments * (size_of::<usize>() + size_of::<f32>());
+        let reuse = f32::from(u16::try_from(assignments).expect("assignments fit u16"))
+            / f32::from(u16::try_from(experts.len()).expect("experts fit u16"));
+        let sweep_reuse =
+            f32::from(u16::try_from(assignments).expect("assignments fit u16")) / 32.0;
+        println!(
+            "expert_batch tokens={} assignments={assignments} unique={} selected_reuse={reuse:.6} full_sweep_reuse={sweep_reuse:.6} compact_state={} heap_payload={heap_payload} break_even_tokens=4",
+            input.len(),
+            experts.len(),
+            assignments * 5
+        );
+    }
     for expert in experts {
         process_expert(path, content, layer, expert, input, &mut trace)?;
     }

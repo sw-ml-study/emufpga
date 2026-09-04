@@ -1,6 +1,6 @@
 number = 7
 slug = "moe-dynamic-routing"
-status = "pending"
+status = "in-progress"
 description = "Validate a runtime-dynamic MoE schedule without specializing the .spm file to..."
 role = "legacy"
 context_files = []

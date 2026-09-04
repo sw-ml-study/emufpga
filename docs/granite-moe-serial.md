@@ -148,7 +148,7 @@ The small nonzero difference is arithmetic order: `spm-linear` uses fused
 multiply-add while the GGUF oracle's scalar iterator uses separate multiply
 and addition. The enforced bound is 0.0001. The far larger 50.5 MB physical
 file is F32 because `.spm` does not yet have a Q6_K execution profile; Q6_K
-source payload for the same router and experts is about 12.6 MB.
+source payload for the same router and experts is 10,452,992 bytes (9.97 MiB).
 
 This proves serial execution once the route is known. It does **not** yet
 solve dynamic routing in one immutable linear parameter stream: the router
@@ -168,3 +168,6 @@ The first option is the cleanest next correctness experiment. The fourth is
 the most interesting throughput experiment. Neither should be described as a
 single selected-only sequential stream until its scheduling mechanism is
 explicit.
+
+The all-expert dynamic baseline and complete memory ledger are in
+[moe-memory-economics.md](moe-memory-economics.md).

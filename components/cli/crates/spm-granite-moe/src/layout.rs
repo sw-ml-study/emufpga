@@ -5,7 +5,7 @@ use spm_layout::{Encoding, OpDescriptor};
 use spm_linear::streamed;
 use spm_stream_file::FileWeightStream;
 use spm_stream_groups::GroupStream;
-use std::{collections::BTreeSet, fs, path::Path};
+use std::{collections::BTreeSet, env, fs, path::Path};
 
 const WIDTH: usize = 1024;
 const FF: usize = 512;
@@ -14,6 +14,7 @@ pub struct Report {
     pub bytes: u64,
     pub streams: usize,
     pub resident: usize,
+    pub useful: u64,
     pub expert_max: f32,
     pub combined_max: f32,
 }
@@ -80,14 +81,23 @@ fn emit(path: &Path, matrices: &[Vec<f32>], experts: usize) -> Result<(), String
         .map_err(|error| error.to_string())
 }
 
-fn projection(
+fn operation(
     groups: &mut GroupStream<FileWeightStream>,
     shape: (usize, usize),
-    input: &[f32],
-) -> Result<Vec<f32>, String> {
+    input: Option<&[f32]>,
+) -> Result<Option<Vec<f32>>, String> {
+    let Some(input) = input else {
+        for _ in 0..shape.1 {
+            groups
+                .next_group()
+                .ok_or("missing skipped group")?
+                .map_err(|error| error.to_string())?;
+        }
+        return Ok(None);
+    };
     let mut output = vec![0.0; shape.0];
     streamed(groups, shape, (input, 1), &mut output).map_err(|error| error.to_string())?;
-    Ok(output)
+    Ok(Some(output))
 }
 
 fn execute_experts(
@@ -101,18 +111,20 @@ fn execute_experts(
     let mut combined = vec![0.0; WIDTH];
     let mut expert_max = 0.0_f32;
     for &expert in experts {
-        let up = projection(groups, (FF, WIDTH), input)?;
-        let gate = projection(groups, (FF, WIDTH), input)?;
+        let Some(slot) = trace.routes[0].iter().position(|&id| id == expert) else {
+            operation(groups, (FF, WIDTH), None)?;
+            operation(groups, (FF, WIDTH), None)?;
+            operation(groups, (WIDTH, FF), None)?;
+            continue;
+        };
+        let up = operation(groups, (FF, WIDTH), Some(input))?.ok_or("up not computed")?;
+        let gate = operation(groups, (FF, WIDTH), Some(input))?.ok_or("gate not computed")?;
         let active: Vec<_> = gate
             .iter()
             .zip(up)
             .map(|(g, u)| g / (1.0 + (-g).exp()) * u)
             .collect();
-        let down = projection(groups, (WIDTH, FF), &active)?;
-        let slot = trace.routes[0]
-            .iter()
-            .position(|&id| id == expert)
-            .ok_or("expert slot missing")?;
+        let down = operation(groups, (WIDTH, FF), Some(&active))?.ok_or("down not computed")?;
         let differences = down
             .iter()
             .zip(&trace.contributions[0][slot])
@@ -132,19 +144,24 @@ pub fn verify(
     input: &[f32],
     trace: &Trace,
 ) -> Result<Report, String> {
-    let experts: Vec<_> = trace.routes[0]
-        .iter()
-        .copied()
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect();
+    let dynamic = env::var_os("SPM_GRANITE_ALL_EXPERTS").is_some();
+    let experts: Vec<_> = if dynamic {
+        (0..32).collect()
+    } else {
+        trace.routes[0]
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect()
+    };
     let all = matrices(model, content, &experts)?;
     emit(output, &all, experts.len())?;
     drop(all);
     let mut groups =
         GroupStream::open(FileWeightStream::open(output).map_err(|error| error.to_string())?)
             .map_err(|error| error.to_string())?;
-    let router = projection(&mut groups, (32, WIDTH), input)?;
+    let router = operation(&mut groups, (32, WIDTH), Some(input))?.ok_or("router not computed")?;
     let probabilities = softmax(&router);
     let (expert_max, combined) =
         execute_experts(&mut groups, &experts, input, &probabilities, trace)?;
@@ -152,8 +169,9 @@ pub fn verify(
         bytes: fs::metadata(output)
             .map_err(|error| error.to_string())?
             .len(),
-        streams: 25,
+        streams: 1 + experts.len() * 3,
         resident: groups.resident_parameter_bytes(),
+        useful: 50_548_736,
         expert_max,
         combined_max: combined
             .iter()

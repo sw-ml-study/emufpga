@@ -177,8 +177,9 @@ fn block(
         if let Some(output) = env::var_os("SPM_GRANITE_SPM_PATH") {
             let report = layout::verify(path, content, Path::new(&output), &normalized[0], &trace)?;
             println!(
-                "spm_layout bytes={} streams={} rewinds=0 resident={} expert_max={:.8} combined_max={:.8}",
+                "spm_layout bytes={} useful={} streams={} rewinds=0 resident={} expert_max={:.8} combined_max={:.8}",
                 report.bytes,
+                report.useful,
                 report.streams,
                 report.resident,
                 report.expert_max,
