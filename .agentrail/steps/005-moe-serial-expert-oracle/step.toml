@@ -1,0 +1,8 @@
+number = 5
+slug = "moe-serial-expert-oracle"
+status = "pending"
+description = "Select and pin a maintained GGUF mixture-of-experts model whose artifact is u..."
+role = "production"
+context_files = []
+created_at = "2026-09-03T18:06:08"
+commits = []
