@@ -1,6 +1,6 @@
 number = 15
 slug = "async-prefetch-validation"
-status = "pending"
+status = "in-progress"
 description = "Implement and validate bounded asynchronous double-buffer prefetch for the Ru..."
 role = "legacy"
 context_files = []
