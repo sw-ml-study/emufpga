@@ -1,8 +1,9 @@
 number = 16
 slug = "notebook-live-site"
-status = "in-progress"
+status = "completed"
 description = "Implement docs/revise-live-demo.md as a multi-page Paper-Banana-inspired engi..."
 role = "production"
 context_files = []
 created_at = "2026-09-04T13:27:18"
-commits = []
+completed_at = "2026-09-04T13:46:35"
+commits = ["7c35cb9a26ffa69131909e4cb213cf7f55282492"]
