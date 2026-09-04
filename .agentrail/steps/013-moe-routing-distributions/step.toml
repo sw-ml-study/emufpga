@@ -1,8 +1,9 @@
 number = 13
 slug = "moe-routing-distributions"
-status = "in-progress"
+status = "completed"
 description = "Replace the dashboard's uniform-independent MoE routing assumption and single..."
 role = "validation"
 context_files = []
 created_at = "2026-09-04T10:06:14"
-commits = []
+completed_at = "2026-09-04T10:20:41"
+commits = ["713b31c26a93346449133677147370a65f5a4805"]
