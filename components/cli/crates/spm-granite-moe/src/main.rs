@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 mod attention;
+mod layout;
 mod math;
 mod model;
 mod moe;

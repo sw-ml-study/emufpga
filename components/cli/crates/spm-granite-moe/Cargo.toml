@@ -6,6 +6,12 @@ license.workspace = true
 
 [dependencies]
 spm-gguf = { path = "../spm-gguf" }
+spm-codec-dense = { path = "../../../format/crates/spm-codec-dense" }
+spm-file = { path = "../../../format/crates/spm-file" }
+spm-layout = { path = "../../../format/crates/spm-layout" }
+spm-linear = { path = "../../../tensor/crates/spm-linear" }
+spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
+spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
 
 [lints]
 workspace = true

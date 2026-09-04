@@ -1,5 +1,5 @@
 use crate::{
-    attention,
+    attention, layout,
     math::{add_scaled, rms_norm, top_k},
     moe::{self, Trace},
     weights,
@@ -174,6 +174,20 @@ fn block(
     let trace = moe::run(path, content, &normalized, layer)?;
     if layer == 0 {
         compare_trace(reference, &trace)?;
+        if let Some(output) = env::var_os("SPM_GRANITE_SPM_PATH") {
+            let report = layout::verify(path, content, Path::new(&output), &normalized[0], &trace)?;
+            println!(
+                "spm_layout bytes={} streams={} rewinds=0 resident={} expert_max={:.8} combined_max={:.8}",
+                report.bytes,
+                report.streams,
+                report.resident,
+                report.expert_max,
+                report.combined_max
+            );
+            if report.expert_max > 0.000_1 || report.combined_max > 0.000_1 {
+                return Err("SPM execution differs from GGUF Rust oracle".into());
+            }
+        }
     }
     Ok(ffn_input
         .iter()

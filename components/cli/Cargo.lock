@@ -694,6 +694,19 @@ name = "spm-codec"
 version = "0.1.0"
 
 [[package]]
+name = "spm-codec-any"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-bf16",
+ "spm-codec-dense",
+ "spm-layout",
+]
+
+[[package]]
+name = "spm-codec-bf16"
+version = "0.1.0"
+
+[[package]]
 name = "spm-codec-dense"
 version = "0.1.0"
 
@@ -742,7 +755,13 @@ dependencies = [
 name = "spm-granite-moe"
 version = "0.1.0"
 dependencies = [
+ "spm-codec-dense",
+ "spm-file",
  "spm-gguf",
+ "spm-layout",
+ "spm-linear",
+ "spm-stream-file",
+ "spm-stream-groups",
 ]
 
 [[package]]
@@ -767,6 +786,15 @@ name = "spm-layout"
 version = "0.1.0"
 dependencies = [
  "spm-bytes",
+]
+
+[[package]]
+name = "spm-linear"
+version = "0.1.0"
+dependencies = [
+ "spm-codec-any",
+ "spm-stream",
+ "spm-stream-groups",
 ]
 
 [[package]]

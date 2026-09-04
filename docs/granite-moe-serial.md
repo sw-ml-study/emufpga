@@ -114,3 +114,57 @@ fixture.
 - GPU offload is not required for this small scalar verification. A later
   throughput experiment can compare llama.cpp CUDA with a maintained Rust
   CUDA backend after the seek-free layout is proven.
+
+## `.spm` physical-layout experiment
+
+`scripts/verify-granite-moe` also materializes the fixed block-0 route as
+`/disk1/tmp/granite-moe-block0.spm` and executes it through
+`FileWeightStream`, `GroupStream`, and `spm-linear`. The stream directory is:
+
+1. router, 32 x 1,024;
+2. for each selected expert in ascending expert-ID order: up, gate, down.
+
+The strict fixture selects IDs `22, 18, 23, 3, 12, 10, 24, 16` by score, so
+the physical expert order is `3, 10, 12, 16, 18, 22, 23, 24`. There are 25
+streams: one router plus three projections for each of eight experts. Every
+matrix is transposed from GGUF row-major order to `.spm` consumption order
+when emitted. The engine can only request the next group; it has no stream
+index or seek operation.
+
+Measured on the real Q6_K-derived block-0 weights:
+
+| measurement | result |
+| --- | ---: |
+| `.spm` bytes | 50,549,568 |
+| streams consumed | 25 |
+| mid-operation rewinds | 0 |
+| resident parameter group | 4,096 bytes |
+| parameter-group residency | 0.0000810 |
+| maximum individual-expert difference vs Rust GGUF | 0.00000334 |
+| combined MoE difference vs Rust GGUF | 0.00000095 |
+| complete verification time, including layout emission | about 2.8 seconds |
+
+The small nonzero difference is arithmetic order: `spm-linear` uses fused
+multiply-add while the GGUF oracle's scalar iterator uses separate multiply
+and addition. The enforced bound is 0.0001. The far larger 50.5 MB physical
+file is F32 because `.spm` does not yet have a Q6_K execution profile; Q6_K
+source payload for the same router and experts is about 12.6 MB.
+
+This proves serial execution once the route is known. It does **not** yet
+solve dynamic routing in one immutable linear parameter stream: the router
+decision is produced at runtime, while a compact selected-only layout must be
+chosen beforehand. The honest implementation choices are:
+
+- stream every expert in ID order and compute only selected experts, retaining
+  strict forward-only access at roughly four times the selected-expert traffic;
+- place experts in independently selectable cartridges, which makes the outer
+  scheduler random-access even though each projection remains forward-only;
+- retain the small router and use one pass or rewind per selected expert bank,
+  trading extra scans for less storage; or
+- batch tokens by expert so each selected projection scan serves many tokens,
+  then measure whether the added scheduling state earns back its cost.
+
+The first option is the cleanest next correctness experiment. The fourth is
+the most interesting throughput experiment. Neither should be described as a
+single selected-only sequential stream until its scheduling mechanism is
+explicit.

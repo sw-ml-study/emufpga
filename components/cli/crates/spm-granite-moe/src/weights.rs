@@ -47,6 +47,21 @@ pub fn project_expert(
     expert: usize,
     inputs: &[&[f32]],
 ) -> Result<Vec<Vec<f32>>, String> {
+    let values = expert_matrix(path, content, name, cols, rows, expert)?;
+    inputs
+        .iter()
+        .map(|input| matvec(&values, cols, input))
+        .collect()
+}
+
+pub fn expert_matrix(
+    path: &Path,
+    content: &Content,
+    name: &str,
+    cols: usize,
+    rows: usize,
+    expert: usize,
+) -> Result<Vec<f32>, String> {
     let info = tensor(content, name)?;
     let size = rows
         .checked_mul(cols / 256)
@@ -54,11 +69,7 @@ pub fn project_expert(
         .ok_or("expert size overflow")?;
     let start = expert.checked_mul(size).ok_or("expert offset overflow")?;
     let bytes = read_tensor_range(path, info, start as u64, size as u64, size as u64)?;
-    let values = decode_q6_k(&bytes)?;
-    inputs
-        .iter()
-        .map(|input| matvec(&values, cols, input))
-        .collect()
+    decode_q6_k(&bytes)
 }
 
 pub fn project_stream(
