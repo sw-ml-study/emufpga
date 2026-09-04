@@ -22,7 +22,7 @@ struct dump_config {
 
 static bool dump_intermediate(ggml_tensor * tensor, bool ask, void * user_data) {
     const std::string name = tensor->name;
-    const bool selected = name == "inp_embd" || name == "ffn_inp-0" || name == "l_out-0";
+    const bool selected = name == "inp_embd" || name == "ffn_inp-0" || name.starts_with("l_out-");
     if (ask || !selected) {
         return selected;
     }
@@ -74,7 +74,10 @@ int main(int argc, char ** argv) {
         context_params.cb_eval_user_data = &dumps;
     }
     llama_context * context = llama_init_from_model(model, context_params);
-    if (context == nullptr || llama_decode(context, llama_batch_get_one(tokens.data(), count)) != 0) {
+    auto batch = llama_batch_get_one(tokens.data(), count);
+    std::vector<int8_t> outputs(count, 1);
+    batch.logits = outputs.data();
+    if (context == nullptr || llama_decode(context, batch) != 0) {
         llama_free(context);
         llama_model_free(model);
         return 1;

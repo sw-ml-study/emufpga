@@ -165,16 +165,49 @@ and cosine is at least 0.999731226156. The enforced multi-token bounds are
 position-zero identity, a hand-computed RoPE pair, stable normalized softmax,
 causal exclusion of a later value, and four-to-one GQA head mapping.
 
-## Next rung
+## Full dense-model result
 
-Extend the Rust Qwen3 forward harness in independently testable stages:
+The Rust harness now streams all 36 transformer blocks, retains a separate K/V
+cache for each layer, applies the final RMS normalization, and evaluates the
+151,936-row output projection in chunks of 256 rows. Layer projections are
+decoded one at a time. The largest decoded layer matrix is about 192 MiB; the
+output chunks decode to 4 MiB. Two host process samples during the release run
+reported 220,628 and 220,672 KiB RSS. The five-token run took roughly 36
+seconds on this host.
 
-1. generalize the validated block implementation over all 36 layers;
-2. retain per-layer K/V state while releasing each layer's weights;
-3. add final normalization/output projection;
-4. compare CPU logits to the strict oracle, then characterize CUDA differences.
+The llama.cpp callback can dump every `l_out-N` tensor when all token outputs
+are requested. Across 180 layer-position vectors, Rust's lowest cosine was
+0.997130500531. The largest absolute difference was 286.366210938 at the
+position-zero outlier, where activation magnitude approaches 9,000 and cosine
+remained 0.999998945652. The harness therefore enforces maximum absolute error
+287 and minimum cosine 0.997 for optional all-layer reference checks.
 
-The backend choice remains open. A maintained Rust CUDA backend must support
-Qwen3 dense models and this GPU without bypassing `spm-gguf` validation.
-Candle is the smallest plausible integration, but its dense quantized Qwen3
-support must be proven first; mistral.rs is broader and substantially heavier.
+Final Rust logits retain llama.cpp's exact top-ten token set and top token.
+The largest shared-token difference against the checked-in strict CPU golden
+is about 0.441. Setting `SPM_QWEN_LOGITS_GOLDEN` enforces the same top token,
+the same top-ten set, and maximum absolute logit error 0.5.
+
+## MoE follow-up
+
+A mixture-of-experts model provides the next serial-weight experiment. For
+each token and layer, the execution schedule is:
+
+1. stream the router matrix and compute router logits;
+2. select and normalize the top-k expert scores;
+3. for each selected expert in stable expert-ID order, stream gate and up
+   weights, compute the activation, stream down weights, and accumulate the
+   score-weighted output;
+4. release that expert's weights before opening the next expert;
+5. compare router logits, selected IDs, individual expert contributions, the
+   combined MoE output, and final logits with llama.cpp.
+
+This keeps only one expert projection resident and needs no Python checkpoint
+loader. The next rung should first select a maintained GGUF MoE under 12 GB,
+pin its source hash, and establish these callback oracle points before adding
+the serial Rust implementation.
+
+The dense backend choice remains open. A maintained Rust CUDA backend must
+support Qwen3 dense models and this GPU without bypassing `spm-gguf`
+validation. Candle is the smallest plausible integration, but its dense
+quantized Qwen3 support must be proven first; mistral.rs is broader and
+substantially heavier.

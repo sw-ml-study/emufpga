@@ -35,6 +35,18 @@ pub fn print_stats(label: &str, values: &[f32]) {
     );
 }
 
+pub fn top_k(values: &[f32], count: usize) -> Vec<(usize, f32)> {
+    let mut ranked: Vec<_> = values.iter().copied().enumerate().collect();
+    ranked.sort_unstable_by(|left, right| {
+        right
+            .1
+            .total_cmp(&left.1)
+            .then_with(|| left.0.cmp(&right.0))
+    });
+    ranked.truncate(count);
+    ranked
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -51,6 +63,10 @@ mod tests {
         assert_eq!(
             matvec(&[1.0, 2.0, 3.0, 4.0], 2, &[5.0, 6.0]).unwrap(),
             [17.0, 39.0]
+        );
+        assert_eq!(
+            top_k(&[1.0, 3.0, 3.0, 2.0], 3),
+            [(1, 3.0), (2, 3.0), (3, 2.0)]
         );
     }
 }

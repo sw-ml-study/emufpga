@@ -1,6 +1,6 @@
 number = 4
 slug = "full-qwen3-logits"
-status = "pending"
+status = "in-progress"
 description = "Generalize the validated five-token Qwen3 Rust path from block 0 across all 3..."
 role = "production"
 context_files = []

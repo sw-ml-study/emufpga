@@ -1,5 +1,7 @@
 use crate::math::matvec;
-use spm_gguf::{Content, TensorInfo, decode_f32, decode_q6_k, read_tensor_bytes};
+use spm_gguf::{
+    Content, TensorInfo, decode_f32, decode_q6_k, read_tensor_bytes, read_tensor_range,
+};
 use std::path::Path;
 
 const MAX_TENSOR_BYTES: u64 = 64 * 1024 * 1024;
@@ -34,4 +36,28 @@ pub fn projection_batch(
         .iter()
         .map(|input| matvec(&weights, cols, input))
         .collect()
+}
+
+pub fn projection_stream(
+    path: &Path,
+    content: &Content,
+    name: &str,
+    cols: usize,
+    input: &[f32],
+) -> Result<Vec<f32>, String> {
+    let info = tensor(content, name)?;
+    if info.dtype != 14 || cols % 256 != 0 {
+        return Err(format!("tensor {name} is not row-aligned Q6_K"));
+    }
+    let row_bytes = (cols / 256) * 210;
+    let rows = usize::try_from(info.len).map_err(|_| "tensor too large")? / row_bytes;
+    let mut output = Vec::with_capacity(rows);
+    for first in (0..rows).step_by(256) {
+        let count = (rows - first).min(256);
+        let offset = u64::try_from(first * row_bytes).map_err(|_| "offset overflow")?;
+        let length = u64::try_from(count * row_bytes).map_err(|_| "length overflow")?;
+        let bytes = read_tensor_range(path, info, offset, length, length)?;
+        output.extend(matvec(&decode_q6_k(&bytes)?, cols, input)?);
+    }
+    Ok(output)
 }

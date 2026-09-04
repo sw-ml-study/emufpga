@@ -2,6 +2,7 @@ const HEAD: usize = 128;
 const Q_HEADS: usize = 32;
 const KV_HEADS: usize = 8;
 
+#[derive(Default)]
 pub struct KvCache {
     pub keys: Vec<Vec<f32>>,
     pub values: Vec<Vec<f32>>,
@@ -20,6 +21,15 @@ pub fn rope(head: &mut [f32], position: usize) {
         let right = head[index + half];
         head[index] = left * cos - right * sin;
         head[index + half] = right * cos + left * sin;
+    }
+}
+
+pub fn normalize_rope(vectors: &mut [Vec<f32>], norm: &[f32]) {
+    for (position, vector) in vectors.iter_mut().enumerate() {
+        for head in vector.chunks_exact_mut(HEAD) {
+            head.copy_from_slice(&crate::math::rms_norm(head, norm));
+            rope(head, position);
+        }
     }
 }
 
@@ -83,10 +93,6 @@ mod tests {
         rope(&mut head, 1);
         assert!((head[0] - 1.0_f32.cos()).abs() < 1e-6);
         assert!((head[HEAD / 2] - 1.0_f32.sin()).abs() < 1e-6);
-    }
-
-    #[test]
-    fn softmax_is_stable_and_normalized() {
         let mut values = [1000.0, 1000.0];
         softmax(&mut values);
         assert_eq!(values.map(f32::to_bits), [0.5_f32; 2].map(f32::to_bits));
@@ -119,5 +125,8 @@ mod tests {
         values[1].fill(99.0);
         let cache = KvCache { keys, values };
         assert_eq!(causal_gqa(&queries, &cache)[0], vec![1.0; Q_HEADS * HEAD]);
+        let caches = [cache, KvCache::default()];
+        assert_eq!(caches[0].keys.len(), 2);
+        assert!(caches[1].keys.is_empty());
     }
 }
