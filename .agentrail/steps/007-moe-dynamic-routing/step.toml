@@ -1,8 +1,12 @@
 number = 7
 slug = "moe-dynamic-routing"
-status = "in-progress"
+status = "completed"
 description = "Validate a runtime-dynamic MoE schedule without specializing the .spm file to..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-03T18:29:30"
-commits = ["c7c01aa9cd11492ab4631c2a371f53c5b88bd9f5"]
+completed_at = "2026-09-03T18:39:25"
+commits = [
+    "c7c01aa9cd11492ab4631c2a371f53c5b88bd9f5",
+    "f0102049a2ba66fe71675000517443d359e9c403",
+]

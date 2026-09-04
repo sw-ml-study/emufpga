@@ -1,0 +1,8 @@
+number = 8
+slug = "moe-q6-stream-benchmark"
+status = "pending"
+description = "Keep Granite Q6_K expert weights packed in the .spm streaming path instead of..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-03T18:39:25"
+commits = []
