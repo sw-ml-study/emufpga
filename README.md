@@ -173,6 +173,7 @@ would have been unfalsifiable anyway.
 - [docs/granite-moe-serial.md](docs/granite-moe-serial.md) -- serial MoE expert verification
 - [docs/moe-memory-economics.md](docs/moe-memory-economics.md) -- MoE memory and bandwidth ledger
 - [docs/moe-q6-benchmark.md](docs/moe-q6-benchmark.md) -- packed Q6_K MoE benchmark
+- [docs/moe-full-packed-forward.md](docs/moe-full-packed-forward.md) -- full chained packed-MoE validation
 - [docs/postmortem-1.md](docs/postmortem-1.md) -- what went wrong, and what caught it
 
 ## License

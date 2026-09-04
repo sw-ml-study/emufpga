@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+export SPM_GRANITE_FULL_SPM_PATH=${SPM_GRANITE_FULL_SPM_PATH:-/disk1/tmp/granite-moe-layer-q6.spm}
+exec "$root/scripts/verify-granite-moe" "$@"

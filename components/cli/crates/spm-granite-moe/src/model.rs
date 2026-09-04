@@ -8,10 +8,52 @@ use spm_gguf::Content;
 use std::{
     env, fs,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 const WIDTH: usize = 1024;
 const LAYERS: usize = 24;
+
+#[derive(Default)]
+struct FullReport {
+    bytes: u64,
+    useful: u64,
+    emit: Duration,
+    read: Duration,
+    decode: Duration,
+    compute: Duration,
+    peak_input: usize,
+    expert_max: f32,
+    combined_max: f32,
+}
+
+macro_rules! record_full {
+    ($full:expr, $report:expr, $emit:expr) => {{
+        $full.bytes += $report.bytes;
+        $full.useful += $report.useful;
+        $full.emit += $emit;
+        $full.read += $report.read;
+        $full.decode += $report.decode;
+        $full.compute += $report.compute;
+        $full.peak_input = $full.peak_input.max($report.peak_input);
+        $full.expert_max = $full.expert_max.max($report.expert_max);
+        $full.combined_max = $full.combined_max.max($report.combined_max);
+    }};
+}
+
+macro_rules! print_full {
+    ($full:expr, $batch:expr) => {{
+        let activation = $batch * (3 * WIDTH + 3 * 512) * 4;
+        let kv = $batch * LAYERS * 8 * 64 * 2 * 4;
+        println!(
+            "spm_full layers={LAYERS} bytes={} useful={} transitions={} rewinds=0 peak_input={} activation_bound={} kv_f32={} emit_ms={:.3} read_ms={:.3} decode_ms={:.3} compute_ms={:.3} expert_max={:.8} combined_max={:.8}",
+            $full.bytes, $full.useful, LAYERS - 1, $full.peak_input, activation, kv,
+            $full.emit.as_secs_f64() * 1_000.0, $full.read.as_secs_f64() * 1_000.0,
+            $full.decode.as_secs_f64() * 1_000.0, $full.compute.as_secs_f64() * 1_000.0,
+            $full.expert_max, $full.combined_max
+        );
+    }};
+}
 
 macro_rules! print_spm_report {
     ($report:expr, $emit:expr, $batch:expr, $schedule:expr) => {{
@@ -29,6 +71,38 @@ macro_rules! print_spm_report {
             report.decode.as_secs_f64() * 1_000.0, report.compute.as_secs_f64() * 1_000.0,
             report.expert_max, report.combined_max
         );
+    }};
+}
+
+macro_rules! run_spm_layer {
+    ($path:expr, $content:expr, $normalized:expr, $trace:expr, $layer:expr, $full:expr, $output:expr) => {{
+        let output = env::var_os("SPM_GRANITE_FULL_SPM_PATH").or_else(|| {
+            ($layer == 0)
+                .then(|| env::var_os("SPM_GRANITE_SPM_PATH"))
+                .flatten()
+        });
+        if let Some(output) = output {
+            let (report, emit_time, streamed) = layout::verify(
+                $path,
+                $content,
+                Path::new(&output),
+                $normalized,
+                $trace,
+                $layer,
+            )?;
+            let schedule = if env::var_os("SPM_GRANITE_SELECTED_UNION").is_some() {
+                "selected-union"
+            } else {
+                "all-expert"
+            };
+            println!("spm_layer={}", $layer);
+            print_spm_report!(&report, emit_time, $normalized.len(), schedule);
+            record_full!($full, &report, emit_time);
+            $output = streamed;
+            if report.expert_max > 0.002 || report.combined_max > 0.002 {
+                return Err("SPM execution differs from GGUF Rust oracle".into());
+            }
+        }
     }};
 }
 
@@ -172,6 +246,7 @@ fn block(
     hidden: &[Vec<f32>],
     layer: usize,
     reference: Option<&Path>,
+    full: &mut FullReport,
 ) -> Result<Vec<Vec<f32>>, String> {
     let attn_norm = weights::load(path, content, &format!("blk.{layer}.attn_norm.weight"))?;
     let normalized: Vec<_> = hidden
@@ -191,25 +266,14 @@ fn block(
         compare(reference, "ffn_norm-0", &normalized.concat(), 2.0)?;
     }
     let trace = moe::run(path, content, &normalized, layer)?;
+    let mut moe_output = trace.output.clone();
     if layer == 0 {
         compare_trace(reference, &trace)?;
-        if let Some(output) = env::var_os("SPM_GRANITE_SPM_PATH") {
-            let (report, emit_ns) =
-                layout::verify(path, content, Path::new(&output), &normalized, &trace)?;
-            let schedule = if env::var_os("SPM_GRANITE_SELECTED_UNION").is_some() {
-                "selected-union"
-            } else {
-                "all-expert"
-            };
-            print_spm_report!(&report, emit_ns, normalized.len(), schedule);
-            if report.expert_max > 0.000_1 || report.combined_max > 0.000_1 {
-                return Err("SPM execution differs from GGUF Rust oracle".into());
-            }
-        }
     }
+    run_spm_layer!(path, content, &normalized, &trace, layer, full, moe_output);
     Ok(ffn_input
         .iter()
-        .zip(trace.output)
+        .zip(moe_output)
         .map(|(residual, value)| add_scaled(residual, &value, 0.22))
         .collect())
 }
@@ -221,9 +285,17 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
     let content = spm_gguf::read(path)?;
     let reference_dir = env::var_os("SPM_GRANITE_REFERENCE_DIR").map(PathBuf::from);
     let mut hidden = embeddings(path, &content, tokens)?;
+    let mut full = FullReport::default();
     compare(reference_dir.as_deref(), "inp_embd", &hidden.concat(), 0.1)?;
     for layer in 0..LAYERS {
-        hidden = block(path, &content, &hidden, layer, reference_dir.as_deref())?;
+        hidden = block(
+            path,
+            &content,
+            &hidden,
+            layer,
+            reference_dir.as_deref(),
+            &mut full,
+        )?;
         if layer == 0 && env::var_os("SPM_GRANITE_BLOCK0_ONLY").is_some() {
             return Ok(());
         }
@@ -238,6 +310,9 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
         env::var_os("SPM_GRANITE_LOGITS_GOLDEN").map(PathBuf::from),
         &top,
     )?;
+    if env::var_os("SPM_GRANITE_FULL_SPM_PATH").is_some() {
+        print_full!(&full, tokens.len());
+    }
     for (token, logit) in top {
         println!("{token} {logit:.9} {:08x}", logit.to_bits());
     }

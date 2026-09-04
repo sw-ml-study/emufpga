@@ -1,6 +1,6 @@
 number = 9
 slug = "moe-full-packed-forward"
-status = "pending"
+status = "in-progress"
 description = "Extend the validated packed Q6_K .spm MoE schedule from Granite block 0 throu..."
 role = "legacy"
 context_files = []

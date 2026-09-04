@@ -1,4 +1,8 @@
-use crate::{math::softmax, moe::Trace, weights};
+use crate::{
+    math::{softmax, top_k},
+    moe::Trace,
+    weights,
+};
 use spm_codec_dense::encode_into;
 use spm_file::SpmWriter;
 use spm_layout::{Encoding, OpDescriptor};
@@ -85,11 +89,37 @@ macro_rules! activate {
     };
 }
 
+macro_rules! validate_routes {
+    ($probabilities:expr, $trace:expr, $layer:expr) => {
+        for (token, values) in $probabilities.iter().enumerate() {
+            let selected: Vec<_> = top_k(values, 8).iter().map(|item| item.0).collect();
+            if selected != $trace.routes[token] {
+                return Err(format!(
+                    "layer {} token {token} packed router differs",
+                    $layer
+                ));
+            }
+        }
+    };
+}
+
+macro_rules! combined_error {
+    ($combined:expr, $trace:expr) => {
+        $combined
+            .iter()
+            .flatten()
+            .zip($trace.output.iter().flatten())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0, f32::max)
+    };
+}
+
 fn emit(
     model: &Path,
     content: &spm_gguf::Content,
     output: &Path,
     experts: &[usize],
+    layer: usize,
 ) -> Result<Duration, String> {
     let started = Instant::now();
     let mut shapes = vec![(32, WIDTH, Encoding::F32)];
@@ -105,7 +135,7 @@ fn emit(
         .map(|&(rows, cols, encoding)| descriptor!(rows, cols, encoding))
         .collect();
     let mut writer = SpmWriter::new(descriptors);
-    let router = weights::load(model, content, "blk.0.ffn_gate_inp.weight")?;
+    let router = weights::load(model, content, &format!("blk.{layer}.ffn_gate_inp.weight"))?;
     append_f32!(&mut writer, &router, 32, WIDTH);
     for &expert in experts {
         for (name, cols, rows) in [
@@ -116,7 +146,7 @@ fn emit(
             let bytes = weights::expert_bytes(
                 model,
                 content,
-                &format!("blk.0.{name}.weight"),
+                &format!("blk.{layer}.{name}.weight"),
                 cols,
                 rows,
                 expert,
@@ -284,7 +314,8 @@ pub fn verify(
     output: &Path,
     inputs: &[Vec<f32>],
     trace: &Trace,
-) -> Result<(Report, Duration), String> {
+    layer: usize,
+) -> Result<(Report, Duration, Vec<Vec<f32>>), String> {
     let selected_set = trace
         .routes
         .iter()
@@ -296,12 +327,13 @@ pub fn verify(
     } else {
         (0..EXPERTS).collect()
     };
-    let emit_ns = emit(model, content, output, &experts)?;
+    let emit_ns = emit(model, content, output, &experts, layer)?;
     let mut groups =
         GroupStream::open(FileWeightStream::open(output).map_err(|error| error.to_string())?)
             .map_err(|error| error.to_string())?;
     let logits = router(&mut groups, inputs)?;
     let probabilities: Vec<_> = logits.iter().map(|values| softmax(values)).collect();
+    validate_routes!(probabilities, trace, layer);
     let mut timing = Timing::default();
     let (expert_max, combined) = execute_experts(
         &mut groups,
@@ -311,12 +343,7 @@ pub fn verify(
         &experts,
         &mut timing,
     )?;
-    let combined_max = combined
-        .iter()
-        .flatten()
-        .zip(trace.output.iter().flatten())
-        .map(|(a, b)| (a - b).abs())
-        .fold(0.0, f32::max);
+    let combined_max = combined_error!(combined, trace);
     let report = report(
         output,
         &groups,
@@ -325,5 +352,5 @@ pub fn verify(
         &timing,
         (expert_max, combined_max),
     )?;
-    Ok((report, emit_ns))
+    Ok((report, emit_ns, combined))
 }
