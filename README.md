@@ -185,6 +185,7 @@ would have been unfalsifiable anyway.
 - [docs/moe-routing-distributions.md](docs/moe-routing-distributions.md) -- empirical routing unions and repeated timing distributions
 - [docs/moe-rtl-cosim.md](docs/moe-rtl-cosim.md) -- hardware-shaped Q6_K cycle validation
 - [docs/analyze-HLS4ML.md](docs/analyze-HLS4ML.md) -- what published HLS/FPGA findings do and do not validate here
+- [docs/xeon-arch-considerations.md](docs/xeon-arch-considerations.md) -- Xeon generations, NUMA, PMEM, and expert-worker scheduling
 - [live visualization](https://sw-ml-study.github.io/emufpga/) ([local instructions](visualization/README.md)) -- animated serial-MoE FPGA datapath
 - [docs/serial-processing-eli5.md](docs/serial-processing-eli5.md) -- what else can stream and complementary approaches
 - [docs/postmortem-1.md](docs/postmortem-1.md) -- what went wrong, and what caught it
