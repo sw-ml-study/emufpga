@@ -1,8 +1,9 @@
 number = 14
 slug = "storage-tier-break-even"
-status = "in-progress"
+status = "completed"
 description = "Measure the storage side of the serial-MoE break-even without FPGA programmin..."
 role = "validation"
 context_files = []
 created_at = "2026-09-04T10:20:41"
-commits = []
+completed_at = "2026-09-04T10:57:02"
+commits = ["18c57d0fa1370b9b09c1ce09972519a9b95d216d"]
