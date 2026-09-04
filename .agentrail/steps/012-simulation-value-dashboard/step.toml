@@ -1,6 +1,6 @@
 number = 12
 slug = "simulation-value-dashboard"
-status = "pending"
+status = "in-progress"
 description = "Focus exclusively on making the existing serial-MoE simulation and measured r..."
 role = "validation"
 context_files = []

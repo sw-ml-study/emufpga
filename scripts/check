@@ -86,6 +86,10 @@ echo "=== repository size ==="
 # staged file.
 "$SCRIPT_DIR/check-size"
 
+echo "=== visualization calculations ==="
+node visualization/economics.test.js
+node --check visualization/app.js
+
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"
 

@@ -9,7 +9,7 @@
 </head>
 <body>
   <header>
-    <div><span class="eyebrow">emufpga</span><h1>Serial MoE FPGA visual emulator</h1></div>
+    <div><span class="eyebrow">emufpga</span><h1>Does serial MoE actually help?</h1><a class="jump" href="#board">See the animated datapath ↓</a></div>
     <div class="controls">
       <button id="play">Pause</button><button id="step">Step</button>
       <label>Speed <input id="speed" type="range" min="1" max="10" value="5"></label>
@@ -52,6 +52,9 @@
   <section class="case" aria-labelledby="case-title">
     <div class="case-head"><div><span class="eyebrow">Engineering case</span><h2 id="case-title">Capacity saved; bandwidth spent</h2></div><label>Context <select id="context"><option>32</option><option>1024</option><option>4096</option><option>8192</option><option selected>32768</option><option>131072</option></select> tokens</label></div>
     <p class="verdict"><strong>Conclusion:</strong> serial execution is a capacity strategy, not an automatic speedup. It wins when weights do not fit near compute and compression, batching, caching, or route-aware fetch keep transferred bytes useful.</p>
+    <section class="lab"><h3>Scenario laboratory <small>DERIVED / PROJECTED—change assumptions</small></h3><div class="knobs">
+      <label>Model GiB<input id="model-gib" type="number" min="0.1" step="0.1" value="1.024"></label><label>Fast memory GiB<input id="budget-gib" type="number" min="0.1" step="1" value="16"></label><label>Total experts<input id="total-experts" type="number" min="1" value="32"></label><label>Active experts<input id="active-experts" type="number" min="1" value="8"></label><label>Batch<input id="batch" type="number" min="1" value="1"></label><label>Context<input id="lab-context" type="number" min="1" value="32768"></label><label>KV bytes/token<input id="kv-bytes" type="number" min="0" value="49152"></label><label>Storage GB/s<input id="storage-gbps" type="number" min="0.01" step="0.1" value="3"></label><label>Compute TOPS<input id="compute-tops" type="number" min="0.01" step="0.1" value="1"></label><label>Active params B<input id="active-params" type="number" min="0.01" step="0.1" value="0.4"></label><label>Hypothetical clock MHz<input id="clock-mhz" type="number" min="1" value="100"></label>
+    </div><div id="decision" class="decision"></div><div class="lab-graphs"><figure><figcaption><strong>Fast-memory fit</strong><span>Weights + KV compared with the selected capacity budget.</span></figcaption><div id="fit-graph" class="bar-chart"></div></figure><figure><figcaption><strong>Projected throughput ceiling</strong><span>Minimum of storage and arithmetic ceilings; not measured runtime.</span></figcaption><div id="ceiling-graph" class="bar-chart"></div></figure><figure><figcaption><strong>Traffic usefulness</strong><span>Uniform independent routing estimate; real routing can be skewed.</span></figcaption><div id="usefulness-graph" class="donut-row"></div></figure></div><div id="warnings" class="warnings"></div></section>
     <div class="cards">
       <article><h3>Resident GPU</h3><b id="resident-memory"></b><p>All 1.024 GiB of model data near compute, plus KV. Lowest fetch latency; highest scarce-memory demand.</p><em>DERIVED CAPACITY FLOOR—not allocator peak</em></article>
       <article><h3>Blind serial</h3><b id="serial-memory"></b><p>Forward-only tape: 42.21 MB/layer at batch 1; 25.2% of expert bytes are useful.</p><em>MEASURED BYTES; host timing</em></article>
@@ -69,6 +72,6 @@
     <details open><summary>Evidence, math, and limits</summary><div class="evidence"><p><strong>Capacity:</strong> resident floor = 1,099,212,096 model bytes + context × 49,152 F16 KV bytes. Serial substitutes a measured 132,306-byte input path for resident model bytes. Runtime workspaces and activations are additional.</p><p><strong>Speed:</strong> time ≥ max(bytes ÷ bandwidth, operations ÷ compute rate). Physical FPGA seconds remain unknown until synthesis establishes clock and memory bandwidth.</p><p><a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/moe-memory-economics.md">Memory ledger</a> · <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/moe-q6-benchmark.md">Benchmark method</a> · <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/moe-full-packed-forward.md">Correctness evidence</a> · <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/serial-processing-eli5.md">Other streams</a></p></div></details>
   </section>
   <footer><span>© 2026 Software Wrighter · <a href="https://github.com/sw-ml-study/emufpga/blob/main/LICENSE">MIT License</a> · <a href="https://github.com/sw-ml-study/emufpga">GitHub</a></span><span id="build-info">local source view · build provenance unavailable</span></footer>
-  <script src="app.js"></script>
+  <script src="economics.js"></script><script src="app.js"></script>
 </body>
 </html>
