@@ -1,6 +1,6 @@
 number = 6
 slug = "moe-spm-layout"
-status = "pending"
+status = "in-progress"
 description = "Convert the validated Granite MoE router and selected-expert schedule into an..."
 role = "legacy"
 context_files = []
