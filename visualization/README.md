@@ -3,6 +3,10 @@
 This is a visual emulator of the purpose-built accelerator proposed by
 `emufpga`, not a general FPGA editor or floorplan viewer.
 
+The opening panel defines the experiment before presenting results: what is
+being built, what must be measured against CPU/System-RAM offload, the
+conditional prediction, and the predeclared success threshold.
+
 Generate an authoritative trace:
 
 ```sh
