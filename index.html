@@ -9,13 +9,22 @@
 </head>
 <body>
   <header>
-    <div><span class="eyebrow">emufpga</span><h1>Does serial MoE actually help?</h1><a class="jump" href="#board">See the animated datapath ↓</a></div>
+    <div><span class="eyebrow">emufpga</span><h1>Can old hardware run oversized MoE models well enough?</h1><a class="jump" href="#intro">Start with the experiment ↓</a></div>
     <div class="controls">
       <button id="play">Pause</button><button id="step">Step</button>
       <label>Speed <input id="speed" type="range" min="1" max="10" value="5"></label>
       <label>Schedule <select id="schedule"><option value="serial">All-expert serial</option><option value="union">Selected union</option><option value="resident">Resident VRAM</option></select></label>
     </div>
   </header>
+  <section id="intro" class="intro" aria-labelledby="intro-title">
+    <div class="intro-lead"><span class="eyebrow">The experiment in 60 seconds</span><h2 id="intro-title">Use the GPU we already own—even when the model is too large for it.</h2><p>emufpga investigates whether immutable MoE expert weights can flow serially from cheap storage while a small or old GPU keeps attention, KV cache, and active state. The alternative to beat is ordinary CPU/System-RAM offload on the same reused machine—not a new high-end GPU.</p><strong>Current verdict: mechanics validated; deployment advantage not yet measured.</strong></div>
+    <div class="intro-cards">
+      <article><span>1 · WHAT IS THIS?</span><h3>A serial expert-supply experiment</h3><p>Route requests first, fetch only the experts they need, and reuse each fetched expert across concurrent requests. CPU, GPU, FPGA, storage, and control hardware can each do the work they suit.</p></article>
+      <article><span>2 · WHAT DO WE MEASURE?</span><h3>Capacity, correct work, and service rate</h3><p>Can an oversized model run? For 1/2/4/8 independent agents: correct tasks/hour, tokens/s, TTFT and p95 latency, RAM/VRAM, bytes moved, watts, and tasks/kWh—compared with CPU/RAM offload.</p></article>
+      <article><span>3 · WHAT DO WE PREDICT?</span><h3>A conditional capacity win</h3><p>Serial staging should win when the model exceeds VRAM, selected experts avoid enough traffic, and batching reuses weights. It may lose when storage is slow, routes touch most experts, KV dominates, or transfer overhead exceeds saved compute.</p></article>
+    </div>
+    <div class="intro-rule"><b>Success:</b> an oversized MoE, four independent agents at ≥2 generated tokens/s each, unchanged correctness, and ≥25% more correct tasks/hour than CPU/RAM offload on the same old host. <a href="https://github.com/sw-ml-study/emufpga/blob/main/docs/claim-scorecard.md">Why these thresholds?</a></div>
+  </section>
   <main>
     <section class="board-wrap">
       <svg id="board" viewBox="0 0 1200 650" role="img" aria-label="Purpose-built serial MoE FPGA datapath">
