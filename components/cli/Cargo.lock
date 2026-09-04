@@ -739,6 +739,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-granite-moe"
+version = "0.1.0"
+dependencies = [
+ "spm-gguf",
+]
+
+[[package]]
 name = "spm-header"
 version = "0.1.0"
 dependencies = [

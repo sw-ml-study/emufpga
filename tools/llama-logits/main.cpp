@@ -22,18 +22,25 @@ struct dump_config {
 
 static bool dump_intermediate(ggml_tensor * tensor, bool ask, void * user_data) {
     const std::string name = tensor->name;
-    const bool selected = name == "inp_embd" || name == "ffn_inp-0" || name.starts_with("l_out-");
+    const bool moe = name.starts_with("ffn_moe_");
+    const bool selected = name == "inp_embd" || name == "ffn_inp-0" ||
+        name == "ffn_norm-0" || name.starts_with("l_out-") || moe;
     if (ask || !selected) {
         return selected;
     }
-    if (tensor->type != GGML_TYPE_F32) {
+    const char * extension = tensor->type == GGML_TYPE_F32 ? ".f32" :
+        tensor->type == GGML_TYPE_I32 ? ".i32" : nullptr;
+    if (extension == nullptr) {
         std::fprintf(stderr, "unexpected intermediate type for %s: %s\n", tensor->name, ggml_type_name(tensor->type));
         return false;
     }
     std::vector<char> bytes(ggml_nbytes(tensor));
     ggml_backend_tensor_get(tensor, bytes.data(), 0, bytes.size());
     const auto * config = static_cast<dump_config *>(user_data);
-    std::ofstream output(std::string(config->directory) + "/" + name + ".f32", std::ios::binary);
+    std::fprintf(stderr, "dump %s type=%s shape=[%lld,%lld,%lld,%lld]\n", name.c_str(),
+        ggml_type_name(tensor->type), (long long) tensor->ne[0], (long long) tensor->ne[1],
+        (long long) tensor->ne[2], (long long) tensor->ne[3]);
+    std::ofstream output(std::string(config->directory) + "/" + name + extension, std::ios::binary);
     output.write(bytes.data(), bytes.size());
     return output.good();
 }

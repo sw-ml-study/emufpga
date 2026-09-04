@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+directory=${1:-/disk1/tmp/granite-3.1-1b-a400m-q6}
+name=granite-3.1-1b-a400m-instruct-Q6_K.gguf
+revision=2104b63ef8d79af82a28f2df8d6191823e277c54
+expected=4566cfa92be10888026bd3663c83d64e91cd91f874dfb3607596587ff1c8f67f
+url=https://huggingface.co/bartowski/granite-3.1-1b-a400m-instruct-GGUF/resolve/$revision/$name
+
+mkdir -p "$directory"
+curl -fL --retry 3 --continue-at - -o "$directory/$name" "$url"
+printf '%s  %s\n' "$expected" "$directory/$name" | sha256sum --check

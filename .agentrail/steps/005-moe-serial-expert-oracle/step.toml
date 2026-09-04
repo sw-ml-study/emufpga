@@ -1,6 +1,6 @@
 number = 5
 slug = "moe-serial-expert-oracle"
-status = "pending"
+status = "in-progress"
 description = "Select and pin a maintained GGUF mixture-of-experts model whose artifact is u..."
 role = "production"
 context_files = []

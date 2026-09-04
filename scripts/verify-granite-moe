@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+model=${1:-/disk1/tmp/granite-3.1-1b-a400m-q6/granite-3.1-1b-a400m-instruct-Q6_K.gguf}
+reference=${2:-/disk1/tmp/granite-moe-oracle-hello}
+export SPM_GRANITE_REFERENCE_DIR=$reference
+export SPM_GRANITE_LOGITS_GOLDEN=$root/components/cli/crates/spm-granite-moe/tests/golden/hello-logits.txt
+exec "$root/scripts/serial.sh" cargo run --quiet --release \
+    --manifest-path "$root/components/cli/Cargo.toml" \
+    -p spm-granite-moe -- "$model" 8279

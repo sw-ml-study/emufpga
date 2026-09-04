@@ -1,0 +1,11 @@
+[package]
+name = "spm-granite-moe"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+spm-gguf = { path = "../spm-gguf" }
+
+[lints]
+workspace = true

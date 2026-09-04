@@ -170,6 +170,7 @@ would have been unfalsifiable anyway.
 - [docs/spm-format.md](docs/spm-format.md) -- the wire contract
 - [docs/results.md](docs/results.md) -- what was measured
 - [docs/code_metrics.md](docs/code_metrics.md) -- the complexity gates
+- [docs/granite-moe-serial.md](docs/granite-moe-serial.md) -- serial MoE expert verification
 - [docs/postmortem-1.md](docs/postmortem-1.md) -- what went wrong, and what caught it
 
 ## License
