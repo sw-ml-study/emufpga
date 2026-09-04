@@ -15,7 +15,21 @@ th:first-child, td:first-child { text-align: left; }
 summary { cursor: pointer; color: var(--cyan); font-weight: 700; }
 .evidence { margin-top: 10px; line-height: 1.55; }
 .evidence a { color: var(--cyan); }
+.charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 24px 0; }
+figure { margin: 0; padding: 18px; background: #071f22; border: 1px solid #24585e; border-radius: 10px; }
+figcaption strong, figcaption span { display: block; }
+figcaption span { min-height: 38px; margin-top: 5px; color: var(--muted); font-size: 12px; }
+.bar-chart { margin-top: 15px; }
+.bar-row { display: grid; grid-template-columns: 58px 1fr 72px; align-items: center; gap: 8px; margin: 9px 0; font: 11px ui-monospace; }
+.bar-track { height: 14px; background: #102f33; border-radius: 4px; overflow: hidden; }
+.bar { height: 100%; min-width: 2px; border-radius: 4px; }
+.bar.resident, .line-resident { background: var(--amber); stroke: var(--amber); }
+.bar.serial, .line-serial { background: var(--cyan); stroke: var(--cyan); }
+.chart-takeaway { min-height: 48px; padding: 9px; border-left: 3px solid var(--green); color: var(--ink); font-size: 12px; line-height: 1.45; }
+#throughput-chart { width: 100%; margin-top: 6px; }
+.chart-grid { stroke: #194348; stroke-width: 1; }.chart-line { fill: none; stroke-width: 4; }.chart-point { stroke: #031315; stroke-width: 2; }.chart-label { fill: var(--muted); font: 11px ui-monospace; }
 footer { height: auto; min-height: 54px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 footer a { color: var(--cyan); }
 #build-info { font-family: ui-monospace, monospace; }
+@media (max-width: 1100px) { .charts { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .cards, .tradeoffs { grid-template-columns: 1fr; } .case-head { align-items: start; gap: 15px; } }
