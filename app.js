@@ -19,6 +19,18 @@ function buildAnalysis() {
   $("throughput-chart").innerHTML=`<path class="chart-grid" d="M38 20V175H430M38 105H430M38 35H430"/><polyline class="chart-line line-resident" points="${points(3)}"/><polyline class="chart-line line-serial" points="${points(4)}"/>${benchmark.map((r,i)=>`<text class="chart-label" x="${34+i*88}" y="195">B${r[0]}</text>`).join("")}<text class="chart-label" x="48" y="32">amber all-expert · cyan selected-union · tok/s</text>`;
   const update=()=>{const kv=Number($("context").value)*49152,resident=1099212096+kv,serial=132306+kv;$("resident-memory").textContent=`${binary(resident)} minimum`;$("serial-memory").textContent=`${binary(kv)} KV + 129 KiB`;$("union-memory").textContent=`${binary(kv)} KV + 129 KiB`;$("memory-chart").innerHTML=bars([["resident",resident,binary(resident),"resident"],["serial",serial,binary(serial),"serial"]],resident);};
   $("context").onchange=update; update();
+  document.querySelectorAll(".knobs input").forEach(input=>input.oninput=renderLab); renderLab();
+}
+
+function renderLab() {
+  const n=id=>Number($(id).value), x={model_gib:n("model-gib"),budget_gib:n("budget-gib"),total_experts:n("total-experts"),active_experts:n("active-experts"),batch:n("batch"),context:n("lab-context"),kv_bytes:n("kv-bytes"),storage_gbps:n("storage-gbps"),compute_tops:n("compute-tops"),active_params_b:n("active-params"),clock_mhz:n("clock-mhz")};
+  if(x.active_experts>x.total_experts){$("warnings").textContent="INVALID: active experts cannot exceed total experts.";return;}
+  const r=EmuEconomics.analyze(x), max=Math.max(r.resident,r.serial,r.budget), row=(name,value,label,kind)=>`<div class="bar-row"><span>${name}</span><div class="bar-track"><div class="bar ${kind}" style="width:${100*value/max}%"></div></div><b>${label}</b></div>`;
+  $("decision").className=`decision ${r.verdict.startsWith("SERIAL")?"good":"caution"}`;$("decision").textContent=r.verdict;
+  $("fit-graph").innerHTML=row("budget",r.budget,binary(r.budget),"budget")+row("resident",r.resident,binary(r.resident),"resident")+row("serial",r.serial,binary(r.serial),"serial");
+  const ceiling=Math.max(r.compute,r.blind,r.selected), meter=(name,value)=>`<div class="bar-row"><span>${name}</span><meter min="0" max="${ceiling}" value="${value}"></meter><b>${value.toFixed(1)} tok/s</b></div>`;$("ceiling-graph").innerHTML=meter("compute",r.compute)+meter("blind",r.blind)+meter("union",r.selected);
+  $("usefulness-graph").innerHTML=`<div class="donut" style="--value:${r.blind_use}"><b>${(100*r.blind_use).toFixed(0)}%</b><span>blind useful</span></div><div class="donut" style="--value:${r.union_use}"><b>${(100*r.union_use).toFixed(0)}%</b><span>union fetched</span></div>`;
+  const warnings=["PROJECTED: assumes uniform independent expert routing and 90.15% of model bytes are expert weights.",`HYPOTHETICAL: 62 block cycles at ${x.clock_mhz} MHz = ${r.block_ns.toFixed(0)} ns; this is not end-to-end latency.`];if(r.resident<=r.budget)warnings.unshift("CAUTION: the model already fits; streaming may add latency without solving a capacity problem.");if(r.blind_use<.5)warnings.unshift("CAUTION: blind streaming discards most expert bandwidth.");if(r.serial>r.budget)warnings.unshift("STOP: streaming weights cannot solve a KV/state capacity overflow.");$("warnings").innerHTML=warnings.map(w=>`<p>${w}</p>`).join("");
 }
 
 function buildBoard() {
