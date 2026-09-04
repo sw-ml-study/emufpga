@@ -1,0 +1,8 @@
+number = 10
+slug = "moe-serial-visualization"
+status = "pending"
+description = "Build an animated graphical demonstration of the measured serial-MoE value pr..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-04T08:08:27"
+commits = []
