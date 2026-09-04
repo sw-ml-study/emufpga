@@ -760,6 +760,7 @@ dependencies = [
  "spm-gguf",
  "spm-layout",
  "spm-linear",
+ "spm-stream",
  "spm-stream-file",
  "spm-stream-groups",
  "spm-viz-trace",

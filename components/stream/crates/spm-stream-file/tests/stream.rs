@@ -5,7 +5,7 @@
 //! a reference implementation is lost.
 
 use spm_stream::WeightStream;
-use spm_stream_file::FileWeightStream;
+use spm_stream_file::{FileWeightStream, PrefetchFileWeightStream};
 use spm_stream_mem::MemoryWeightStream;
 use std::io::Write;
 
@@ -71,5 +71,26 @@ fn an_empty_file_is_immediately_exhausted() {
     let mut stream = FileWeightStream::open(&path).expect("open");
     let mut buffer = [0u8; 16];
     assert_eq!(stream.next_block(&mut buffer).expect("next_block"), 0);
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn prefetch_matches_sync_across_boundaries_and_rewind() {
+    let bytes: Vec<u8> = (0..1003u32).map(|v| (v % 251) as u8).collect();
+    let path = scratch("prefetch", &bytes);
+    for capacity in [1, 7, 64, 999, 4096] {
+        let mut stream = PrefetchFileWeightStream::with_capacity(&path, capacity).expect("open");
+        assert_eq!(drain(&mut stream, 13), bytes);
+        stream.rewind().expect("rewind");
+        assert_eq!(drain(&mut stream, 127), bytes);
+    }
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn prefetch_empty_file_is_immediately_exhausted() {
+    let path = scratch("prefetch-empty", &[]);
+    let mut stream = PrefetchFileWeightStream::open(&path).expect("open");
+    assert_eq!(stream.next_block(&mut [0; 4]).expect("next_block"), 0);
     std::fs::remove_file(&path).ok();
 }

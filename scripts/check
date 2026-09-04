@@ -93,6 +93,8 @@ node --check visualization/app.js
 node --check scripts/analyze-storage.mjs
 node scripts/check-routing-data.mjs
 node scripts/check-storage-data.mjs
+node scripts/check-prefetch-data.mjs
+node --check scripts/analyze-prefetch.mjs
 node --check scripts/analyze-granite-routing.mjs
 node --check scripts/analyze-granite-timing.mjs
 

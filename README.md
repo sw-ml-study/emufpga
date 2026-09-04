@@ -50,6 +50,11 @@ Start here: [docs/why-this-saves-ram.md](docs/why-this-saves-ram.md) --
 the plain-language case, what has actually been measured, why MoE is
 the best case rather than a stretch goal, and what is not yet true.
 
+The shortest falsifiable status is
+[docs/claim-scorecard.md](docs/claim-scorecard.md): today there is **no measured
+agents-per-kWh advantage**; it defines the workload and success, failure, and
+mixed-result thresholds needed to make that claim.
+
 Background and the full argument: [docs/research.txt](docs/research.txt).
 
 ## What this is
@@ -181,6 +186,8 @@ would have been unfalsifiable anyway.
 - [docs/results.md](docs/results.md) -- what was measured
 - [docs/storage-tier-break-even.md](docs/storage-tier-break-even.md) -- HDD,
   NVMe, cache, and overlap ceilings for Granite expert streams
+- [docs/async-prefetch-validation.md](docs/async-prefetch-validation.md) --
+  observed bounded-prefetch correctness and mixed speed results
 - [docs/code_metrics.md](docs/code_metrics.md) -- the complexity gates
 - [docs/granite-moe-serial.md](docs/granite-moe-serial.md) -- serial MoE expert verification
 - [docs/moe-memory-economics.md](docs/moe-memory-economics.md) -- MoE memory and bandwidth ledger

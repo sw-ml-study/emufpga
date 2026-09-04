@@ -7,7 +7,8 @@ use spm_codec_dense::encode_into;
 use spm_file::SpmWriter;
 use spm_layout::{Encoding, OpDescriptor};
 use spm_linear::streamed;
-use spm_stream_file::{DEFAULT_CAPACITY, FileWeightStream};
+use spm_stream::WeightStream;
+use spm_stream_file::{DEFAULT_CAPACITY, FileWeightStream, PrefetchFileWeightStream};
 use spm_stream_groups::GroupStream;
 use std::{
     collections::BTreeSet,
@@ -114,6 +115,16 @@ macro_rules! combined_error {
     };
 }
 
+macro_rules! reuse_artifact {
+    ($output:expr) => {
+        if env::var_os("SPM_GRANITE_REUSE_SPM").is_some() {
+            fs::metadata($output)
+                .map_err(|error| format!("reuse {}: {error}", $output.display()))?;
+            return Ok(Duration::ZERO);
+        }
+    };
+}
+
 fn emit(
     model: &Path,
     content: &spm_gguf::Content,
@@ -121,6 +132,7 @@ fn emit(
     experts: &[usize],
     layer: usize,
 ) -> Result<Duration, String> {
+    reuse_artifact!(output);
     let started = Instant::now();
     let mut shapes = vec![(32, WIDTH, Encoding::F32)];
     shapes.extend(experts.iter().flat_map(|_| {
@@ -164,7 +176,7 @@ fn emit(
 }
 
 fn router(
-    groups: &mut GroupStream<FileWeightStream>,
+    groups: &mut GroupStream<Box<dyn WeightStream>>,
     inputs: &[Vec<f32>],
 ) -> Result<Vec<Vec<f32>>, String> {
     let flat: Vec<_> = inputs.iter().flatten().copied().collect();
@@ -175,7 +187,7 @@ fn router(
 }
 
 fn q6_operation(
-    groups: &mut GroupStream<FileWeightStream>,
+    groups: &mut GroupStream<Box<dyn WeightStream>>,
     shape: (usize, usize),
     inputs: &[&[f32]],
     timing: &mut Timing,
@@ -211,7 +223,7 @@ fn q6_operation(
 }
 
 fn process_expert(
-    groups: &mut GroupStream<FileWeightStream>,
+    groups: &mut GroupStream<Box<dyn WeightStream>>,
     inputs: &[Vec<f32>],
     probabilities: &[Vec<f32>],
     trace: &Trace,
@@ -259,7 +271,7 @@ fn process_expert(
 }
 
 fn execute_experts(
-    groups: &mut GroupStream<FileWeightStream>,
+    groups: &mut GroupStream<Box<dyn WeightStream>>,
     inputs: &[Vec<f32>],
     probabilities: &[Vec<f32>],
     trace: &Trace,
@@ -284,7 +296,7 @@ fn execute_experts(
 
 fn report(
     output: &Path,
-    groups: &GroupStream<FileWeightStream>,
+    groups: &GroupStream<Box<dyn WeightStream>>,
     selected: usize,
     expert_count: usize,
     timing: &Timing,
@@ -328,9 +340,12 @@ pub fn verify(
         (0..EXPERTS).collect()
     };
     let emit_ns = emit(model, content, output, &experts, layer)?;
-    let mut groups =
-        GroupStream::open(FileWeightStream::open(output).map_err(|error| error.to_string())?)
-            .map_err(|error| error.to_string())?;
+    let backend: Box<dyn WeightStream> = if env::var_os("SPM_GRANITE_PREFETCH").is_some() {
+        Box::new(PrefetchFileWeightStream::open(output).map_err(|error| error.to_string())?)
+    } else {
+        Box::new(FileWeightStream::open(output).map_err(|error| error.to_string())?)
+    };
+    let mut groups = GroupStream::open(backend).map_err(|error| error.to_string())?;
     let logits = router(&mut groups, inputs)?;
     let probabilities: Vec<_> = logits.iter().map(|values| softmax(values)).collect();
     validate_routes!(probabilities, trace, layer);

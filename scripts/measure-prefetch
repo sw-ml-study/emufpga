@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 2 ]; then
+    echo "usage: measure-prefetch OUTPUT.csv TIER:ALL.spm:SELECTED.spm [...]" >&2
+    exit 2
+fi
+root=$(cd "$(dirname "$0")/.." && pwd)
+output=$1
+shift
+scratch=$(mktemp -d)
+trap 'rm -r "$scratch"' EXIT
+printf '# schema=emufpga.prefetch.v1\n# host=%s\n' "$(hostname -s)" > "$output"
+printf 'tier,schedule,cache,backend,run,bytes,read_ms,decode_ms,compute_ms,tokens_s,user_s,sys_s,expert_max,combined_max\n' >> "$output"
+
+for spec in "$@"; do
+    IFS=: read -r tier all selected <<< "$spec"
+    for schedule in all selected; do
+        file=$all
+        selected_env=()
+        if [ "$schedule" = selected ]; then file=$selected; selected_env=(SPM_GRANITE_SELECTED_UNION=1); fi
+        for cache in warm nocache-proxy; do
+            for backend in sync prefetch; do
+                prefetch_env=()
+                if [ "$backend" = prefetch ]; then prefetch_env=(SPM_GRANITE_PREFETCH=1); fi
+                for run in 1 2 3 4 5 6 7; do
+                    if [ "$cache" = warm ]; then
+                        dd if="$file" of=/dev/null bs=1M status=none
+                    else
+                        dd if="$file" of=/dev/null bs=1M iflag=nocache status=none
+                    fi
+                    TIMEFORMAT='%U,%S'
+                    { time env \
+                        SPM_GRANITE_BLOCK0_ONLY=1 SPM_GRANITE_REUSE_SPM=1 \
+                        SPM_GRANITE_SPM_PATH="$file" "${selected_env[@]}" "${prefetch_env[@]}" \
+                        "$root/scripts/verify-granite-moe" > "$scratch/out"; } 2> "$scratch/time"
+                    line=$(sed -n 's/^spm_q6 //p' "$scratch/out")
+                    value() { sed -n "s/.*$1=\\([^ ]*\\).*/\\1/p" <<< "$line"; }
+                    IFS=, read -r user system < "$scratch/time"
+                    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+                        "$tier" "$schedule" "$cache" "$backend" "$run" "$(value bytes)" \
+                        "$(value warm_read_ms)" "$(value decode_ms)" "$(value compute_ms)" \
+                        "$(value tokens_s)" "$user" "$system" "$(value expert_max)" "$(value combined_max)" >> "$output"
+                done
+            done
+        done
+    done
+done

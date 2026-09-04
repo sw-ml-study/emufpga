@@ -94,3 +94,13 @@ pub trait WeightStream {
         Ok(())
     }
 }
+
+impl<T: WeightStream + ?Sized> WeightStream for Box<T> {
+    fn next_block(&mut self, dst: &mut [u8]) -> Result<usize, StreamError> {
+        (**self).next_block(dst)
+    }
+
+    fn rewind(&mut self) -> Result<(), StreamError> {
+        (**self).rewind()
+    }
+}

@@ -1,0 +1,502 @@
+{
+  "schema": "emufpga.prefetch-analysis.v1",
+  "provenance": {
+    "schema": "emufpga.prefetch.v1",
+    "host": "large12"
+  },
+  "caveats": [
+    "nocache-proxy uses per-file GNU dd iflag=nocache before each run; it is not a power-on cold read",
+    "phase time excludes model setup, attention, output projection, and one-time artifact generation",
+    "CPU percentage includes process-level user and system time divided by instrumented expert phase time and can exceed 100%"
+  ],
+  "groups": [
+    {
+      "tier": "hdd",
+      "schedule": "all",
+      "cache": "warm",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 89.34799999999998,
+        "p50": 91.769,
+        "p90": 102.138
+      },
+      "read_ms": {
+        "p10": 14.459,
+        "p50": 14.718,
+        "p90": 15.459
+      },
+      "tokens_s": {
+        "p10": 9.791,
+        "p50": 10.897,
+        "p90": 11.192
+      },
+      "cpu_percent": {
+        "p50": 420.6686417358117
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "hdd",
+      "schedule": "all",
+      "cache": "warm",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 88.191,
+        "p50": 92.414,
+        "p90": 94.25300000000001
+      },
+      "read_ms": {
+        "p10": 12.633,
+        "p50": 12.842,
+        "p90": 16.302
+      },
+      "tokens_s": {
+        "p10": 10.61,
+        "p50": 10.821,
+        "p90": 11.339
+      },
+      "cpu_percent": {
+        "p50": 437.41113390424704
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": -0.7028517255282241
+    },
+    {
+      "tier": "hdd",
+      "schedule": "all",
+      "cache": "nocache-proxy",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 89.719,
+        "p50": 94.417,
+        "p90": 97.90100000000001
+      },
+      "read_ms": {
+        "p10": 15.263,
+        "p50": 15.835,
+        "p90": 16.662
+      },
+      "tokens_s": {
+        "p10": 10.214,
+        "p50": 10.591,
+        "p90": 11.146
+      },
+      "cpu_percent": {
+        "p50": 417.40159291841496
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "hdd",
+      "schedule": "all",
+      "cache": "nocache-proxy",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 85.185,
+        "p50": 90.535,
+        "p90": 104.556
+      },
+      "read_ms": {
+        "p10": 12.502,
+        "p50": 14.277,
+        "p90": 14.771
+      },
+      "tokens_s": {
+        "p10": 9.564,
+        "p50": 11.045,
+        "p90": 11.739
+      },
+      "cpu_percent": {
+        "p50": 434.08626498039433
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": 4.111547708569437
+    },
+    {
+      "tier": "hdd",
+      "schedule": "selected",
+      "cache": "warm",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 79.836,
+        "p50": 81.41900000000001,
+        "p90": 82.983
+      },
+      "read_ms": {
+        "p10": 3.94,
+        "p50": 4.049,
+        "p90": 4.276
+      },
+      "tokens_s": {
+        "p10": 12.051,
+        "p50": 12.282,
+        "p90": 12.526
+      },
+      "cpu_percent": {
+        "p50": 470.96547923242645
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "hdd",
+      "schedule": "selected",
+      "cache": "warm",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 76.88400000000001,
+        "p50": 81.81599999999999,
+        "p90": 90.36
+      },
+      "read_ms": {
+        "p10": 2.868,
+        "p50": 2.901,
+        "p90": 3.153
+      },
+      "tokens_s": {
+        "p10": 11.067,
+        "p50": 12.222,
+        "p90": 13.007
+      },
+      "cpu_percent": {
+        "p50": 462.01232032854216
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": -0.4876011741730764
+    },
+    {
+      "tier": "hdd",
+      "schedule": "selected",
+      "cache": "nocache-proxy",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 82.079,
+        "p50": 83.366,
+        "p90": 97.76
+      },
+      "read_ms": {
+        "p10": 4.71,
+        "p50": 4.744,
+        "p90": 5.136
+      },
+      "tokens_s": {
+        "p10": 10.229,
+        "p50": 11.995,
+        "p90": 12.183
+      },
+      "cpu_percent": {
+        "p50": 449.5668806881175
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "hdd",
+      "schedule": "selected",
+      "cache": "nocache-proxy",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 78.581,
+        "p50": 81.532,
+        "p90": 87.06800000000001
+      },
+      "read_ms": {
+        "p10": 3.236,
+        "p50": 3.331,
+        "p90": 3.505
+      },
+      "tokens_s": {
+        "p10": 11.485,
+        "p50": 12.265,
+        "p90": 12.726
+      },
+      "cpu_percent": {
+        "p50": 467.2778202189967
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": 2.199937624451219
+    },
+    {
+      "tier": "nvme",
+      "schedule": "all",
+      "cache": "warm",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 90.03,
+        "p50": 99.826,
+        "p90": 107.989
+      },
+      "read_ms": {
+        "p10": 15.223,
+        "p50": 15.395,
+        "p90": 17.057
+      },
+      "tokens_s": {
+        "p10": 9.26,
+        "p50": 10.017,
+        "p90": 11.107
+      },
+      "cpu_percent": {
+        "p50": 404.7041852823914
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "nvme",
+      "schedule": "all",
+      "cache": "warm",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 85.518,
+        "p50": 88.114,
+        "p90": 94.31700000000001
+      },
+      "read_ms": {
+        "p10": 11.826,
+        "p50": 12.087,
+        "p90": 12.559
+      },
+      "tokens_s": {
+        "p10": 10.603,
+        "p50": 11.349,
+        "p90": 11.693
+      },
+      "cpu_percent": {
+        "p50": 457.3620537031572
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": 11.73241440105783
+    },
+    {
+      "tier": "nvme",
+      "schedule": "all",
+      "cache": "nocache-proxy",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 99.881,
+        "p50": 102.957,
+        "p90": 119.967
+      },
+      "read_ms": {
+        "p10": 18.687,
+        "p50": 20.108,
+        "p90": 22.027
+      },
+      "tokens_s": {
+        "p10": 8.336,
+        "p50": 9.713,
+        "p90": 10.012
+      },
+      "cpu_percent": {
+        "p50": 383.65531241197783
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "nvme",
+      "schedule": "all",
+      "cache": "nocache-proxy",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 42212416,
+      "phase_ms": {
+        "p10": 96.75800000000001,
+        "p50": 97.70400000000001,
+        "p90": 112.78200000000001
+      },
+      "read_ms": {
+        "p10": 18.736,
+        "p50": 18.953,
+        "p90": 20.26
+      },
+      "tokens_s": {
+        "p10": 8.867,
+        "p50": 10.235,
+        "p90": 10.335
+      },
+      "cpu_percent": {
+        "p50": 414.43601562661485
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": 5.102130015443327
+    },
+    {
+      "tier": "nvme",
+      "schedule": "selected",
+      "cache": "warm",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 77.657,
+        "p50": 79.478,
+        "p90": 81.67699999999999
+      },
+      "read_ms": {
+        "p10": 3.727,
+        "p50": 3.792,
+        "p90": 3.831
+      },
+      "tokens_s": {
+        "p10": 12.243,
+        "p50": 12.582,
+        "p90": 12.877
+      },
+      "cpu_percent": {
+        "p50": 469.2656765676568
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "nvme",
+      "schedule": "selected",
+      "cache": "warm",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 80.026,
+        "p50": 83.872,
+        "p90": 93.9
+      },
+      "read_ms": {
+        "p10": 2.967,
+        "p50": 3.052,
+        "p90": 3.268
+      },
+      "tokens_s": {
+        "p10": 10.65,
+        "p50": 11.923,
+        "p90": 12.496
+      },
+      "cpu_percent": {
+        "p50": 457.84051888592137
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": -5.528573944991074
+    },
+    {
+      "tier": "nvme",
+      "schedule": "selected",
+      "cache": "nocache-proxy",
+      "backend": "sync",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 78.718,
+        "p50": 85.662,
+        "p90": 89.315
+      },
+      "read_ms": {
+        "p10": 3.999,
+        "p50": 4.154,
+        "p90": 4.349
+      },
+      "tokens_s": {
+        "p10": 11.196,
+        "p50": 11.674,
+        "p90": 12.703
+      },
+      "cpu_percent": {
+        "p50": 442.43655296397463
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      }
+    },
+    {
+      "tier": "nvme",
+      "schedule": "selected",
+      "cache": "nocache-proxy",
+      "backend": "prefetch",
+      "runs": 7,
+      "bytes": 10654528,
+      "phase_ms": {
+        "p10": 76.919,
+        "p50": 82.134,
+        "p90": 83.23
+      },
+      "read_ms": {
+        "p10": 2.85,
+        "p50": 2.904,
+        "p90": 3.237
+      },
+      "tokens_s": {
+        "p10": 12.015,
+        "p50": 12.175,
+        "p90": 13.001
+      },
+      "cpu_percent": {
+        "p50": 457.91067737128026
+      },
+      "max_error": {
+        "expert": 0.00000334,
+        "combined": 9.5e-7
+      },
+      "speedup_percent": 4.118512292498431
+    }
+  ]
+}

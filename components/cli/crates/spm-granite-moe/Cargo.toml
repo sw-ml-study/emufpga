@@ -12,6 +12,7 @@ spm-layout = { path = "../../../format/crates/spm-layout" }
 spm-linear = { path = "../../../tensor/crates/spm-linear" }
 spm-viz-trace = { path = "../spm-viz-trace" }
 spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
+spm-stream = { path = "../../../stream/crates/spm-stream" }
 spm-stream-groups = { path = "../../../stream/crates/spm-stream-groups" }
 
 [lints]

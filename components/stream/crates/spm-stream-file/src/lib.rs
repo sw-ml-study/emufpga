@@ -15,5 +15,8 @@
 
 mod buffer;
 mod file;
+mod prefetch;
+mod worker;
 
 pub use file::{DEFAULT_CAPACITY, FileWeightStream};
+pub use prefetch::PrefetchFileWeightStream;

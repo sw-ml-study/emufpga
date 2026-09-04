@@ -1,0 +1,75 @@
+# Claim scorecard: what would success mean?
+
+## One-sentence conclusion
+
+**Today emufpga proves that Granite 3.1 1B-A400M Q6_K expert weights can be
+processed serially with bounded parameter residency and preserved model
+outputs; it does not yet prove that a small/old GPU can serve an oversized MoE
+faster than conventional CPU/System-RAM offload.**
+
+> **Validated oversized-model serving advantage: not measured.**
+
+An “agent” must be an independent request stream, not several tokens from one
+prompt. A “correct result” needs a task suite, not just a matching intermediate.
+Neither has yet been measured with energy at the wall.
+
+## Evidence ledger
+
+| Statement | Status | Evidence |
+| --- | --- | --- |
+| Granite Q6_K experts stream in expert-ID order | **Measured** | All 24 MoE layers; zero mid-region seeks |
+| Streamed full forward preserves the oracle result | **Measured** | Same top-1, 9/10 top logits, absolute error below 0.002 |
+| Five prompt prefixes show correlated route reuse | **Measured, small sample** | 23 tokens × 24 layers; B6 union 21/32 versus 26.3/32 independent estimate |
+| Selected B1 layout reduces expert bytes | **Measured** | 42.21 MB to 10.65 MB per layer |
+| Async buffering accelerates this host | **Mixed measured result** | Seven-run cases range from −5.5% to +11.7%; cache-bypass proxies +2–5% |
+| Independent agents share a streamed pass | **Architecture-tested, not end-to-end measured** | Synthetic batching proves reuse math; Granite batches are prompt tokens, not agents |
+| FPGA throughput, watts, and results/kWh | **Simulated/projected only** | Hardware-shaped cycles; no synthesized clock, physical link, or power trace |
+| MCU/PIO improves tensor throughput | **Not claimed** | Proposed only for framing, backpressure, DMA control, and timestamps |
+
+Granite is a good correctness vehicle but a weak capacity demonstration: its
+1.024 GiB GGUF fits easily in 16 GiB VRAM. It validates mechanics, not the
+primary economic value proposition.
+
+## The experiment that produces the requested headline
+
+- Granite 3.1 1B-A400M Q6_K for qualification, then a chosen MoE whose full
+  weights exceed available VRAM for the capacity test.
+- 1, 2, 4, and 8 independent requests; fixed 4K input and 256 greedy output
+  tokens per request.
+- The same task corpus and decoding policy for resident GPU, llama.cpp CPU/RAM
+  offload, serial CPU workers, GPU expert staging, and eventually FPGA.
+- Synchronized whole-system wall-power integration, including storage and idle,
+  as a supporting reuse/economics measure rather than the primary objective.
+- Report correct tasks/hour, tokens/s, joules/token, correct tasks/kWh, p50/p95
+  latency, peak RAM/VRAM, and bytes moved.
+
+`correct tasks/kWh = correct completed tasks / (integrated joules / 3,600,000)`.
+Tokens/kWh is useful but cannot substitute for task correctness.
+
+The desired eventual headline has this form: “On reused host H with small GPU G,
+N independent agents ran oversized MoE M at quant Q with X correct tasks/hour
+and Y aggregate tokens/s, versus Z on llama.cpp CPU/RAM offload, while using A
+GiB VRAM and B watts.” No value in that sentence should be projected.
+
+## Predeclared verdicts
+
+**Success:** correctness is statistically indistinguishable from the same
+quantized reference; the model does not fit the small GPU's usable VRAM; the
+hybrid serial path beats llama.cpp CPU/System-RAM offload on the same reused
+host by at least 25% in correct completed tasks/hour; and an initial “good
+enough” service objective of four concurrent agents, at least 2 generated
+tokens/s each, is met. The result must survive three runs. Power, acquisition
+cost, peak RAM/VRAM, and storage wear are reported but do not veto a capacity
+and throughput win unless the operating cost is plainly unreasonable.
+
+**Failure:** correctness regresses, the hybrid cannot run an otherwise
+oversized model, it fails the service objective, or its confidence interval
+does not support any throughput gain over ordinary CPU/RAM offload.
+
+**Mixed:** it unlocks capacity but does not beat CPU offload, wins only above a
+concurrency threshold, costs excessive energy, or wins on some reused hardware
+generations but not others.
+Mixed is plausible: old-hardware reuse is a multi-objective choice.
+
+These thresholds are project policy, not facts. They may be revised before the
+energy campaign, but not after seeing its result without recording the change.
