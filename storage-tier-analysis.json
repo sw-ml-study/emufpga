@@ -1,0 +1,349 @@
+{
+  "schema": "emufpga.storage-tier-analysis.v1",
+  "provenance": {
+    "schema": "emufpga.storage-tier.v1",
+    "host": "large12",
+    "cpu": "Intel(R) Xeon(R) W-2135 CPU @ 3.70GHz",
+    "flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cdp_l3 pti intel_ppin ssbd mba ibrs ibpb stibp tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm cqm mpx rdt_a avx512f avx512dq rdseed adx smap clflushopt clwb intel_pt avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local dtherm ida arat pln pts hwp hwp_act_window hwp_epp hwp_pkg_req vnmi md_clear flush_l1d arch_capabilities"
+  },
+  "caveats": [
+    "direct uses GNU dd iflag=direct as a cache-bypass proxy; it is not guaranteed to represent first access after power-on",
+    "warm uses ordinary buffered reads after an explicit priming pass",
+    "small files may measure controller and filesystem effects more than sustained media bandwidth",
+    "double-buffer values are calculated upper bounds composed from separately measured phases; the current Rust stream refills synchronously and does not yet overlap them"
+  ],
+  "groups": [
+    {
+      "tier": "hdd-all",
+      "path": "/disk1/tmp/granite-all-b1-q6.spm",
+      "source": "/dev/sdb1[/tmp]",
+      "fstype": "ext4",
+      "mode": "warm",
+      "runs": 7,
+      "bytes": 42212416,
+      "latency_ms": {
+        "p50": 17.465657,
+        "p10": 16.713251,
+        "p90": 18.031536
+      },
+      "gb_s": {
+        "p50": 2.4168810826870124,
+        "p10": 2.3410327328742264,
+        "p90": 2.5256855174376307
+      },
+      "cpu_percent": {
+        "p50": 79.80454516351001,
+        "p10": 77.78259298564954,
+        "p90": 80.15730527629162
+      }
+    },
+    {
+      "tier": "hdd-all",
+      "path": "/disk1/tmp/granite-all-b1-q6.spm",
+      "source": "/dev/sdb1[/tmp]",
+      "fstype": "ext4",
+      "mode": "direct",
+      "runs": 7,
+      "bytes": 42212416,
+      "latency_ms": {
+        "p50": 176.167622,
+        "p10": 175.122152,
+        "p90": 184.79099
+      },
+      "gb_s": {
+        "p50": 0.23961506388500833,
+        "p10": 0.2284333018617412,
+        "p90": 0.24104555316337137
+      },
+      "cpu_percent": {
+        "p50": 5.788832110994418,
+        "p10": 5.416803355185332,
+        "p90": 6.811694375939298
+      }
+    },
+    {
+      "tier": "hdd-selected",
+      "path": "/disk1/tmp/granite-selected-b1-q6.spm",
+      "source": "/dev/sdb1[/tmp]",
+      "fstype": "ext4",
+      "mode": "warm",
+      "runs": 7,
+      "bytes": 10654528,
+      "latency_ms": {
+        "p50": 10.891149,
+        "p10": 10.562546,
+        "p90": 10.971125
+      },
+      "gb_s": {
+        "p50": 0.978274009473197,
+        "p10": 0.9711427041438321,
+        "p90": 1.0087083171046072
+      },
+      "cpu_percent": {
+        "p50": 63.91321243144852,
+        "p10": 61.85505610739593,
+        "p90": 64.728558017871
+      }
+    },
+    {
+      "tier": "hdd-selected",
+      "path": "/disk1/tmp/granite-selected-b1-q6.spm",
+      "source": "/dev/sdb1[/tmp]",
+      "fstype": "ext4",
+      "mode": "direct",
+      "runs": 7,
+      "bytes": 10654528,
+      "latency_ms": {
+        "p50": 50.662685,
+        "p10": 50.479783,
+        "p90": 58.270758
+      },
+      "gb_s": {
+        "p50": 0.21030326363476393,
+        "p10": 0.18284519312413955,
+        "p90": 0.21106524962676643
+      },
+      "cpu_percent": {
+        "p50": 11.744324446156954,
+        "p10": 10.29675982591474,
+        "p90": 11.885946498621042
+      }
+    },
+    {
+      "tier": "nvme-all",
+      "path": "/work/github/emufpga-storage/granite-all-b1-q6.spm",
+      "source": "/dev/nvme0n1p1",
+      "fstype": "ext4",
+      "mode": "warm",
+      "runs": 7,
+      "bytes": 42212416,
+      "latency_ms": {
+        "p50": 18.510263,
+        "p10": 18.284394,
+        "p90": 19.753475
+      },
+      "gb_s": {
+        "p50": 2.280487100588468,
+        "p10": 2.1369615219600604,
+        "p90": 2.3086581923360434
+      },
+      "cpu_percent": {
+        "p50": 79.3806900007717,
+        "p10": 76.05763299736503,
+        "p90": 81.80911866934196
+      }
+    },
+    {
+      "tier": "nvme-all",
+      "path": "/work/github/emufpga-storage/granite-all-b1-q6.spm",
+      "source": "/dev/nvme0n1p1",
+      "fstype": "ext4",
+      "mode": "direct",
+      "runs": 7,
+      "bytes": 42212416,
+      "latency_ms": {
+        "p50": 31.426505,
+        "p10": 31.057093,
+        "p90": 31.610588
+      },
+      "gb_s": {
+        "p50": 1.343210643372529,
+        "p10": 1.3353885096980795,
+        "p90": 1.3591876097353992
+      },
+      "cpu_percent": {
+        "p50": 25.456219200957918,
+        "p10": 25.307975922497867,
+        "p90": 25.759010993076526
+      }
+    },
+    {
+      "tier": "nvme-selected",
+      "path": "/work/github/emufpga-storage/granite-selected-b1-q6.spm",
+      "source": "/dev/nvme0n1p1",
+      "fstype": "ext4",
+      "mode": "warm",
+      "runs": 7,
+      "bytes": 10654528,
+      "latency_ms": {
+        "p50": 10.956079,
+        "p10": 10.640128,
+        "p90": 11.948657
+      },
+      "gb_s": {
+        "p50": 0.9724763759005389,
+        "p10": 0.8916925140624591,
+        "p90": 1.0013533671775376
+      },
+      "cpu_percent": {
+        "p50": 65.78868224141664,
+        "p10": 63.89147066208631,
+        "p90": 66.95313121801053
+      }
+    },
+    {
+      "tier": "nvme-selected",
+      "path": "/work/github/emufpga-storage/granite-selected-b1-q6.spm",
+      "source": "/dev/nvme0n1p1",
+      "fstype": "ext4",
+      "mode": "direct",
+      "runs": 7,
+      "bytes": 10654528,
+      "latency_ms": {
+        "p50": 14.279726,
+        "p10": 13.986639,
+        "p90": 15.163794
+      },
+      "gb_s": {
+        "p50": 0.7461297226571434,
+        "p10": 0.7026294342959288,
+        "p90": 0.7617647098777627
+      },
+      "cpu_percent": {
+        "p50": 35.68435673451595,
+        "p10": 33.962903678827765,
+        "p90": 36.10831512391002
+      }
+    },
+    {
+      "tier": "tmpfs-all",
+      "path": "/tmp/granite-all-b1-q6.spm",
+      "source": "tmpfs",
+      "fstype": "tmpfs",
+      "mode": "warm",
+      "runs": 7,
+      "bytes": 42212416,
+      "latency_ms": {
+        "p50": 21.37807,
+        "p10": 21.345018,
+        "p90": 21.758292
+      },
+      "gb_s": {
+        "p50": 1.974566272820699,
+        "p10": 1.9400611040609255,
+        "p90": 1.9776238183542407
+      },
+      "cpu_percent": {
+        "p50": 82.72708170292044,
+        "p10": 79.64387755494046,
+        "p90": 82.98578808444876
+      }
+    },
+    {
+      "tier": "tmpfs-selected",
+      "path": "/tmp/granite-selected-b1-q6.spm",
+      "source": "tmpfs",
+      "fstype": "tmpfs",
+      "mode": "warm",
+      "runs": 7,
+      "bytes": 10654528,
+      "latency_ms": {
+        "p50": 11.195588,
+        "p10": 10.471191,
+        "p90": 11.320902
+      },
+      "gb_s": {
+        "p50": 0.9516720336618318,
+        "p10": 0.9411377291314773,
+        "p90": 1.0175087055522147
+      },
+      "cpu_percent": {
+        "p50": 64.51709232893616,
+        "p10": 61.832528892132444,
+        "p90": 69.18713077855242
+      }
+    }
+  ],
+  "overlap": [
+    {
+      "tier": "hdd-all",
+      "mode": "warm",
+      "storage_ms": 17.465657,
+      "decode_compute_ms": 77.299,
+      "synchronous_ms": 94.764657,
+      "ideal_double_buffered_ms": 77.299,
+      "maximum_saving_percent": 18.430560034634002
+    },
+    {
+      "tier": "hdd-all",
+      "mode": "direct",
+      "storage_ms": 176.167622,
+      "decode_compute_ms": 77.299,
+      "synchronous_ms": 253.466622,
+      "ideal_double_buffered_ms": 176.167622,
+      "maximum_saving_percent": 30.496717630931304
+    },
+    {
+      "tier": "hdd-selected",
+      "mode": "warm",
+      "storage_ms": 10.891149,
+      "decode_compute_ms": 78.018,
+      "synchronous_ms": 88.909149,
+      "ideal_double_buffered_ms": 78.018,
+      "maximum_saving_percent": 12.249750585285659
+    },
+    {
+      "tier": "hdd-selected",
+      "mode": "direct",
+      "storage_ms": 50.662685,
+      "decode_compute_ms": 78.018,
+      "synchronous_ms": 128.680685,
+      "ideal_double_buffered_ms": 78.018,
+      "maximum_saving_percent": 39.37085429720863
+    },
+    {
+      "tier": "nvme-all",
+      "mode": "warm",
+      "storage_ms": 18.510263,
+      "decode_compute_ms": 77.299,
+      "synchronous_ms": 95.809263,
+      "ideal_double_buffered_ms": 77.299,
+      "maximum_saving_percent": 19.3199095999726
+    },
+    {
+      "tier": "nvme-all",
+      "mode": "direct",
+      "storage_ms": 31.426505,
+      "decode_compute_ms": 77.299,
+      "synchronous_ms": 108.725505,
+      "ideal_double_buffered_ms": 77.299,
+      "maximum_saving_percent": 28.904446109493804
+    },
+    {
+      "tier": "nvme-selected",
+      "mode": "warm",
+      "storage_ms": 10.956079,
+      "decode_compute_ms": 78.018,
+      "synchronous_ms": 88.974079,
+      "ideal_double_buffered_ms": 78.018,
+      "maximum_saving_percent": 12.313787479609653
+    },
+    {
+      "tier": "nvme-selected",
+      "mode": "direct",
+      "storage_ms": 14.279726,
+      "decode_compute_ms": 78.018,
+      "synchronous_ms": 92.297726,
+      "ideal_double_buffered_ms": 78.018,
+      "maximum_saving_percent": 15.471373585087022
+    },
+    {
+      "tier": "tmpfs-all",
+      "mode": "warm",
+      "storage_ms": 21.37807,
+      "decode_compute_ms": 77.299,
+      "synchronous_ms": 98.67707000000001,
+      "ideal_double_buffered_ms": 77.299,
+      "maximum_saving_percent": 21.664678531699415
+    },
+    {
+      "tier": "tmpfs-selected",
+      "mode": "warm",
+      "storage_ms": 11.195588,
+      "decode_compute_ms": 78.018,
+      "synchronous_ms": 89.213588,
+      "ideal_double_buffered_ms": 78.018,
+      "maximum_saving_percent": 12.549195981222054
+    }
+  ]
+}
