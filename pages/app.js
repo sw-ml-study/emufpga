@@ -39,6 +39,8 @@ function renderRoutingAnalysis(data){routingAnalysis=data;const bars=(items,max)
 
 function renderTiming(data){const all=data.groups.filter(g=>g.schedule==="all-expert"),selected=data.groups.filter(g=>g.schedule==="selected-union"),max=Math.max(...data.groups.map(g=>g.tokens_s.max)),point=(g,i)=>`${60+i*150},${175-g.tokens_s.p50/max*140}`;$("throughput-chart").innerHTML=`<path class="chart-grid" d="M38 20V175H430M38 105H430M38 35H430"/><polyline class="chart-line line-resident" points="${all.map(point).join(" ")}"/><polyline class="chart-line line-serial" points="${selected.map(point).join(" ")}"/>${all.map((g,i)=>`<text class="chart-label" x="${48+i*150}" y="195">B${g.batch}</text>`).join("")}<text class="chart-label" x="48" y="32">amber all-expert · cyan selected-union · median tok/s</text>`;$("timing-takeaway").textContent=`B1 median: ${all[0].tokens_s.p50.toFixed(1)} all-expert versus ${selected[0].tokens_s.p50.toFixed(1)} selected-union tok/s. At B8: ${all[2].tokens_s.p50.toFixed(1)} versus ${selected[2].tokens_s.p50.toFixed(1)}; scalar compute dominates.`;$("bench").innerHTML=all.map((g,i)=>{const s=selected[i];return `<tr><td>${g.batch}</td><td>${g.tokens_s.p50.toFixed(1)} (${g.tokens_s.min.toFixed(1)}–${g.tokens_s.max.toFixed(1)})</td><td>${s.tokens_s.p50.toFixed(1)} (${s.tokens_s.min.toFixed(1)}–${s.tokens_s.max.toFixed(1)})</td><td colspan="3">7 warm runs</td></tr>`}).join("");}
 
+function renderStorage(data){const rows=data.groups.filter(g=>g.mode==="direct"),max=Math.max(...rows.map(g=>g.gb_s.p90));$("storage-chart").innerHTML=rows.map(g=>`<div class="bar-row storage-row"><span>${g.tier}</span><div class="bar-track"><div class="bar ${g.tier.includes("selected")?"serial":"resident"}" style="width:${100*g.gb_s.p50/max}%"></div></div><b>${g.gb_s.p50.toFixed(2)} <small>(${g.gb_s.p10.toFixed(2)}–${g.gb_s.p90.toFixed(2)}) GB/s</small></b></div>`).join("");const hdd=data.overlap.find(x=>x.tier==="hdd-all"&&x.mode==="direct"),nvme=data.overlap.find(x=>x.tier==="nvme-all"&&x.mode==="direct");$("storage-takeaway").textContent=`Cache-bypass median: HDD ${rows.find(x=>x.tier==="hdd-all").gb_s.p50.toFixed(2)} GB/s; NVMe ${rows.find(x=>x.tier==="nvme-all").gb_s.p50.toFixed(2)} GB/s. Idealized B1 overlap ceiling: ${hdd.maximum_saving_percent.toFixed(0)}% and ${nvme.maximum_saving_percent.toFixed(0)}%; this is not implemented runtime speedup.`;}
+
 function buildBoard() {
   for (let i=0;i<32;i++) {
     const x=(i%8)*82, y=Math.floor(i/8)*54+22;
@@ -46,6 +48,14 @@ function buildBoard() {
   }
   for(let i=0;i<8;i++) $("lanes").insertAdjacentHTML("beforeend", `<rect class="lane" x="${18+i*20}" y="58" width="13" height="52" rx="4"/>`);
   for(let i=0;i<5;i++) $("fifo-bars").insertAdjacentHTML("beforeend", `<rect class="fifo-bar" x="18" y="${55+i*14}" width="${105-i*9}" height="8" rx="3"/>`);
+}
+
+function renderArchitecture(id) {
+  const scenario=EmuArchitectures.scenarios[id],nodes=EmuArchitectures.nodes,active=new Set(scenario.active),centers={};
+  for(const [key,[x,y]] of Object.entries(nodes)) centers[key]=[x+65,y+32];
+  $("architecture-edges").innerHTML=scenario.edges.map((e,i)=>{const [x1,y1]=centers[e.from],[x2,y2]=centers[e.to],mx=(x1+x2)/2,my=(y1+y2)/2;return `<g><path id="flow-${i}" class="flow-edge ${e.kind}" d="M${x1} ${y1}L${x2} ${y2}" marker-end="url(#arrow-${e.kind})"/><circle class="flow-particle ${e.kind}" r="5"><animateMotion dur="${1.4+(i%3)*.35}s" repeatCount="indefinite"><mpath href="#flow-${i}"/></animateMotion></circle><text class="flow-label" x="${mx}" y="${my-7}">${e.label}</text></g>`}).join("");
+  $("architecture-nodes").innerHTML=Object.entries(nodes).map(([key,[x,y,title,sub]])=>`<g class="flow-node ${active.has(key)?"active":"inactive"}" transform="translate(${x} ${y})"><rect width="130" height="64" rx="10"/><text x="65" y="27">${title}</text><text class="sub" x="65" y="47">${sub}</text></g>`).join("");
+  $("architecture-thesis").textContent=scenario.thesis;$("architecture-state").textContent=scenario.state;
 }
 
 function visibleEvents() {
@@ -79,7 +89,8 @@ $("play").onclick=()=>{playing=!playing;$("play").textContent=playing?"Pause":"P
 $("step").onclick=()=>{frame++;render()}; $("speed").oninput=restart;
 $("schedule").onchange=()=>{frame=traffic=useful=0;render()};
 
-buildBoard(); buildAnalysis(); fetch("trace.json").then(r=>r.ok?r.json():Promise.reject()).then(t=>{events=t.events;render()}).catch(()=>render()); restart();
+buildBoard(); buildAnalysis(); renderArchitecture($("architecture-select").value);$("architecture-select").onchange=e=>renderArchitecture(e.target.value);fetch("trace.json").then(r=>r.ok?r.json():Promise.reject()).then(t=>{events=t.events;render()}).catch(()=>render()); restart();
 fetch("build-info.json").then(r=>r.ok?r.json():Promise.reject()).then(b=>{$("build-info").textContent=`built on ${b.host} · ${b.sha} · ${b.timestamp}`}).catch(()=>{});
 fetch("routing-analysis.json").then(r=>r.ok?r.json():Promise.reject()).then(renderRoutingAnalysis).catch(()=>{});
 fetch("granite-timing.json").then(r=>r.ok?r.json():Promise.reject()).then(renderTiming).catch(()=>{});
+fetch("storage-tier-analysis.json").then(r=>r.ok?r.json():Promise.reject()).then(renderStorage).catch(()=>{});

@@ -10,7 +10,9 @@ Tang Nano boards, driving a streaming low-bit tensor engine.
 
 The live view animates the purpose-built datapath and presents graphical
 memory, traffic, and throughput comparisons with measured/derived/projected
-provenance. Click the image to interact with schedules and context sizes.
+provenance, plus switchable animated experiment diagrams spanning HDD, NVMe,
+PMEM, CPU/DRAM, GPU/VRAM, FPGA, and MCU/PIO. Click the image to interact with
+schedules, context sizes, and proposed data flows.
 
 ## The idea
 
@@ -177,6 +179,8 @@ would have been unfalsifiable anyway.
 - [docs/plan.md](docs/plan.md) -- decisions, roadmap, risks
 - [docs/spm-format.md](docs/spm-format.md) -- the wire contract
 - [docs/results.md](docs/results.md) -- what was measured
+- [docs/storage-tier-break-even.md](docs/storage-tier-break-even.md) -- HDD,
+  NVMe, cache, and overlap ceilings for Granite expert streams
 - [docs/code_metrics.md](docs/code_metrics.md) -- the complexity gates
 - [docs/granite-moe-serial.md](docs/granite-moe-serial.md) -- serial MoE expert verification
 - [docs/moe-memory-economics.md](docs/moe-memory-economics.md) -- MoE memory and bandwidth ledger

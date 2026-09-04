@@ -39,6 +39,11 @@ SVG callout, and Rust-authored-scene pattern without importing its three.js
 stack. MLPL remains a good companion for static charts, but its current SVG
 surface does not provide the event loop needed for this animation.
 
+The proposed-hardware explorer is intentionally broader than the FPGA board:
+it distinguishes packed weights, prompts/activations, KV traffic, and control
+signals across five experiment topologies. Moving particles indicate direction,
+not rate, and every unmeasured topology is labeled as such.
+
 See [the ELI5 serial-processing guide](../docs/serial-processing-eli5.md) for
 weight, activation, KV-cache, partial-sum, training-state, and hybrid streaming
 approaches represented by this datapath.

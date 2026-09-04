@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 3 ]; then
+    echo "usage: bench-storage-tier OUTPUT.csv LABEL=FILE [LABEL=FILE ...]" >&2
+    exit 2
+fi
+output=$1
+shift
+scratch=$(mktemp -d)
+trap 'rm -r "$scratch"' EXIT
+cpu=$(lscpu | sed -n 's/^Model name:[[:space:]]*//p')
+flags=$(lscpu | sed -n 's/^Flags:[[:space:]]*//p')
+printf '# schema=emufpga.storage-tier.v1\n# host=%s\n# cpu=%s\n# flags=%s\n' "$(hostname -s)" "$cpu" "$flags" > "$output"
+printf 'tier,path,source,fstype,mode,run,bytes,wall_ns,user_s,sys_s\n' >> "$output"
+
+measure() {
+    local tier=$1 file=$2 mode=$3 run=$4 source fstype start end user system
+    source=$(findmnt -n -T "$file" -o SOURCE | head -1)
+    fstype=$(findmnt -n -T "$file" -o FSTYPE | head -1)
+    start=$(date +%s%N)
+    TIMEFORMAT='%U,%S'
+    if [ "$mode" = direct ]; then
+        { time dd if="$file" of=/dev/null bs=1M iflag=direct status=none; } 2> "$scratch/time"
+    else
+        { time dd if="$file" of=/dev/null bs=1M status=none; } 2> "$scratch/time"
+    fi
+    end=$(date +%s%N)
+    IFS=, read -r user system < "$scratch/time"
+    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$tier" "$file" "$source" "$fstype" "$mode" "$run" "$(stat -c %s "$file")" "$((end-start))" "$user" "$system" >> "$output"
+}
+
+for item in "$@"; do
+    tier=${item%%=*}
+    file=${item#*=}
+    dd if="$file" of=/dev/null bs=1M status=none
+    for mode in warm direct; do
+        if [ "$mode" = direct ] && { [ "$(findmnt -n -T "$file" -o FSTYPE | head -1)" = tmpfs ] || ! dd if="$file" of=/dev/null bs=1M count=1 iflag=direct status=none 2>/dev/null; }; then
+            continue
+        fi
+        for run in 1 2 3 4 5 6 7; do measure "$tier" "$file" "$mode" "$run"; done
+    done
+done
