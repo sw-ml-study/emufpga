@@ -12,6 +12,7 @@
   <header>
     <div><span class="eyebrow">emufpga · detailed instrument</span><h1>Engineering Lab</h1><a class="jump" href="#intro">Read the experiment context ↓</a></div>
   </header>
+  <aside class="lab-glossary" aria-label="Technical terms"><abbr tabindex="0" title="Mixture of Experts: a model that routes each token through only a subset of its expert networks.">MoE</abbr><span>Mixture of Experts</span><abbr tabindex="0" title="Multiply–accumulate: multiply a weight by an input and add the result to a running total.">MAC</abbr><span>multiply–accumulate</span><abbr tabindex="0" title="Graphics Processing Unit: parallel compute hardware commonly used for inference.">GPU</abbr><span>graphics processor</span><abbr tabindex="0" title="Field-Programmable Gate Array: a chip whose digital datapath can be configured after manufacturing.">FPGA</abbr><span>reconfigurable logic</span></aside>
   <section id="intro" class="intro" aria-labelledby="intro-title">
     <div class="intro-lead"><span class="eyebrow">The experiment in 60 seconds</span><h2 id="intro-title">Use the GPU we already own—even when the model is too large for it.</h2><p>emufpga investigates whether immutable MoE expert weights can flow serially from cheap storage while a small or old GPU keeps attention, KV cache, and active state. The alternative to beat is ordinary CPU/System-RAM offload on the same reused machine—not a new high-end GPU.</p><strong>Current verdict: mechanics validated; deployment advantage not yet measured.</strong></div>
     <div class="intro-cards">
