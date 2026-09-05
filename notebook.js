@@ -120,6 +120,22 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadBoundedGemmaGraphic() {
+    const target = document.getElementById("bounded-gemma-graphic");
+    const parallel = document.getElementById("bounded-gemma-parallel");
+    if (!target || !parallel) return;
+    try {
+      const data = await fetch("gemma4-q5km-bounded-end-to-end.json").then(r => r.json());
+      const render = () => {
+        const row = data.requests.find(item => item.concurrency === Number(parallel.value));
+        const telemetry = data.telemetry;
+        target.innerHTML = `<div class="placement-callout"><strong>${row.correct}/${row.requests} short tasks correct</strong><span>${row.aggregate_tps_mean.toFixed(2)} aggregate · ${row.per_request_tps_mean.toFixed(2)} tok/s/request</span></div><div class="metric-sheet"><h3>Capacity <small>all-GPU allocation fails</small></h3>${placementBar("Peak VRAM", telemetry.peak_vram_mib, 16311, "MiB", "gpu")}${placementBar("GPU capacity", 16311, 16311, "MiB", "cpu")}</div><div class="metric-sheet"><h3>Reclaimable host residency <small>process RSS</small></h3>${placementBar("Minimum", telemetry.minimum_process_rss_mib, 19515, "MiB", "gpu")}${placementBar("Mean", telemetry.mean_process_rss_mib, 19515, "MiB", "gpu")}${placementBar("Peak", telemetry.peak_process_rss_mib, 19515, "MiB", "cpu")}</div><div class="placement-detail"><span>TTFT p50/p95: <b>${(row.ttft_ms_p50 / 1000).toFixed(2)} / ${(row.ttft_ms_p95 / 1000).toFixed(2)} s</b></span><span>Whole sweep: <b>${(data.expert_trace.logical_bytes / 1e9).toFixed(2)} GB logical expert bytes</b> · physical IO unknown</span></div>`;
+      };
+      parallel.addEventListener("change", render);
+      render();
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -129,6 +145,7 @@
     loadPlacementGraphic();
     loadGemmaGraphic();
     loadSerialGemmaGraphic();
+    loadBoundedGemmaGraphic();
   });
 
   return { LESSONS, summarizePlacement };
