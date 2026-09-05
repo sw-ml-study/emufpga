@@ -1,0 +1,317 @@
+{
+  "schema": "emufpga.olmoe-placement-analysis.v1",
+  "manifest": {
+    "schema": "emufpga.olmoe-placement.v1",
+    "model": "OLMoE-1B-7B-0125-Instruct-Q6_K.gguf",
+    "sha256": "075a946cf693221a409054e86051b560ac688518476d2a87cc57c77a5103f224",
+    "llama_revision": "6e6725459a892b49602b596339de4916c7c7965a",
+    "prompt_tokens": 3840,
+    "generated_tokens": 256,
+    "parallel": "1,2,4,8",
+    "runs": 3,
+    "scope": "synthetic throughput; not TTFT, task correctness, or whole-system energy"
+  },
+  "throughput": [
+    {
+      "placement": "all-gpu",
+      "parallel": 1,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 1327.062866,
+        "p50": 1380.571899,
+        "max": 1427.729126
+      },
+      "generation_aggregate_tps": {
+        "min": 40.550556,
+        "p50": 43.742432,
+        "max": 45.526302
+      },
+      "generation_per_request_tps": {
+        "min": 40.550556,
+        "p50": 43.742432,
+        "max": 45.526302
+      },
+      "total_seconds": {
+        "min": 8.516731,
+        "p50": 8.542027,
+        "max": 9.094563
+      }
+    },
+    {
+      "placement": "all-gpu",
+      "parallel": 2,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 1285.524902,
+        "p50": 1322.143555,
+        "max": 1329.033569
+      },
+      "generation_aggregate_tps": {
+        "min": 24.319111,
+        "p50": 25.097914,
+        "max": 25.808861
+      },
+      "generation_per_request_tps": {
+        "min": 12.1595555,
+        "p50": 12.548957,
+        "max": 12.9044305
+      },
+      "total_seconds": {
+        "min": 25.646896,
+        "p50": 26.178738,
+        "max": 27.027615
+      }
+    },
+    {
+      "placement": "all-gpu",
+      "parallel": 4,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 1037.436523,
+        "p50": 1042.948853,
+        "max": 1112.110718
+      },
+      "generation_aggregate_tps": {
+        "min": 34.383331,
+        "p50": 34.694691,
+        "max": 36.542843
+      },
+      "generation_per_request_tps": {
+        "min": 8.59583275,
+        "p50": 8.67367275,
+        "max": 9.13571075
+      },
+      "total_seconds": {
+        "min": 42.749374,
+        "p50": 43.326176,
+        "max": 44.587601
+      }
+    },
+    {
+      "placement": "all-gpu",
+      "parallel": 8,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 746.223755,
+        "p50": 851.361816,
+        "max": 871.574158
+      },
+      "generation_aggregate_tps": {
+        "min": 45.469177,
+        "p50": 47.754803,
+        "max": 52.114899
+      },
+      "generation_per_request_tps": {
+        "min": 5.683647125,
+        "p50": 5.969350375,
+        "max": 6.514362375
+      },
+      "total_seconds": {
+        "min": 75.381149,
+        "p50": 78.132309,
+        "max": 86.208778
+      }
+    },
+    {
+      "placement": "experts-cpu",
+      "parallel": 1,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 127.253349,
+        "p50": 145.776062,
+        "max": 149.762787
+      },
+      "generation_aggregate_tps": {
+        "min": 28.713455,
+        "p50": 32.780773,
+        "max": 35.934425
+      },
+      "generation_per_request_tps": {
+        "min": 28.713455,
+        "p50": 32.780773,
+        "max": 35.934425
+      },
+      "total_seconds": {
+        "min": 33.465858,
+        "p50": 34.556229,
+        "max": 37.985481
+      }
+    },
+    {
+      "placement": "experts-cpu",
+      "parallel": 2,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 110.635284,
+        "p50": 125.078224,
+        "max": 144.287628
+      },
+      "generation_aggregate_tps": {
+        "min": 44.348976,
+        "p50": 44.927654,
+        "max": 51.457237
+      },
+      "generation_per_request_tps": {
+        "min": 22.174488,
+        "p50": 22.463827,
+        "max": 25.7286185
+      },
+      "total_seconds": {
+        "min": 64.623116,
+        "p50": 71.351585,
+        "max": 80.962074
+      }
+    },
+    {
+      "placement": "experts-cpu",
+      "parallel": 4,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 94.405083,
+        "p50": 103.854805,
+        "max": 107.311195
+      },
+      "generation_aggregate_tps": {
+        "min": 41.863144,
+        "p50": 48.370552,
+        "max": 63.532341
+      },
+      "generation_per_request_tps": {
+        "min": 10.465786,
+        "p50": 12.092638,
+        "max": 15.88308525
+      },
+      "total_seconds": {
+        "min": 159.252899,
+        "p50": 169.068695,
+        "max": 187.163773
+      }
+    },
+    {
+      "placement": "experts-cpu",
+      "parallel": 8,
+      "runs": 3,
+      "prompt_tps": {
+        "min": 66.141968,
+        "p50": 74.20433,
+        "max": 81.758842
+      },
+      "generation_aggregate_tps": {
+        "min": 43.626549,
+        "p50": 44.867249,
+        "max": 64.81102
+      },
+      "generation_per_request_tps": {
+        "min": 5.453318625,
+        "p50": 5.608406125,
+        "max": 8.1013775
+      },
+      "total_seconds": {
+        "min": 422.683044,
+        "p50": 459.637756,
+        "max": 496.055054
+      }
+    }
+  ],
+  "telemetry": [
+    {
+      "placement": "all-gpu",
+      "runs": [
+        {
+          "run": 1,
+          "peak_process_rss_mib": 5804.41796875,
+          "peak_gpu_memory_mib": 11977,
+          "mean_gpu_utilization_percent": 58.250544662309366,
+          "gpu_energy_j": 5587.561484999997,
+          "telemetry_seconds": 157.641
+        },
+        {
+          "run": 2,
+          "peak_process_rss_mib": 5804.40625,
+          "peak_gpu_memory_mib": 11977,
+          "mean_gpu_utilization_percent": 61.18008474576271,
+          "gpu_energy_j": 5945.2445650000045,
+          "telemetry_seconds": 160.088
+        },
+        {
+          "run": 3,
+          "peak_process_rss_mib": 5804.22265625,
+          "peak_gpu_memory_mib": 12026,
+          "mean_gpu_utilization_percent": 60.34747474747475,
+          "gpu_energy_j": 7431.158190000001,
+          "telemetry_seconds": 170.747
+        }
+      ],
+      "across_runs": {
+        "peak_process_rss_mib": {
+          "min": 5804.22265625,
+          "p50": 5804.40625,
+          "max": 5804.41796875
+        },
+        "peak_gpu_memory_mib": {
+          "min": 11977,
+          "p50": 11977,
+          "max": 12026
+        },
+        "gpu_energy_j": {
+          "min": 5587.561484999997,
+          "p50": 5945.2445650000045,
+          "max": 7431.158190000001
+        }
+      }
+    },
+    {
+      "placement": "experts-cpu",
+      "runs": [
+        {
+          "run": 1,
+          "peak_process_rss_mib": 6163.0703125,
+          "peak_gpu_memory_mib": 6982,
+          "mean_gpu_utilization_percent": 89.86310063463281,
+          "gpu_energy_j": 23119.95488500001,
+          "telemetry_seconds": 719.969
+        },
+        {
+          "run": 2,
+          "peak_process_rss_mib": 6163.1953125,
+          "peak_gpu_memory_mib": 6982,
+          "mean_gpu_utilization_percent": 89.19687930243231,
+          "gpu_energy_j": 22368.023295,
+          "telemetry_seconds": 712.984
+        },
+        {
+          "run": 3,
+          "peak_process_rss_mib": 6163.2421875,
+          "peak_gpu_memory_mib": 6985,
+          "mean_gpu_utilization_percent": 90.66100975816717,
+          "gpu_energy_j": 25162.685424999978,
+          "telemetry_seconds": 789.917
+        }
+      ],
+      "across_runs": {
+        "peak_process_rss_mib": {
+          "min": 6163.0703125,
+          "p50": 6163.1953125,
+          "max": 6163.2421875
+        },
+        "peak_gpu_memory_mib": {
+          "min": 6982,
+          "p50": 6982,
+          "max": 6985
+        },
+        "gpu_energy_j": {
+          "min": 22368.023295,
+          "p50": 23119.95488500001,
+          "max": 25162.685424999978
+        }
+      }
+    }
+  ],
+  "caveats": [
+    "llama-batched-bench uses synthetic batched tokens, not independent semantic tasks",
+    "each telemetry run spans model loading and the complete 1/2/4/8 sweep, so telemetry is placement-run scoped, not concurrency-row scoped",
+    "gpu_energy_j integrates NVIDIA board power samples and is not whole-system wall energy",
+    "process RSS does not include every kernel page-cache or driver allocation",
+    "experts-cpu is conventional llama.cpp tensor placement, not the ordered bounded serial implementation"
+  ]
+}

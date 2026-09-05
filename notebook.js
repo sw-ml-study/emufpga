@@ -54,13 +54,46 @@
     } catch (_) { /* local file preview keeps the fallback */ }
   }
 
+  function summarizePlacement(data, parallel) {
+    const row = placement => data.throughput.find(item => item.placement === placement && item.parallel === parallel);
+    const telemetry = placement => data.telemetry.find(item => item.placement === placement).across_runs;
+    return {
+      gpu: { time: row("all-gpu").total_seconds.p50, generation: row("all-gpu").generation_aggregate_tps.p50, vram: telemetry("all-gpu").peak_gpu_memory_mib.p50, energy: telemetry("all-gpu").gpu_energy_j.p50 },
+      cpu: { time: row("experts-cpu").total_seconds.p50, generation: row("experts-cpu").generation_aggregate_tps.p50, vram: telemetry("experts-cpu").peak_gpu_memory_mib.p50, energy: telemetry("experts-cpu").gpu_energy_j.p50 }
+    };
+  }
+
+  function placementBar(label, value, maximum, unit, kind) {
+    const width = Math.max(2, 100 * value / maximum);
+    return `<div class="metric-row ${kind}"><span>${label}</span><i><b style="width:${width}%"></b></i><strong>${value.toFixed(1)} ${unit}</strong></div>`;
+  }
+
+  async function loadPlacementGraphic() {
+    const target = document.getElementById("placement-graphic");
+    const quant = document.getElementById("placement-quant");
+    const parallel = document.getElementById("placement-parallel");
+    if (!target || !quant || !parallel) return;
+    try {
+      const [q6, q2] = await Promise.all([fetch("olmoe-q6-placement.json").then(r => r.json()), fetch("olmoe-q2-placement.json").then(r => r.json())]);
+      const render = () => {
+        const summary = summarizePlacement(quant.value === "q6" ? q6 : q2, Number(parallel.value));
+        const maxTime = Math.max(summary.gpu.time, summary.cpu.time);
+        const saved = summary.gpu.vram - summary.cpu.vram;
+        const slowdown = summary.cpu.time / summary.gpu.time;
+        target.innerHTML = `<div class="placement-callout"><strong>${(saved / 1024).toFixed(2)} GiB less peak VRAM</strong><span>cost ${slowdown.toFixed(1)}× median end-to-end time</span></div><div class="metric-sheet"><h3>Peak VRAM <small>placement-run scope</small></h3>${placementBar("All GPU", summary.gpu.vram, 16311, "MiB", "gpu")}${placementBar("Experts in CPU RAM", summary.cpu.vram, 16311, "MiB", "cpu")}</div><div class="metric-sheet"><h3>End-to-end time <small>${parallel.value} request${parallel.value === "1" ? "" : "s"}</small></h3>${placementBar("All GPU", summary.gpu.time, maxTime, "s", "gpu")}${placementBar("Experts in CPU RAM", summary.cpu.time, maxTime, "s", "cpu")}</div><div class="placement-detail"><span>Generation: <b>${summary.gpu.generation.toFixed(1)}</b> vs <b>${summary.cpu.generation.toFixed(1)}</b> aggregate tok/s</span><span>GPU-board energy, complete sweep: <b>${(summary.gpu.energy / 1000).toFixed(1)}</b> vs <b>${(summary.cpu.energy / 1000).toFixed(1)}</b> kJ</span></div>`;
+      };
+      quant.addEventListener("change", render); parallel.addEventListener("change", render); render();
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
     const firstLesson = document.querySelector("[data-lesson].active") || document.querySelector("[data-lesson]");
     if (firstLesson) selectLesson(firstLesson);
     loadBuildInfo();
+    loadPlacementGraphic();
   });
 
-  return { LESSONS };
+  return { LESSONS, summarizePlacement };
 });
