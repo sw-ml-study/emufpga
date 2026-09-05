@@ -22,18 +22,25 @@ Neither has yet been measured with energy at the wall.
 | Five prompt prefixes show correlated route reuse | **Measured, small sample** | 23 tokens × 24 layers; B6 union 21/32 versus 26.3/32 independent estimate |
 | Selected B1 layout reduces expert bytes | **Measured** | 42.21 MB to 10.65 MB per layer |
 | Async buffering accelerates this host | **Mixed measured result** | Seven-run cases range from −5.5% to +11.7%; cache-bypass proxies +2–5% |
+| Same-quant OLMoE placement saves VRAM | **Measured conventional baseline** | Q6_K saves 4,995 MiB peak VRAM; Q2_K saves 2,220 MiB across three-run sweeps |
+| Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |
+| Lower-bit placement is automatically faster | **Measured negative** | Q2 CPU experts improve generation-only throughput at 1–4 requests, but 7–9× slower prefill reverses the end-to-end conclusion |
 | Independent agents share a streamed pass | **Architecture-tested, not end-to-end measured** | Synthetic batching proves reuse math; Granite batches are prompt tokens, not agents |
 | FPGA throughput, watts, and results/kWh | **Simulated/projected only** | Hardware-shaped cycles; no synthesized clock, physical link, or power trace |
 | MCU/PIO improves tensor throughput | **Not claimed** | Proposed only for framing, backpressure, DMA control, and timestamps |
 
-Granite is a good correctness vehicle but a weak capacity demonstration: its
-1.024 GiB GGUF fits easily in 16 GiB VRAM. It validates mechanics, not the
-primary economic value proposition.
+Granite remains the strict serial correctness vehicle. OLMoE Q6_K and Q2_K now
+provide a same-artifact llama.cpp placement baseline, but they also fit the
+GPU and the CPU placement is not the project's ordered bounded stream. Gemma 4
+26B-A4B-it Q5_K_M (19,319,198,848 bytes) is pinned as the first artifact that
+exceeds the 16 GiB GPU capacity. Until it runs through both conventional and
+serial paths, the primary economic value proposition remains unvalidated.
 
 ## The experiment that produces the requested headline
 
-- Granite 3.1 1B-A400M Q6_K for qualification, then a chosen MoE whose full
-  weights exceed available VRAM for the capacity test.
+- Granite 3.1 1B-A400M Q6_K for serial correctness, OLMoE Q6_K/Q2_K for
+  same-quant placement qualification, then pinned Gemma 4 26B-A4B-it Q5_K_M
+  for the oversized capacity test.
 - 1, 2, 4, and 8 independent requests; fixed 4K input and 256 greedy output
   tokens per request.
 - The same task corpus and decoding policy for resident GPU, llama.cpp CPU/RAM

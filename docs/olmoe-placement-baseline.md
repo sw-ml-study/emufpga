@@ -90,7 +90,7 @@ Q6_K CPU placement saves about 4,995 MiB peak VRAM, but the long execution
 raises scoped GPU-board energy about 3.9x. Q2_K saves only about 2,220 MiB peak
 VRAM. Its CPU-expert generation throughput is higher at parallelism 1, 2, and
 4, but prompt processing is 7--9x slower; with the fixed 3,840-token prompt,
-median end-to-end time is still 3.1--4.4x the all-GPU time. At parallelism 8,
+median end-to-end time is still 2.1--4.4x the all-GPU time. At parallelism 8,
 generation throughput also becomes variable and loses its clear advantage.
 
 This is evidence for a capacity/performance trade, not yet for the proposed
