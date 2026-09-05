@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Independent-request baseline for the pinned oversized Gemma-4 MoE. Raw
+# responses and telemetry remain outside Git; derived results may be checked in.
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
+out=${1:-/disk1/tmp/emufpga-gemma4-$(date -u +%Y%m%dT%H%M%SZ)}
+build=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
+server=$build/bin/llama-server
+port=${PORT:-8091}
+runs=${RUNS:-3}
+prompt_tokens=${PROMPT_TOKENS:-128}
+output_tokens=${OUTPUT_TOKENS:-16}
+gpu_layers=${GPU_LAYERS:-20}
+expected_sha=6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493
+
+for value in "$runs" "$prompt_tokens" "$output_tokens" "$gpu_layers"; do
+    case "$value" in ''|*[!0-9]*) echo "counts must be nonnegative integers" >&2; exit 2 ;; esac
+done
+[ "$runs" -gt 0 ] && [ "$prompt_tokens" -gt 0 ] && [ "$output_tokens" -gt 0 ] || {
+    echo "run and token counts must be positive" >&2
+    exit 2
+}
+[ -x "$server" ] || { echo "missing llama-server: $server" >&2; exit 2; }
+[ -f "$model" ] || { echo "missing Gemma-4 model: $model" >&2; exit 2; }
+nvidia-smi >/dev/null || { echo "NVIDIA device unavailable" >&2; exit 2; }
+actual_sha=$(sha256sum "$model" | awk '{print $1}')
+[ "$actual_sha" = "$expected_sha" ] || { echo "Gemma-4 SHA-256 mismatch: $actual_sha" >&2; exit 2; }
+
+mkdir -p "$out"
+revision=$(git -C /disk1/github/ggml-org/llama.cpp rev-parse HEAD)
+printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"energy_scope":"NVIDIA board only; not whole system"}\n' \
+    "$(basename "$model")" "$actual_sha" "$revision" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" >"$out/manifest.json"
+
+"$server" -m "$model" -ngl "$gpu_layers" -c 4096 -np 8 \
+    --host 127.0.0.1 --port "$port" -lv 1 >"$out/server.log" 2>&1 &
+server_pid=$!
+cleanup() {
+    kill "${sampler_pid:-}" "$server_pid" 2>/dev/null || true
+    wait "${sampler_pid:-}" "$server_pid" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+for _ in $(seq 1 180); do
+    if curl -fsS "http://127.0.0.1:$port/health" >/dev/null 2>&1; then break; fi
+    kill -0 "$server_pid" 2>/dev/null || { echo "llama-server exited during load" >&2; exit 1; }
+    sleep 1
+done
+curl -fsS "http://127.0.0.1:$port/health" >/dev/null || { echo "llama-server not ready" >&2; exit 1; }
+
+(
+    while kill -0 "$server_pid" 2>/dev/null; do
+        stamp=$(date +%s.%N)
+        gpu=$(nvidia-smi --query-gpu=memory.used,utilization.gpu,power.draw --format=csv,noheader,nounits)
+        rss=$(ps -o rss= -p "$server_pid" | tr -d ' ')
+        printf '%s,%s,%s\n' "$stamp" "$rss" "$gpu"
+        sleep 0.2
+    done
+) >"$out/telemetry.csv" &
+sampler_pid=$!
+
+: >"$out/summaries.jsonl"
+for concurrency in 1 2 4 8; do
+    node "$root/scripts/bench-gemma4-requests.mjs" "http://127.0.0.1:$port" \
+        "$out/requests-$concurrency.jsonl" "$root/docs/data/gemma4-correctness-tasks.json" \
+        "$prompt_tokens" "$output_tokens" "$concurrency" "$runs" >>"$out/summaries.jsonl"
+done
+
+echo "results: $out"
+jq -s . "$out/summaries.jsonl"

@@ -10,8 +10,8 @@ faster than conventional CPU/System-RAM offload.**
 > **Validated oversized-model serving advantage: not measured.**
 
 An “agent” must be an independent request stream, not several tokens from one
-prompt. A “correct result” needs a task suite, not just a matching intermediate.
-Neither has yet been measured with energy at the wall.
+prompt. A small deterministic task smoke suite has now been measured for the
+conventional oversized baseline. Energy at the wall has not.
 
 ## Evidence ledger
 
@@ -23,6 +23,9 @@ Neither has yet been measured with energy at the wall.
 | Selected B1 layout reduces expert bytes | **Measured** | 42.21 MB to 10.65 MB per layer |
 | Async buffering accelerates this host | **Mixed measured result** | Seven-run cases range from −5.5% to +11.7%; cache-bypass proxies +2–5% |
 | Same-quant OLMoE placement saves VRAM | **Measured conventional baseline** | Q6_K saves 4,995 MiB peak VRAM; Q2_K saves 2,220 MiB across three-run sweeps |
+| Real OLMoE Q6_K selected experts execute serially | **Measured mechanism** | Layer 0, batches 1/2/4/8; packed stream agrees with direct GGUF oracle within 0.00000004 |
+| Gemma 4 Q5_K_M exceeds this GPU | **Measured capacity failure** | All-GPU allocation requested 18,409 MiB and failed on the 16,311 MiB RTX 5060 Ti |
+| Oversized Gemma conventional offload serves independent requests | **Measured baseline smoke** | 20/30 layers on GPU; 128+16 tokens; 3 runs; aggregate 3.45/4.86/5.60/7.11 tok/s at 1/2/4/8 requests |
 | Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |
 | Lower-bit placement is automatically faster | **Measured negative** | Q2 CPU experts improve generation-only throughput at 1–4 requests, but 7–9× slower prefill reverses the end-to-end conclusion |
 | Independent agents share a streamed pass | **Architecture-tested, not end-to-end measured** | Synthetic batching proves reuse math; Granite batches are prompt tokens, not agents |
@@ -32,9 +35,13 @@ Neither has yet been measured with energy at the wall.
 Granite remains the strict serial correctness vehicle. OLMoE Q6_K and Q2_K now
 provide a same-artifact llama.cpp placement baseline, but they also fit the
 GPU and the CPU placement is not the project's ordered bounded stream. Gemma 4
-26B-A4B-it Q5_K_M (19,319,198,848 bytes) is pinned as the first artifact that
-exceeds the 16 GiB GPU capacity. Until it runs through both conventional and
-serial paths, the primary economic value proposition remains unvalidated.
+26B-A4B-it Q5_K_M (19,319,198,848 bytes) is the first artifact measured to
+exceed the GPU capacity. Conventional 20-layer GPU offload now supplies the
+comparison to beat: peak 13,592 MiB VRAM, 9,183 MiB process RSS, and 3.16 kJ of
+GPU-board energy over model load plus the complete request sweep. At four
+requests it misses the “good enough” target (1.40 rather than 2 generated
+tok/s/request). Until Gemma runs through the serial path, the primary economic
+value proposition remains unvalidated.
 
 ## The experiment that produces the requested headline
 
@@ -57,6 +64,10 @@ The desired eventual headline has this form: “On reused host H with small GPU 
 N independent agents ran oversized MoE M at quant Q with X correct tasks/hour
 and Y aggregate tokens/s, versus Z on llama.cpp CPU/RAM offload, while using A
 GiB VRAM and B watts.” No value in that sentence should be projected.
+
+The current 128-input/16-output measurement is a harness and capacity smoke
+test, deliberately shorter than the predeclared 4K+256 final contract. It must
+not be substituted for that longer qualification.
 
 ## Predeclared verdicts
 

@@ -1,0 +1,10 @@
+[
+  {"prompt":"Return only the number: 2+3=","expected":"5"},
+  {"prompt":"Return only the number: 7*6=","expected":"42"},
+  {"prompt":"Return only the city: The capital of France is","expected":"Paris"},
+  {"prompt":"Return only the word: The opposite of hot is","expected":"cold"},
+  {"prompt":"Return only the number: 10-4=","expected":"6"},
+  {"prompt":"Return only the color: Healthy grass is usually","expected":"green"},
+  {"prompt":"Return only the number: Days in one week=","expected":"7"},
+  {"prompt":"Return only the number: The first prime number is","expected":"2"}
+]

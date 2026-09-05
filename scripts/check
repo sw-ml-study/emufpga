@@ -101,7 +101,10 @@ node --check scripts/analyze-granite-routing.mjs
 node --check scripts/analyze-granite-timing.mjs
 bash -n scripts/bench-olmoe-placement
 bash -n scripts/verify-olmoe-expert-smoke
+bash -n scripts/bench-gemma4-offload
 node --check scripts/analyze-olmoe-placement.mjs
+node --check scripts/bench-gemma4-requests.mjs
+node --check scripts/analyze-gemma4-offload.mjs
 
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"
