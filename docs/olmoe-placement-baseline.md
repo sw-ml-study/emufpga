@@ -127,6 +127,15 @@ but the eight-request contract can consume about 4 GiB of F16 KV plus compute
 buffers and may encounter macOS memory pressure. Swap activity invalidates a
 clean in-memory throughput comparison and must be recorded.
 
+`spm-gguf-inspect --moe-summary` derives the Q6_K expert traffic directly from
+the pinned tensor directory without reading model payloads. Its 48 expert
+tensors contain 5,284,823,040 packed bytes. One expert across one layer is
+5,160,960 bytes; top-8 routing across 16 layers therefore requests exactly
+660,602,880 expert bytes per token before cache or batch reuse. At a
+hypothetical sustained 5 GB/s, storage alone caps batch-one near 7.6 tokens/s;
+decode and expert arithmetic can only lower that ceiling. Serving several
+routed activations during the same expert read is the intended escape hatch.
+
 Run the same hashes, prompts, context lengths, and request counts on the Mac in
 three modes where supported:
 
