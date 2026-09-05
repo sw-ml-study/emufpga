@@ -1,8 +1,9 @@
 number = 18
 slug = "oversized-moe-baseline"
-status = "in-progress"
+status = "completed"
 description = "Select and pin the next two model targets: a sub-12-GiB MoE qualification mod..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-04T11:25:13"
-commits = []
+completed_at = "2026-09-05T09:03:45"
+commits = ["7e61c085ae24478282eb252d1bd32f739b945681"]

@@ -1,0 +1,8 @@
+number = 19
+slug = "gemma4-serial-experts"
+status = "pending"
+description = "Implement the same-quant Gemma-4 Q5_K_M ordered selected-expert path needed t..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-05T09:03:45"
+commits = []
