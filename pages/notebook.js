@@ -102,6 +102,24 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadSerialGemmaGraphic() {
+    const target = document.getElementById("serial-gemma-graphic");
+    const batch = document.getElementById("serial-gemma-batch");
+    if (!target || !batch) return;
+    try {
+      const data = await fetch("gemma4-q5km-serial-layer0.json").then(r => r.json());
+      const render = () => {
+        const row = data.runs.find(item => item.batch === Number(batch.value));
+        const reuse = row.assignments / row.selected_union;
+        const noReuseMb = row.stream_bytes * reuse / 1e6;
+        const unionMb = row.stream_bytes / 1e6;
+        target.innerHTML = `<div class="placement-callout"><strong>${row.selected_union} streams serve ${row.assignments} assignments</strong><span>${reuse.toFixed(2)} applications/fetch · ${(unionMb / row.batch).toFixed(1)} MB/request</span></div><div class="metric-sheet"><h3>Expert traffic <small>one real layer</small></h3>${placementBar("Without reuse", noReuseMb, 330, "MB", "cpu")}${placementBar("Selected union", unionMb, 330, "MB", "gpu")}</div><div class="metric-sheet"><h3>Scalar layer time <small>not end-to-end</small></h3>${placementBar("Direct Rust oracle", row.direct_ms, row.serial_ms, "ms", "gpu")}${placementBar("Ordered serial", row.serial_ms, row.serial_ms, "ms", "cpu")}</div><div class="placement-detail"><span>Serial/direct time: <b>${(row.serial_ms / row.direct_ms).toFixed(1)}×</b></span><span>Max difference: <b>${row.max_abs_error.toFixed(8)}</b> · resident parameter payload: <b>${row.resident_parameter_bytes} B</b></span></div>`;
+      };
+      batch.addEventListener("change", render);
+      render();
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -110,6 +128,7 @@
     loadBuildInfo();
     loadPlacementGraphic();
     loadGemmaGraphic();
+    loadSerialGemmaGraphic();
   });
 
   return { LESSONS, summarizePlacement };

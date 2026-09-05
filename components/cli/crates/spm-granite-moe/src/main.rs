@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 mod attention;
+mod gemma_smoke;
 mod layout;
 mod math;
 mod model;
@@ -21,6 +22,18 @@ fn tokens(text: &str) -> Result<Vec<usize>, String> {
 
 fn main() {
     let args: Vec<_> = env::args().collect();
+    if args.len() == 5 && args[1] == "--gemma-expert-smoke" {
+        let batch = args[4]
+            .parse()
+            .map_err(|_| "invalid smoke batch".to_owned());
+        let result = batch
+            .and_then(|batch| gemma_smoke::run(Path::new(&args[2]), Path::new(&args[3]), batch));
+        if let Err(error) = result {
+            eprintln!("error: {error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if args.len() == 5 && args[1] == "--expert-smoke" {
         let batch = args[4]
             .parse()
@@ -35,7 +48,7 @@ fn main() {
     }
     if args.len() != 3 {
         eprintln!(
-            "usage: spm-granite-moe MODEL.gguf TOKEN_ID[,TOKEN_ID...]\n       spm-granite-moe --expert-smoke MODEL.gguf OUTPUT.spm BATCH"
+            "usage: spm-granite-moe MODEL.gguf TOKEN_ID[,TOKEN_ID...]\n       spm-granite-moe --expert-smoke MODEL.gguf OUTPUT.spm BATCH\n       spm-granite-moe --gemma-expert-smoke MODEL.gguf OUTPUT.spm BATCH"
         );
         std::process::exit(2);
     }

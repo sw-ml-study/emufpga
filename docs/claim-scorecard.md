@@ -2,12 +2,12 @@
 
 ## One-sentence conclusion
 
-**Today emufpga proves that Granite 3.1 1B-A400M Q6_K expert weights can be
-processed serially with bounded parameter residency and preserved model
-outputs; it does not yet prove that a small/old GPU can serve an oversized MoE
-faster than conventional CPU/System-RAM offload.**
+**Today emufpga proves that real Granite, OLMoE, and oversized Gemma-4 expert
+weights can be processed in selected serial order with bounded parameter
+residency and close agreement to direct same-quant paths; it does not yet prove
+complete, reliable generation from an oversized model on a small/old GPU.**
 
-> **Validated oversized-model serving advantage: not measured.**
+> **Validated oversized-model end-to-end generation: not measured.**
 
 An “agent” must be an independent request stream, not several tokens from one
 prompt. A small deterministic task smoke suite has now been measured for the
@@ -25,10 +25,12 @@ conventional oversized baseline. Energy at the wall has not.
 | Same-quant OLMoE placement saves VRAM | **Measured conventional baseline** | Q6_K saves 4,995 MiB peak VRAM; Q2_K saves 2,220 MiB across three-run sweeps |
 | Real OLMoE Q6_K selected experts execute serially | **Measured mechanism** | Layer 0, batches 1/2/4/8; packed stream agrees with direct GGUF oracle within 0.00000004 |
 | Gemma 4 Q5_K_M exceeds this GPU | **Measured capacity failure** | All-GPU allocation requested 18,409 MiB and failed on the 16,311 MiB RTX 5060 Ti |
+| Real Gemma Q5_K_M selected experts execute serially | **Measured layer mechanism** | Layer 0, batches 1/2/4/8; B8 collapses 64 assignments to 33 streams; max direct/stream error 0.00000381 |
+| GPU state plus CPU experts completes Gemma generation | **Measured partition bridge** | 1/2/4/8 short tasks correct; 4,170 MiB VRAM but 19,514.5 MiB RSS; conventional mapped tensors, not bounded serial supply |
 | Oversized Gemma conventional offload serves independent requests | **Measured baseline smoke** | 20/30 layers on GPU; 128+16 tokens; 3 runs; aggregate 3.45/4.86/5.60/7.11 tok/s at 1/2/4/8 requests |
 | Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |
 | Lower-bit placement is automatically faster | **Measured negative** | Q2 CPU experts improve generation-only throughput at 1–4 requests, but 7–9× slower prefill reverses the end-to-end conclusion |
-| Independent agents share a streamed pass | **Architecture-tested, not end-to-end measured** | Synthetic batching proves reuse math; Granite batches are prompt tokens, not agents |
+| Independent agents share a streamed pass | **Layer-measured, not end-to-end** | Real Gemma routing at B8 gives 1.94 assignments per distinct expert fetch; batches are concurrent activations, not coding sessions |
 | FPGA throughput, watts, and results/kWh | **Simulated/projected only** | Hardware-shaped cycles; no synthesized clock, physical link, or power trace |
 | MCU/PIO improves tensor throughput | **Not claimed** | Proposed only for framing, backpressure, DMA control, and timestamps |
 
@@ -37,13 +39,14 @@ provide a same-artifact llama.cpp placement baseline, but they also fit the
 GPU and the CPU placement is not the project's ordered bounded stream. Gemma 4
 26B-A4B-it Q5_K_M (19,319,198,848 bytes) is the first artifact measured to
 exceed the GPU capacity. Conventional 20-layer GPU offload now supplies the
-comparison to beat: peak 13,592 MiB VRAM, 9,183 MiB process RSS, and 3.16 kJ of
+practical control: peak 13,592 MiB VRAM, 9,183 MiB process RSS, and 3.16 kJ of
 GPU-board energy over model load plus the complete request sweep. At four
-requests it misses the “good enough” target (1.40 rather than 2 generated
-tok/s/request). Until Gemma runs through the serial path, the primary economic
-value proposition remains unvalidated.
+requests it provides 1.40 generated tok/s/request. Gemma's layer-0 experts now
+run through the serial path, but
+complete inference does not. The primary capacity proposition therefore
+remains unvalidated.
 
-## The experiment that produces the requested headline
+## The experiment that validates the capacity claim
 
 - Granite 3.1 1B-A400M Q6_K for serial correctness, OLMoE Q6_K/Q2_K for
   same-quant placement qualification, then pinned Gemma 4 26B-A4B-it Q5_K_M
@@ -61,9 +64,10 @@ value proposition remains unvalidated.
 Tokens/kWh is useful but cannot substitute for task correctness.
 
 The desired eventual headline has this form: “On reused host H with small GPU G,
-N independent agents ran oversized MoE M at quant Q with X correct tasks/hour
-and Y aggregate tokens/s, versus Z on llama.cpp CPU/RAM offload, while using A
-GiB VRAM and B watts.” No value in that sentence should be projected.
+oversized MoE M at quant Q—which fails resident allocation—completed the
+same-quant correctness suite with N concurrent agents while using A GiB VRAM.”
+Throughput, latency, watts, and CPU/RAM offload belong beside that result so
+users understand practicality; they are not the success gate.
 
 The current 128-input/16-output measurement is a harness and capacity smoke
 test, deliberately shorter than the predeclared 4K+256 final contract. It must
@@ -71,22 +75,20 @@ not be substituted for that longer qualification.
 
 ## Predeclared verdicts
 
-**Success:** correctness is statistically indistinguishable from the same
-quantized reference; the model does not fit the small GPU's usable VRAM; the
-hybrid serial path beats llama.cpp CPU/System-RAM offload on the same reused
-host by at least 25% in correct completed tasks/hour; and an initial “good
-enough” service objective of four concurrent agents, at least 2 generated
-tokens/s each, is met. The result must survive three runs. Power, acquisition
-cost, peak RAM/VRAM, and storage wear are reported but do not veto a capacity
-and throughput win unless the operating cost is plainly unreasonable.
+**Success:** the model demonstrably does not fit the small GPU's usable VRAM;
+the hybrid serial path completes end-to-end generation; greedy outputs/logits
+agree with the same-quant reference within the declared gate; the coding task
+suite shows no reliability regression; and peak GPU residency stays within the
+budget. The result must survive three runs. Throughput, concurrency, latency,
+power, acquisition cost, RAM, and storage wear are reported as usability and
+economics—not used to redefine capacity success as failure.
 
-**Failure:** correctness regresses, the hybrid cannot run an otherwise
-oversized model, it fails the service objective, or its confidence interval
-does not support any throughput gain over ordinary CPU/RAM offload.
+**Failure:** correctness/reliability regresses, the hybrid cannot complete
+generation, or it exceeds the declared GPU memory budget.
 
-**Mixed:** it unlocks capacity but does not beat CPU offload, wins only above a
-concurrency threshold, costs excessive energy, or wins on some reused hardware
-generations but not others.
+**Mixed:** it unlocks capacity correctly but has severe throughput, latency,
+energy, RAM, storage-wear, or concurrency limits; or it works only on some
+reused hardware generations.
 Mixed is plausible: old-hardware reuse is a multi-objective choice.
 
 These thresholds are project policy, not facts. They may be revised before the

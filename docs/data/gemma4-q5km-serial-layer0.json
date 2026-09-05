@@ -1,0 +1,13 @@
+{
+  "schema": "emufpga.gemma4-serial-layer.v1",
+  "measured_at": "2026-09-05",
+  "scope": "layer 0 expert sublayer with deterministic synthetic activations; not end-to-end inference",
+  "model": {"name": "google_gemma-4-26B-A4B-it-Q5_K_M.gguf", "sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493", "layers": 30, "experts": 128, "active_experts": 8, "width": 2816, "expert_width": 704, "gate_up_encoding": "Q5_K", "down_encoding": "Q8_0"},
+  "runs": [
+    {"batch": 1, "assignments": 8, "selected_union": 8, "stream_bytes": 41136672, "resident_parameter_bytes": 176, "emit_ms": 152.728, "direct_ms": 144.182, "serial_ms": 373.191, "max_abs_error": 0.00000191},
+    {"batch": 2, "assignments": 16, "selected_union": 12, "stream_bytes": 61704992, "resident_parameter_bytes": 176, "emit_ms": 163.967, "direct_ms": 225.022, "serial_ms": 607.982, "max_abs_error": 0.00000381},
+    {"batch": 4, "assignments": 32, "selected_union": 20, "stream_bytes": 102841632, "resident_parameter_bytes": 176, "emit_ms": 460.022, "direct_ms": 386.538, "serial_ms": 1099.236, "max_abs_error": 0.00000381},
+    {"batch": 8, "assignments": 64, "selected_union": 33, "stream_bytes": 169688672, "resident_parameter_bytes": 176, "emit_ms": 1048.389, "direct_ms": 689.659, "serial_ms": 2446.552, "max_abs_error": 0.00000381}
+  ],
+  "caveats": ["Direct and serial paths share the repository Q5_K and Q8_0 decoders.", "Timings are one warm run and scalar Rust arithmetic, not an optimized serving forecast.", "The stream file is page-cache eligible and emit time is separate.", "Batch rows are simultaneously routed activations, not complete coding-agent sessions."]
+}

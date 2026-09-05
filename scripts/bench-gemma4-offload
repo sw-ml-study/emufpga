@@ -14,6 +14,7 @@ runs=${RUNS:-3}
 prompt_tokens=${PROMPT_TOKENS:-128}
 output_tokens=${OUTPUT_TOKENS:-16}
 gpu_layers=${GPU_LAYERS:-20}
+placement=${PLACEMENT:-layer-offload}
 expected_sha=6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493
 
 for value in "$runs" "$prompt_tokens" "$output_tokens" "$gpu_layers"; do
@@ -31,10 +32,15 @@ actual_sha=$(sha256sum "$model" | awk '{print $1}')
 
 mkdir -p "$out"
 revision=$(git -C /disk1/github/ggml-org/llama.cpp rev-parse HEAD)
-printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"energy_scope":"NVIDIA board only; not whole system"}\n' \
-    "$(basename "$model")" "$actual_sha" "$revision" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" >"$out/manifest.json"
+case "$placement" in
+    layer-offload) override=() ;;
+    experts-cpu) override=(-ot '.*ffn_.*_exps\.weight=CPU') ;;
+    *) echo "unknown PLACEMENT: $placement" >&2; exit 2 ;;
+esac
+printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","placement":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"energy_scope":"NVIDIA board only; not whole system"}\n' \
+    "$(basename "$model")" "$actual_sha" "$revision" "$placement" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" >"$out/manifest.json"
 
-"$server" -m "$model" -ngl "$gpu_layers" -c 4096 -np 8 \
+"$server" -m "$model" -ngl "$gpu_layers" "${override[@]}" -c 4096 -np 8 \
     --host 127.0.0.1 --port "$port" -lv 1 >"$out/server.log" 2>&1 &
 server_pid=$!
 cleanup() {

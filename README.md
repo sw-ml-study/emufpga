@@ -55,6 +55,12 @@ The shortest falsifiable status is
 agents-per-kWh advantage**; it defines the workload and success, failure, and
 mixed-result thresholds needed to make that claim.
 
+Newest result: the oversized Gemma-4 Q5_K_M artifact now runs one real routed
+expert layer through the ordered stream. At batch 8, 64 assignments reuse 33
+distinct expert fetches with maximum direct/stream difference 0.00000381, but
+the scalar serial loop is slower and complete inference remains unimplemented.
+See [docs/gemma4-serial-experts.md](docs/gemma4-serial-experts.md).
+
 Background and the full argument: [docs/research.txt](docs/research.txt).
 
 ## What this is

@@ -40,6 +40,8 @@ pub fn decode_into(encoding: Encoding, src: &[u8], dst: &mut [f32]) -> Result<()
     match encoding {
         Encoding::F32 => spm_codec_dense::decode_into(src, dst).map_err(DecodeError::Short),
         Encoding::Bf16 => spm_codec_bf16::decode_into(src, dst).map_err(DecodeError::Short),
-        Encoding::Ternary2F32I32 | Encoding::Q6K => Err(DecodeError::Unsupported(encoding)),
+        Encoding::Ternary2F32I32 | Encoding::Q6K | Encoding::Q5K | Encoding::Q8_0 => {
+            Err(DecodeError::Unsupported(encoding))
+        }
     }
 }

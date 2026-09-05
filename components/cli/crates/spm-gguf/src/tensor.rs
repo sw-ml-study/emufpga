@@ -7,6 +7,9 @@ use std::{
 
 const Q6_K_ELEMENTS: usize = 256;
 const Q6_K_BYTES: usize = 210;
+const Q5_K_BYTES: usize = 176;
+const Q8_0_ELEMENTS: usize = 32;
+const Q8_0_BYTES: usize = 34;
 
 /// Read one already-validated tensor range, subject to a caller-selected cap.
 ///
@@ -131,6 +134,77 @@ pub fn decode_q6_k(bytes: &[u8]) -> Result<Vec<f32>, String> {
                 }
             }
         }
+    }
+    Ok(out)
+}
+
+/// Decode GGML `Q5_K` super-blocks: 256 weights in 176 bytes.
+/// # Errors
+/// Returns an error unless the input contains whole `Q5_K` blocks.
+pub fn decode_q5_k(bytes: &[u8]) -> Result<Vec<f32>, String> {
+    let blocks = bytes.chunks_exact(Q5_K_BYTES);
+    if !blocks.remainder().is_empty() {
+        return Err("Q5_K byte length is not divisible by 176".into());
+    }
+    let mut out = Vec::new();
+    out.try_reserve_exact((bytes.len() / Q5_K_BYTES) * Q6_K_ELEMENTS)
+        .map_err(|_| "decoded tensor allocation refused")?;
+    for block in blocks {
+        let d = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
+        let dmin = f16_to_f32(u16::from_le_bytes([block[2], block[3]]));
+        let scales = &block[4..16];
+        let qh = &block[16..48];
+        let qs = &block[48..176];
+        for group in 0..4 {
+            for half in 0..2 {
+                let index = group * 2 + half;
+                let (scale, minimum) = scale_min_q5(index, scales);
+                let bit = 1_u8 << index;
+                for lane in 0..32 {
+                    let packed = qs[group * 32 + lane];
+                    let low = if half == 0 {
+                        packed & 0x0f
+                    } else {
+                        packed >> 4
+                    };
+                    let quant = low + if qh[lane] & bit != 0 { 16 } else { 0 };
+                    out.push(d * f32::from(scale) * f32::from(quant) - dmin * f32::from(minimum));
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn scale_min_q5(index: usize, packed: &[u8]) -> (u8, u8) {
+    if index < 4 {
+        (packed[index] & 63, packed[index + 4] & 63)
+    } else {
+        (
+            (packed[index + 4] & 0x0f) | ((packed[index - 4] >> 6) << 4),
+            (packed[index + 4] >> 4) | ((packed[index] >> 6) << 4),
+        )
+    }
+}
+
+/// Decode GGML `Q8_0` blocks: 32 weights in 34 bytes.
+/// # Errors
+/// Returns an error unless the input contains whole `Q8_0` blocks.
+pub fn decode_q8_0(bytes: &[u8]) -> Result<Vec<f32>, String> {
+    let blocks = bytes.chunks_exact(Q8_0_BYTES);
+    if !blocks.remainder().is_empty() {
+        return Err("Q8_0 byte length is not divisible by 34".into());
+    }
+    let mut out = Vec::new();
+    out.try_reserve_exact((bytes.len() / Q8_0_BYTES) * Q8_0_ELEMENTS)
+        .map_err(|_| "decoded tensor allocation refused")?;
+    for block in blocks {
+        let d = f16_to_f32(u16::from_le_bytes([block[0], block[1]]));
+        out.extend(
+            block[2..]
+                .iter()
+                .map(|&value| d * f32::from(i8::from_ne_bytes([value]))),
+        );
     }
     Ok(out)
 }

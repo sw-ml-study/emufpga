@@ -55,3 +55,11 @@ fn q6_k_profile_keeps_the_ggml_block_size() {
     assert_eq!(Encoding::Q6K.bytes_for(256), 210);
     assert_eq!(Encoding::from_code(4), Ok(Encoding::Q6K));
 }
+
+#[test]
+fn gemma_profiles_keep_their_ggml_block_sizes() {
+    assert_eq!(Encoding::Q5K.bytes_for(256), 176);
+    assert_eq!(Encoding::Q8_0.bytes_for(32), 34);
+    assert_eq!(Encoding::from_code(5), Ok(Encoding::Q5K));
+    assert_eq!(Encoding::from_code(6), Ok(Encoding::Q8_0));
+}

@@ -24,6 +24,8 @@ cp "$repo_dir/docs/data/prefetch-analysis.json" "$output_dir/prefetch-analysis.j
 cp "$repo_dir/docs/data/olmoe-q6-placement.json" "$output_dir/olmoe-q6-placement.json"
 cp "$repo_dir/docs/data/olmoe-q2-placement.json" "$output_dir/olmoe-q2-placement.json"
 cp "$repo_dir/docs/data/gemma4-q5km-offload.json" "$output_dir/gemma4-q5km-offload.json"
+cp "$repo_dir/docs/data/gemma4-q5km-serial-layer0.json" "$output_dir/gemma4-q5km-serial-layer0.json"
+cp "$repo_dir/docs/data/gemma4-q5km-experts-cpu-smoke.json" "$output_dir/gemma4-q5km-experts-cpu-smoke.json"
 touch "$output_dir/.nojekyll"
 
 build_host=$(hostname -s)

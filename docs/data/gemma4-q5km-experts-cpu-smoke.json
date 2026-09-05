@@ -1,0 +1,19 @@
+{
+  "schema": "emufpga.gemma4-experts-cpu-smoke.v1",
+  "measured_at": "2026-09-05",
+  "runs": 1,
+  "model_sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+  "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+  "placement": "all repeating layers requested on GPU; all ffn expert weight tensors overridden to CPU",
+  "prompt_tokens": 128,
+  "generated_tokens": 16,
+  "peak_process_rss_mib": 19514.5,
+  "peak_vram_mib": 4170,
+  "requests": [
+    {"concurrency": 1, "correct": 1, "requests": 1, "aggregate_tps": 2.5096, "per_request_tps": 2.5096, "ttft_ms_p50": 5668.5},
+    {"concurrency": 2, "correct": 2, "requests": 2, "aggregate_tps": 2.9174, "per_request_tps": 1.4615, "ttft_ms_p50": 9358.5},
+    {"concurrency": 4, "correct": 4, "requests": 4, "aggregate_tps": 4.9699, "per_request_tps": 1.2426, "ttft_ms_p50": 10308.7},
+    {"concurrency": 8, "correct": 8, "requests": 8, "aggregate_tps": 5.6580, "per_request_tps": 0.7074, "ttft_ms_p50": 19073.1}
+  ],
+  "caveats": ["One run and short smoke tasks only.", "This is conventional llama.cpp mapped CPU tensor placement, not bounded ordered serial expert execution.", "Peak RSS nearly equals the complete model file and does not establish an 18 GB unified-memory configuration."]
+}

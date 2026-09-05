@@ -31,3 +31,28 @@ fn q6_k_lane_bit_packing_matches_reference_layout() {
 fn q6_k_rejects_partial_block() {
     assert!(spm_gguf::decode_q6_k(&[0; 209]).is_err());
 }
+
+#[test]
+fn q5_k_known_low_nibbles_and_rejects_partial_block() {
+    let mut block = [0_u8; 176];
+    block[0..2].copy_from_slice(&0x3c00_u16.to_le_bytes());
+    block[4] = 1;
+    block[5] = 1;
+    block[48..80].fill(0x32);
+    let decoded = spm_gguf::decode_q5_k(&block).unwrap();
+    assert_eq!(&decoded[..32], &[2.0; 32]);
+    assert_eq!(&decoded[32..64], &[3.0; 32]);
+    assert!(spm_gguf::decode_q5_k(&block[..175]).is_err());
+}
+
+#[test]
+fn q8_0_signed_values_and_rejects_partial_block() {
+    let mut block = [0_u8; 34];
+    block[0..2].copy_from_slice(&0x3800_u16.to_le_bytes());
+    block[2] = 4;
+    block[3] = (-6_i8).to_ne_bytes()[0];
+    let decoded = spm_gguf::decode_q8_0(&block).unwrap();
+    assert!((decoded[0] - 2.0).abs() < f32::EPSILON);
+    assert!((decoded[1] + 3.0).abs() < f32::EPSILON);
+    assert!(spm_gguf::decode_q8_0(&block[..33]).is_err());
+}

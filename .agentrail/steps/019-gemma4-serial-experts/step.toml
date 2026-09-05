@@ -1,6 +1,6 @@
 number = 19
 slug = "gemma4-serial-experts"
-status = "pending"
+status = "in-progress"
 description = "Implement the same-quant Gemma-4 Q5_K_M ordered selected-expert path needed t..."
 role = "legacy"
 context_files = []

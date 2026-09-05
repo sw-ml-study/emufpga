@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Verify one real Gemma-4 Q5_K_M layer through a direct GGUF path and the
+# bounded, ordered packed stream. This is an expert-layer check, not inference.
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+model=${GEMMA4_Q5_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
+output=${GEMMA4_EXPERT_SPM:-/disk1/tmp/gemma4-expert-smoke.spm}
+batch=${1:-1}
+expected=6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493
+
+case "$batch" in
+    ''|*[!0-9]*) echo "batch must be a positive integer" >&2; exit 2 ;;
+esac
+[ "$batch" -gt 0 ] || { echo "batch must be a positive integer" >&2; exit 2; }
+[ -f "$model" ] || { echo "missing pinned Gemma-4 Q5_K_M model: $model" >&2; exit 2; }
+actual=$(sha256sum "$model" | awk '{print $1}')
+[ "$actual" = "$expected" ] || {
+    echo "Gemma-4 Q5_K_M SHA-256 mismatch: $actual" >&2
+    exit 2
+}
+
+exec cargo run --quiet --release --manifest-path "$root/components/cli/Cargo.toml" \
+    -p spm-granite-moe -- --gemma-expert-smoke "$model" "$output" "$batch"
