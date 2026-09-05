@@ -102,6 +102,7 @@ node --check scripts/analyze-granite-timing.mjs
 bash -n scripts/bench-olmoe-placement
 bash -n scripts/verify-olmoe-expert-smoke
 bash -n scripts/verify-gemma4-expert-smoke
+bash -n scripts/build-llama-gemma4-lazy-experts
 bash -n scripts/bench-gemma4-offload
 node --check scripts/analyze-olmoe-placement.mjs
 node --check scripts/bench-gemma4-requests.mjs

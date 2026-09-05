@@ -11,6 +11,10 @@ const telemetry = fs.readFileSync(path.join(input, "telemetry.csv"), "utf8").tri
   const [seconds, rssKib, vramMib, utilization, powerWatts] = line.split(",").map(Number);
   return { seconds, rssKib, vramMib, utilization, powerWatts };
 });
+const serverLog = fs.readFileSync(path.join(input, "server.log"), "utf8");
+const expertOps = [...serverLog.matchAll(/^spm_mmid .* selected=(\d+) expert_bytes=(\d+) logical_bytes=(\d+)$/gm)].map((match) => ({
+  selected: Number(match[1]), expertBytes: Number(match[2]), logicalBytes: Number(match[3]),
+}));
 let gpuEnergyJoules = 0;
 for (let index = 1; index < telemetry.length; index += 1) {
   const previous = telemetry[index - 1];
@@ -26,16 +30,26 @@ const result = {
     samples: telemetry.length,
     elapsed_seconds: telemetry.at(-1).seconds - telemetry[0].seconds,
     peak_process_rss_mib: Math.max(...telemetry.map((item) => item.rssKib)) / 1024,
+    mean_process_rss_mib: telemetry.reduce((sum, item) => sum + item.rssKib, 0) / telemetry.length / 1024,
+    minimum_process_rss_mib: Math.min(...telemetry.map((item) => item.rssKib)) / 1024,
     peak_vram_mib: Math.max(...telemetry.map((item) => item.vramMib)),
     peak_gpu_utilization_percent: Math.max(...telemetry.map((item) => item.utilization)),
     gpu_board_energy_joules: gpuEnergyJoules,
   },
   requests: summaries,
+  expert_trace: expertOps.length === 0 ? null : {
+    scope: "logical selected-expert tensor bytes requested; not physical storage IO",
+    operations: expertOps.length,
+    selected_experts: expertOps.reduce((sum, item) => sum + item.selected, 0),
+    logical_bytes: expertOps.reduce((sum, item) => sum + item.logicalBytes, 0),
+  },
   caveats: [
     "Simple deterministic correctness probes are smoke tests, not a benchmark of model quality.",
     "TTFT is client-observed; inter-token intervals are timestamps of streamed content events.",
     "Energy excludes CPU, DRAM, storage, motherboard, fans, and PSU losses.",
-    "The conventional control keeps 20 of 30 repeating layers on GPU; it is not ordered expert streaming.",
+    manifest.lazy_mode === "on"
+      ? "Experimental Linux mmap pages are reclaimed after native selected-expert operations; this is not an upstream llama.cpp feature."
+      : "The conventional control is not bounded ordered expert streaming.",
   ],
 };
 fs.writeFileSync(output, JSON.stringify(result, null, 2) + "\n");

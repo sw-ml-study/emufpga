@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+source_dir=${LLAMA_SOURCE:-/disk1/github/ggml-org/llama.cpp}
+build_dir=${LLAMA_LAZY_BUILD:-/disk1/tmp/llama.cpp-gemma4-lazy-build}
+expected_revision=4d9176092d00586775af140581bb0b558ddc4389
+
+[ -d "$source_dir/.git" ] || { echo "missing llama.cpp checkout: $source_dir" >&2; exit 2; }
+[ "$(git -C "$source_dir" rev-parse HEAD)" = "$expected_revision" ] || {
+    echo "llama.cpp must be pinned at $expected_revision" >&2
+    exit 2
+}
+[ -z "$(git -C "$source_dir" status --short)" ] || {
+    echo "llama.cpp checkout must be clean before applying the experiment patch" >&2
+    exit 2
+}
+
+git -C "$source_dir" apply --recount "$root/patches/llama.cpp-gemma4-lazy-experts.patch"
+restore() { git -C "$source_dir" apply -R --recount "$root/patches/llama.cpp-gemma4-lazy-experts.patch"; }
+trap restore EXIT INT TERM
+
+cmake -S "$source_dir" -B "$build_dir" -DGGML_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES=120a -DLLAMA_CURL=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build "$build_dir" --target llama-server llama-cli -j "$(nproc)"
+
+echo "built patched llama.cpp in $build_dir"

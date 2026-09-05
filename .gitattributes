@@ -13,6 +13,7 @@
 *.md      text eol=lf
 *.sh      text eol=lf
 *.txt     text eol=lf
+*.patch   text eol=lf whitespace=-blank-at-eol
 justfile  text eol=lf
 
 # Binary formats git must never transform. .spm files are physical

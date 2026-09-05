@@ -1,0 +1,97 @@
+diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
+--- a/ggml/src/ggml-cpu/ggml-cpu.c
++++ b/ggml/src/ggml-cpu/ggml-cpu.c
+@@ -35,6 +35,10 @@
+ #include <syscall.h>
+ #endif
+ 
++#if defined(__linux__)
++#include <sys/mman.h>
++#include <unistd.h>
++#endif
++
+ #ifdef GGML_USE_OPENMP
+ #include <omp.h>
+ #endif
+@@ -1663,6 +1667,17 @@ static void ggml_compute_forward_mul_mat_id(
+ 
+     ggml_barrier(params->threadpool);
+ 
++    if (ith == 0 && getenv("GGML_MUL_MAT_ID_TRACE") != NULL) {
++        int64_t selected = 0;
++        for (int cur_a = 0; cur_a < n_as; ++cur_a) {
++            selected += matrix_row_counts[cur_a] != 0;
++        }
++        fprintf(stderr,
++                "spm_mmid tensor=%s activations=%" PRId64 " assignments=%" PRId64 " selected=%" PRId64 " expert_bytes=%zu logical_bytes=%zu\n",
++                src0->name, ids->ne[1], ids->ne[1] * n_ids, selected, nb02, (size_t) selected * nb02);
++    }
++
+     for (int cur_a = 0; cur_a < n_as; ++cur_a) {
+         const int64_t cne1 = matrix_row_counts[cur_a];
+ 
+@@ -1670,15 +1685,16 @@ static void ggml_compute_forward_mul_mat_id(
+             continue;
+         }
+ 
++        const char * src0_cur = (const char *) src0->data + cur_a * nb02;
++
+         if (iqp && ggml_cpu_iqp_mul_mat_id_min_batch(cne1)) {
+             ggml_compute_forward_mul_mat_id_iqp(params, dst, cur_a, cne1, (const int32_t *) &MMID_MATRIX_ROW(cur_a, 0),
+                                                 iqp_panels);
+ 
+-            continue;
++            goto release_expert;
+         }
+ 
+-        const char * src0_cur = (const char *) src0->data + cur_a * nb02;
+         const void * wdata = (src1->type == vec_dot_type) ? src1->data : params->wdata;
+         const size_t row_size = ggml_row_size(vec_dot_type, ne10);
+ 
+@@ -1733,6 +1738,24 @@ static void ggml_compute_forward_mul_mat_id(
+ 
+             current_chunk = atomic_fetch_add_explicit(current_chunk_ctr, 1, memory_order_relaxed);
+         }
++
++release_expert:;
++#if defined(__linux__)
++        // Experimental bounded-residency mode for read-only mmap-backed expert
++        // tensors. All workers finish this expert before its interior pages are
++        // made immediately reclaimable. Boundary pages remain mapped so this
++        // never discards bytes belonging to an adjacent expert.
++        ggml_barrier(params->threadpool);
++        if (ith == 0 && getenv("GGML_MUL_MAT_ID_DONTNEED") != NULL) {
++            const uintptr_t page = (uintptr_t) sysconf(_SC_PAGESIZE);
++            const uintptr_t begin = ((uintptr_t) src0_cur + page - 1) & ~(page - 1);
++            const uintptr_t end = ((uintptr_t) src0_cur + nb02) & ~(page - 1);
++            if (begin < end && madvise((void *) begin, end - begin, MADV_DONTNEED) != 0) {
++                fprintf(stderr, "warning: expert MADV_DONTNEED failed: %s\n", strerror(errno));
++            }
++        }
++        ggml_barrier(params->threadpool);
++#endif
+     }
+ }
+ 
+diff --git a/src/models/gemma4.cpp b/src/models/gemma4.cpp
+--- a/src/models/gemma4.cpp
++++ b/src/models/gemma4.cpp
+@@ -115,14 +115,14 @@ llama_model_gemma4::llama_model_gemma4(const llama_model_loader & ml) : llama_mo
+             layer.ffn_post_norm_2 = create_tensor(tn(LLM_TENSOR_FFN_POST_NORM_2, "weight", i), {n_embd}, 0);
+ 
+             // MoE FFN
+-            layer.ffn_gate_up_exps  = create_tensor(tn(LLM_TENSOR_FFN_GATE_UP_EXPS,  "weight", i), {n_embd, n_ff_exp * 2, n_expert}, TENSOR_NOT_REQUIRED);
++            layer.ffn_gate_up_exps  = create_tensor(tn(LLM_TENSOR_FFN_GATE_UP_EXPS,  "weight", i), {n_embd, n_ff_exp * 2, n_expert}, TENSOR_NOT_REQUIRED | TENSOR_READ_LAZY);
+ 
+             if (layer.ffn_gate_up_exps == nullptr) {
+-                layer.ffn_gate_exps = create_tensor(tn(LLM_TENSOR_FFN_GATE_EXPS, "weight", i), {n_embd, n_ff_exp, n_expert}, 0);
+-                layer.ffn_up_exps   = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS,   "weight", i), {n_embd, n_ff_exp, n_expert}, 0);
++                layer.ffn_gate_exps = create_tensor(tn(LLM_TENSOR_FFN_GATE_EXPS, "weight", i), {n_embd, n_ff_exp, n_expert}, TENSOR_READ_LAZY);
++                layer.ffn_up_exps   = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS,   "weight", i), {n_embd, n_ff_exp, n_expert}, TENSOR_READ_LAZY);
+             }
+ 
+-            layer.ffn_down_exps     = create_tensor(tn(LLM_TENSOR_FFN_DOWN_EXPS,     "weight", i), {n_ff_exp, n_embd, n_expert}, 0);
++            layer.ffn_down_exps     = create_tensor(tn(LLM_TENSOR_FFN_DOWN_EXPS,     "weight", i), {n_ff_exp, n_embd, n_expert}, TENSOR_READ_LAZY);
+ 
+             // per-expert scale will be loaded as down_exps_s at the end of the current switch case
+         }

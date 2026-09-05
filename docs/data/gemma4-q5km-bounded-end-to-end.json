@@ -1,0 +1,94 @@
+{
+  "schema": "emufpga.gemma4-offload-derived.v1",
+  "captured_utc": "2026-09-05T23:31:28.958Z",
+  "manifest": {
+    "schema": "emufpga.gemma4-offload.v1",
+    "model": "google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+    "sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+    "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+    "placement": "experts-cpu",
+    "lazy_mode": "on",
+    "gpu_layers": 999,
+    "prompt_tokens": 128,
+    "output_tokens": 16,
+    "runs": 3,
+    "energy_scope": "NVIDIA board only; not whole system"
+  },
+  "telemetry": {
+    "scope": "server load plus complete 1/2/4/8 request sweep; NVIDIA board energy only",
+    "samples": 613,
+    "elapsed_seconds": 200.12904691696167,
+    "peak_process_rss_mib": 15069.921875,
+    "mean_process_rss_mib": 9723.302304241435,
+    "minimum_process_rss_mib": 2612.0625,
+    "peak_vram_mib": 4172,
+    "peak_gpu_utilization_percent": 100,
+    "gpu_board_energy_joules": 4912.3690016937235
+  },
+  "requests": [
+    {
+      "concurrency": 1,
+      "runs": 3,
+      "requests": 3,
+      "correct": 3,
+      "generated_tokens": 48,
+      "aggregate_tps_mean": 1.7957902999020934,
+      "per_request_tps_mean": 1.7957902999020934,
+      "ttft_ms_p50": 6758.281627,
+      "ttft_ms_p95": 8821.517359000001,
+      "inter_token_ms_p50": 78.24413900000036,
+      "inter_token_ms_p95": 291.1975399999992
+    },
+    {
+      "concurrency": 2,
+      "runs": 3,
+      "requests": 6,
+      "correct": 6,
+      "generated_tokens": 96,
+      "aggregate_tps_mean": 2.5047409996273284,
+      "per_request_tps_mean": 1.2533736978347072,
+      "ttft_ms_p50": 9805.664485,
+      "ttft_ms_p95": 12846.58783,
+      "inter_token_ms_p50": 139.19162099999812,
+      "inter_token_ms_p95": 382.4088570000022
+    },
+    {
+      "concurrency": 4,
+      "runs": 3,
+      "requests": 12,
+      "correct": 12,
+      "generated_tokens": 192,
+      "aggregate_tps_mean": 3.661483350238207,
+      "per_request_tps_mean": 0.9176665899914739,
+      "ttft_ms_p50": 11187.070454,
+      "ttft_ms_p95": 17365.317965,
+      "inter_token_ms_p50": 249.267656,
+      "inter_token_ms_p95": 479.155709000006
+    },
+    {
+      "concurrency": 8,
+      "runs": 3,
+      "requests": 24,
+      "correct": 24,
+      "generated_tokens": 384,
+      "aggregate_tps_mean": 4.797429742122943,
+      "per_request_tps_mean": 0.5997584445072383,
+      "ttft_ms_p50": 20060.659727000002,
+      "ttft_ms_p95": 21043.020918999995,
+      "inter_token_ms_p50": 390.86121099999946,
+      "inter_token_ms_p95": 657.0639319999973
+    }
+  ],
+  "expert_trace": {
+    "scope": "logical selected-expert tensor bytes requested; not physical storage IO",
+    "operations": 11700,
+    "selected_experts": 206278,
+    "logical_bytes": 465092373504
+  },
+  "caveats": [
+    "Simple deterministic correctness probes are smoke tests, not a benchmark of model quality.",
+    "TTFT is client-observed; inter-token intervals are timestamps of streamed content events.",
+    "Energy excludes CPU, DRAM, storage, motherboard, fans, and PSU losses.",
+    "Experimental Linux mmap pages are reclaimed after native selected-expert operations; this is not an upstream llama.cpp feature."
+  ]
+}

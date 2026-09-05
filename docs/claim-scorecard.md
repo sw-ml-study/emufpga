@@ -4,10 +4,11 @@
 
 **Today emufpga proves that real Granite, OLMoE, and oversized Gemma-4 expert
 weights can be processed in selected serial order with bounded parameter
-residency and close agreement to direct same-quant paths; it does not yet prove
-complete, reliable generation from an oversized model on a small/old GPU.**
+residency and close agreement to direct same-quant paths. Oversized Gemma now
+completes a short end-to-end correctness smoke on the small GPU; coding-task
+reliability is not yet established.**
 
-> **Validated oversized-model end-to-end generation: not measured.**
+> **Preliminary oversized-model capacity success: measured. Coding reliability: not measured.**
 
 An “agent” must be an independent request stream, not several tokens from one
 prompt. A small deterministic task smoke suite has now been measured for the
@@ -27,6 +28,7 @@ conventional oversized baseline. Energy at the wall has not.
 | Gemma 4 Q5_K_M exceeds this GPU | **Measured capacity failure** | All-GPU allocation requested 18,409 MiB and failed on the 16,311 MiB RTX 5060 Ti |
 | Real Gemma Q5_K_M selected experts execute serially | **Measured layer mechanism** | Layer 0, batches 1/2/4/8; B8 collapses 64 assignments to 33 streams; max direct/stream error 0.00000381 |
 | GPU state plus CPU experts completes Gemma generation | **Measured partition bridge** | 1/2/4/8 short tasks correct; 4,170 MiB VRAM but 19,514.5 MiB RSS; conventional mapped tensors, not bounded serial supply |
+| Reclaimable selected-expert pages complete Gemma generation | **Measured preliminary capacity success** | Three 128+16 runs; 45/45 short tasks correct; 4,172 MiB VRAM; 15,070 MiB peak and 9,723 MiB mean RSS |
 | Oversized Gemma conventional offload serves independent requests | **Measured baseline smoke** | 20/30 layers on GPU; 128+16 tokens; 3 runs; aggregate 3.45/4.86/5.60/7.11 tok/s at 1/2/4/8 requests |
 | Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |
 | Lower-bit placement is automatically faster | **Measured negative** | Q2 CPU experts improve generation-only throughput at 1–4 requests, but 7–9× slower prefill reverses the end-to-end conclusion |
@@ -41,10 +43,11 @@ GPU and the CPU placement is not the project's ordered bounded stream. Gemma 4
 exceed the GPU capacity. Conventional 20-layer GPU offload now supplies the
 practical control: peak 13,592 MiB VRAM, 9,183 MiB process RSS, and 3.16 kJ of
 GPU-board energy over model load plus the complete request sweep. At four
-requests it provides 1.40 generated tok/s/request. Gemma's layer-0 experts now
-run through the serial path, but
-complete inference does not. The primary capacity proposition therefore
-remains unvalidated.
+requests it provides 1.40 generated tok/s/request. Gemma's layer-0 experts run
+through the standalone serial path, and complete inference succeeds through a
+Linux mmap reclamation prototype.
+This validates the short-contract capacity proposition, not coding reliability
+or the longer qualification.
 
 ## The experiment that validates the capacity claim
 
