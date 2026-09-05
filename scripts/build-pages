@@ -21,6 +21,8 @@ cp "$repo_dir/docs/data/granite-routing-analysis.json" "$output_dir/routing-anal
 cp "$repo_dir/docs/data/granite-timing.json" "$output_dir/granite-timing.json"
 cp "$repo_dir/docs/data/storage-tier-analysis.json" "$output_dir/storage-tier-analysis.json"
 cp "$repo_dir/docs/data/prefetch-analysis.json" "$output_dir/prefetch-analysis.json"
+cp "$repo_dir/docs/data/olmoe-q6-placement.json" "$output_dir/olmoe-q6-placement.json"
+cp "$repo_dir/docs/data/olmoe-q2-placement.json" "$output_dir/olmoe-q2-placement.json"
 touch "$output_dir/.nojekyll"
 
 build_host=$(hostname -s)

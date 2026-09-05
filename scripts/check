@@ -99,6 +99,8 @@ node scripts/check-prefetch-data.mjs
 node --check scripts/analyze-prefetch.mjs
 node --check scripts/analyze-granite-routing.mjs
 node --check scripts/analyze-granite-timing.mjs
+bash -n scripts/bench-olmoe-placement
+node --check scripts/analyze-olmoe-placement.mjs
 
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"

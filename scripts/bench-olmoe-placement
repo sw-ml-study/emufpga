@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Same-artifact OLMoE placement sweep. Raw logs and telemetry stay outside Git.
+# This measures synthetic batched throughput, not task correctness or TTFT.
+
+MODEL=${1:?usage: scripts/bench-olmoe-placement MODEL.gguf [OUTPUT_DIR]}
+OUT=${2:-/disk1/tmp/emufpga-olmoe-placement-$(date -u +%Y%m%dT%H%M%SZ)}
+LLAMA_BUILD=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
+LLAMA_SOURCE=${LLAMA_SOURCE:-/disk1/github/ggml-org/llama.cpp}
+BENCH=$LLAMA_BUILD/bin/llama-batched-bench
+RUNS=${RUNS:-3}
+PLACEMENTS=${PLACEMENTS:-all-gpu,experts-cpu}
+PROMPT_TOKENS=${PROMPT_TOKENS:-3840}
+GENERATED_TOKENS=${GENERATED_TOKENS:-256}
+PARALLEL=${PARALLEL:-1,2,4,8}
+
+case "$RUNS:$PROMPT_TOKENS:$GENERATED_TOKENS" in
+    *[!0-9:]*|:*|*::*|*:) echo "run and token counts must be positive integers" >&2; exit 2 ;;
+esac
+[ "$RUNS" -gt 0 ] && [ "$PROMPT_TOKENS" -gt 0 ] && [ "$GENERATED_TOKENS" -gt 0 ] || {
+    echo "run and token counts must be positive integers" >&2
+    exit 2
+}
+
+for tool in "$BENCH" jq nvidia-smi sha256sum; do
+    if [[ "$tool" == */* ]]; then
+        [ -x "$tool" ] || { echo "missing executable: $tool" >&2; exit 2; }
+    else
+        command -v "$tool" >/dev/null || { echo "missing executable: $tool" >&2; exit 2; }
+    fi
+done
+[ -f "$MODEL" ] || { echo "missing model: $MODEL" >&2; exit 2; }
+nvidia-smi >/dev/null || {
+    echo "NVIDIA device unavailable; refusing to label a CPU fallback as a GPU placement" >&2
+    exit 2
+}
+
+filename=$(basename "$MODEL")
+case "$filename" in
+    OLMoE-1B-7B-0125-Instruct-Q6_K.gguf)
+        expected=075a946cf693221a409054e86051b560ac688518476d2a87cc57c77a5103f224 ;;
+    OLMoE-1B-7B-0125-Instruct-Q2_K.gguf)
+        expected=56b07693cb296ba7bb8ca167d2fc2e71689cc4faa9c6a588bccaabdfb823991b ;;
+    *) echo "unrecognized, unpinned model filename: $filename" >&2; exit 2 ;;
+esac
+actual=$(sha256sum "$MODEL" | awk '{print $1}')
+[ "$actual" = "$expected" ] || { echo "model SHA-256 mismatch: $actual" >&2; exit 2; }
+
+mkdir -p "$OUT"
+printf '{"schema":"emufpga.olmoe-placement.v1","model":"%s","sha256":"%s","llama_revision":"%s","prompt_tokens":%s,"generated_tokens":%s,"parallel":"%s","runs":%s,"scope":"synthetic throughput; not TTFT, task correctness, or whole-system energy"}\n' \
+    "$filename" "$actual" "$(git -C "$LLAMA_SOURCE" rev-parse HEAD)" \
+    "$PROMPT_TOKENS" "$GENERATED_TOKENS" "$PARALLEL" "$RUNS" >"$OUT/manifest.json"
+: >"$OUT/results.jsonl"
+
+sample_gpu() {
+    local destination=$1
+    while :; do
+        nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu,power.draw \
+            --format=csv,noheader,nounits >>"$destination" || true
+        sleep 0.2
+    done
+}
+
+IFS=, read -ra placement_list <<<"$PLACEMENTS"
+for placement in "${placement_list[@]}"; do
+    case "$placement" in
+        all-gpu) override=() ;;
+        experts-cpu) override=(-ot '.*ffn_.*_exps\.weight=CPU') ;;
+        cpu-only) override=(-ngl 0) ;;
+        *) echo "unknown placement: $placement" >&2; exit 2 ;;
+    esac
+    for run in $(seq 1 "$RUNS"); do
+        nvidia-smi >/dev/null || {
+            echo "NVIDIA device disappeared before $placement run $run" >&2
+            exit 2
+        }
+        stem="$OUT/$placement-run-$run"
+        : >"$stem-gpu.csv"
+        sample_gpu "$stem-gpu.csv" &
+        sampler_pid=$!
+        trap 'kill "$sampler_pid" "${bench_pid:-}" 2>/dev/null || true' EXIT INT TERM
+        gpu_layers=(-ngl 999)
+        [ "$placement" = cpu-only ] && gpu_layers=()
+        "$BENCH" -m "$MODEL" "${gpu_layers[@]}" "${override[@]}" \
+            -c 32768 -b 2048 -ub 512 -npp "$PROMPT_TOKENS" -ntg "$GENERATED_TOKENS" \
+            -npl "$PARALLEL" --output-format jsonl >"$stem.log" 2>&1 &
+        bench_pid=$!
+        : >"$stem-rss-kib.csv"
+        while kill -0 "$bench_pid" 2>/dev/null; do
+            ps -o rss= -p "$bench_pid" >>"$stem-rss-kib.csv" || true
+            sleep 0.2
+        done
+        wait "$bench_pid"
+        if [ "$placement" != cpu-only ] &&
+            ! grep -q 'CUDA0 model buffer size' "$stem.log"; then
+            echo "$placement run $run did not load a CUDA model buffer; results are invalid" >&2
+            exit 2
+        fi
+        kill "$sampler_pid" 2>/dev/null || true
+        wait "$sampler_pid" 2>/dev/null || true
+        trap - EXIT INT TERM
+        unset bench_pid
+        while IFS= read -r row; do
+            jq -c --arg placement "$placement" --argjson run "$run" \
+                '. + {placement:$placement,run:$run}' <<<"$row" >>"$OUT/results.jsonl"
+        done < <(grep '^{' "$stem.log")
+    done
+done
+
+echo "results: $OUT"
+jq -s 'group_by([.placement,.pl]) | map({placement:.[0].placement,parallel:.[0].pl,runs:length,generation_tps:(map(.speed_tg)),prompt_tps:(map(.speed_pp)),total_seconds:(map(.t))})' \
+    "$OUT/results.jsonl"
