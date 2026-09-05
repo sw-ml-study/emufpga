@@ -1,0 +1,8 @@
+number = 20
+slug = "gemma4-reliability-residency"
+status = "pending"
+description = "Strengthen the preliminary Gemma-4 capacity result without making speed a suc..."
+role = "validation"
+context_files = []
+created_at = "2026-09-05T16:35:19"
+commits = []
