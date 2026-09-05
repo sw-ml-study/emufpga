@@ -100,6 +100,7 @@ node --check scripts/analyze-prefetch.mjs
 node --check scripts/analyze-granite-routing.mjs
 node --check scripts/analyze-granite-timing.mjs
 bash -n scripts/bench-olmoe-placement
+bash -n scripts/verify-olmoe-expert-smoke
 node --check scripts/analyze-olmoe-placement.mjs
 
 echo "=== Cargo.lock consistency ==="

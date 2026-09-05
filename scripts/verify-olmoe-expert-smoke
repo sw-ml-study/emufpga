@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Verify one real OLMoE Q6_K layer through both the direct GGUF oracle and the
+# bounded packed serial stream. This is an expert-layer check, not inference.
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+model=${OLMOE_Q6_MODEL:-/disk1/tmp/olmoe-1b-7b-0125/OLMoE-1B-7B-0125-Instruct-Q6_K.gguf}
+output=${OLMOE_EXPERT_SPM:-/disk1/tmp/olmoe-expert-smoke.spm}
+batch=${1:-1}
+expected=075a946cf693221a409054e86051b560ac688518476d2a87cc57c77a5103f224
+
+case "$batch" in
+    ''|*[!0-9]*) echo "batch must be a positive integer" >&2; exit 2 ;;
+esac
+[ "$batch" -gt 0 ] || { echo "batch must be a positive integer" >&2; exit 2; }
+[ -f "$model" ] || { echo "missing pinned OLMoE Q6_K model: $model" >&2; exit 2; }
+actual=$(sha256sum "$model" | awk '{print $1}')
+[ "$actual" = "$expected" ] || {
+    echo "OLMoE Q6_K SHA-256 mismatch: $actual" >&2
+    exit 2
+}
+
+export SPM_GRANITE_SELECTED_UNION=1
+exec cargo run --quiet --release --manifest-path "$root/components/cli/Cargo.toml" \
+    -p spm-granite-moe -- --expert-smoke "$model" "$output" "$batch"

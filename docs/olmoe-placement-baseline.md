@@ -8,7 +8,7 @@ length, and concurrency. Only placement changes:
 
 | Quant row | All GPU | Expert tensors in CPU RAM | Ordered serial experts |
 | --- | --- | --- | --- |
-| Q6_K | measure | measure | adapter not implemented |
+| Q6_K | measured | measured | layer-0 mechanism verified |
 | Q2_K | measure after Q6_K | measure after Q6_K | decoder not implemented |
 
 The middle column is a llama.cpp placement control. It keeps attention and KV
@@ -97,13 +97,49 @@ This is evidence for a capacity/performance trade, not yet for the proposed
 serial mechanism. It also warns against presenting generation-only throughput
 as service throughput: prefill reverses the apparent Q2_K conclusion.
 
+## Ordered Q6_K expert-stream mechanism
+
+The Rust implementation now obtains OLMoE's 2,048-wide, 1,024-wide-FFN,
+64-expert/top-8 shape from the GGUF architecture instead of assuming Granite's
+dimensions. `scripts/verify-olmoe-expert-smoke BATCH` verifies the pinned hash,
+creates deterministic bounded activations, routes them through the **real
+layer-0 router**, computes only the selected experts directly from GGUF as an
+oracle, writes those experts in ordered packed form, then replays that serial
+stream through the bounded Q6_K decoder. The two paths must agree within
+0.002; the measured batch-1 maximum error was 0.00000002.
+
+The 2026-09-04 scaling check produced the following single-run diagnostics:
+
+| Activations | Route assignments | Unique selected experts | Packed bytes | Read ms | Decode ms | Compute ms | Maximum error |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 8 | 8 | 42,607,424 | 15.376 | 35.722 | 266.264 | 0.00000002 |
+| 2 | 16 | 10 | 53,126,144 | 21.947 | 47.410 | 593.401 | 0.00000002 |
+| 4 | 32 | 15 | 79,422,944 | 28.546 | 66.972 | 797.308 | 0.00000003 |
+| 8 | 64 | 24 | 126,757,184 | 49.271 | 107.849 | 1,813.124 | 0.00000004 |
+
+At batch 8, grouping by expert turns 64 assignments into 24 unique expert
+streams for this deterministic sample: 2.67 activations per expert read on
+average. That is measured reuse in the isolated mechanism, not evidence that
+real prompts will produce the same routing distribution. The stream reader
+reported 256 resident parameter bytes and 132,352 bytes of peak input
+buffering at every batch; these figures describe this implementation's bounded
+decoder buffers, not total process RSS. Timings are diagnostic single samples,
+not performance claims.
+
+This establishes that real OLMoE Q6_K expert weights can be selected, ordered,
+read, decoded, and applied serially without holding the full expert store in
+the stream decoder. It does **not** establish full-model correctness, token
+generation, multi-layer scheduling, GPU/CPU overlap, SSD behavior, or a speed
+or energy advantage. Synthetic activations are used so this test isolates the
+expert mechanism from the as-yet-unimplemented OLMoE attention/model adapter.
+
 ## What is still missing
 
 1. Independent requests with correctness, TTFT, and inter-token percentiles.
 2. Whole-system wall energy. NVIDIA power samples cover only the GPU.
-3. An OLMoE adapter for the ordered Q6_K expert stream. The existing executable
-   hard-codes Granite's 1,024 width, 512 FF dimension, 32 experts, and 24 layers;
-   OLMoE uses 2,048 width, 1,024 FF dimension, 64 experts, and 16 layers.
+3. A full OLMoE model adapter connecting all 16 verified-shape expert layers to
+   attention, embeddings, normalization, and token generation. Only the
+   ordered layer-0 expert mechanism is currently verified.
 4. A validated Q2_K decoder and the ordered-serial placement column for Q2_K.
 
 Until items 1--3 exist, this is a measured placement baseline, not validation

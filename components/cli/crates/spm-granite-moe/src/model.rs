@@ -2,6 +2,7 @@ use crate::{
     attention, layout,
     math::{add_scaled, rms_norm, top_k},
     moe::{self, Trace},
+    shape::{self, GRANITE},
     weights,
 };
 use spm_gguf::Content;
@@ -173,6 +174,7 @@ macro_rules! run_spm_layer {
                 $normalized,
                 $trace,
                 $layer,
+                GRANITE,
             )?;
             let schedule = if env::var_os("SPM_GRANITE_SELECTED_UNION").is_some() {
                 "selected-union"
@@ -350,7 +352,7 @@ fn block(
     if layer == 0 {
         compare(reference, "ffn_norm-0", &normalized.concat(), 2.0)?;
     }
-    let trace = moe::run(path, content, &normalized, layer)?;
+    let trace = moe::run(path, content, &normalized, layer, GRANITE)?;
     record_routing!(full, &trace, layer);
     let mut moe_output = trace.output.clone();
     if layer == 0 {
@@ -369,6 +371,17 @@ pub fn run(path: &Path, tokens: &[usize]) -> Result<(), String> {
         return Err("at least one token is required".into());
     }
     let content = spm_gguf::read(path)?;
+    let architecture = content
+        .metadata
+        .get("general.architecture")
+        .ok_or("GGUF has no general.architecture")?;
+    let shape = shape::for_architecture(architecture)
+        .ok_or_else(|| format!("unsupported MoE architecture {architecture}"))?;
+    if shape != GRANITE {
+        return Err(format!(
+            "{architecture} expert shape is recognized, but its full-model adapter is not implemented"
+        ));
+    }
     let reference_dir = env::var_os("SPM_GRANITE_REFERENCE_DIR").map(PathBuf::from);
     let mut hidden = embeddings(path, &content, tokens)?;
     let mut full = FullReport::default();
