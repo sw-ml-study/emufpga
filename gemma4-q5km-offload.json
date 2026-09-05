@@ -1,0 +1,84 @@
+{
+  "schema": "emufpga.gemma4-offload-derived.v1",
+  "captured_utc": "2026-09-05T15:59:35.196Z",
+  "manifest": {
+    "schema": "emufpga.gemma4-offload.v1",
+    "model": "google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+    "sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+    "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+    "gpu_layers": 20,
+    "prompt_tokens": 128,
+    "output_tokens": 16,
+    "runs": 3,
+    "energy_scope": "NVIDIA board only; not whole system"
+  },
+  "telemetry": {
+    "scope": "server load plus complete 1/2/4/8 request sweep; NVIDIA board energy only",
+    "samples": 369,
+    "elapsed_seconds": 123.20107936859131,
+    "peak_process_rss_mib": 9182.88671875,
+    "peak_vram_mib": 13592,
+    "peak_gpu_utilization_percent": 100,
+    "gpu_board_energy_joules": 3162.28344545245
+  },
+  "requests": [
+    {
+      "concurrency": 1,
+      "runs": 3,
+      "requests": 3,
+      "correct": 3,
+      "generated_tokens": 48,
+      "aggregate_tps_mean": 3.4473637999259332,
+      "per_request_tps_mean": 3.4473637999259332,
+      "ttft_ms_p50": 3614.664094,
+      "ttft_ms_p95": 3908.152271000001,
+      "inter_token_ms_p50": 66.1023890000015,
+      "inter_token_ms_p95": 149.27937699999984
+    },
+    {
+      "concurrency": 2,
+      "runs": 3,
+      "requests": 6,
+      "correct": 6,
+      "generated_tokens": 96,
+      "aggregate_tps_mean": 4.86362590923219,
+      "per_request_tps_mean": 2.43229834937695,
+      "ttft_ms_p50": 3833.674547,
+      "ttft_ms_p95": 4633.1014989999985,
+      "inter_token_ms_p50": 162.50493400000005,
+      "inter_token_ms_p95": 260.84605700000066
+    },
+    {
+      "concurrency": 4,
+      "runs": 3,
+      "requests": 12,
+      "correct": 12,
+      "generated_tokens": 192,
+      "aggregate_tps_mean": 5.599115120714074,
+      "per_request_tps_mean": 1.4016710354217397,
+      "ttft_ms_p50": 6194.082197,
+      "ttft_ms_p95": 9874.707158000001,
+      "inter_token_ms_p50": 295.68542700000035,
+      "inter_token_ms_p95": 359.07657499999914
+    },
+    {
+      "concurrency": 8,
+      "runs": 3,
+      "requests": 24,
+      "correct": 21,
+      "generated_tokens": 384,
+      "aggregate_tps_mean": 7.11323933853414,
+      "per_request_tps_mean": 0.8893356647933679,
+      "ttft_ms_p50": 11500.407989,
+      "ttft_ms_p95": 11884.236517,
+      "inter_token_ms_p50": 439.891091999998,
+      "inter_token_ms_p95": 524.4987940000065
+    }
+  ],
+  "caveats": [
+    "Simple deterministic correctness probes are smoke tests, not a benchmark of model quality.",
+    "TTFT is client-observed; inter-token intervals are timestamps of streamed content events.",
+    "Energy excludes CPU, DRAM, storage, motherboard, fans, and PSU losses.",
+    "The conventional control keeps 20 of 30 repeating layers on GPU; it is not ordered expert streaming."
+  ]
+}

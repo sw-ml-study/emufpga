@@ -86,6 +86,22 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadGemmaGraphic() {
+    const target = document.getElementById("gemma-graphic");
+    const parallel = document.getElementById("gemma-parallel");
+    if (!target || !parallel) return;
+    try {
+      const data = await fetch("gemma4-q5km-offload.json").then(r => r.json());
+      const render = () => {
+        const row = data.requests.find(item => item.concurrency === Number(parallel.value));
+        const pass = `${row.correct}/${row.requests} task answers start correctly`;
+        target.innerHTML = `<div class="placement-callout"><strong>${row.aggregate_tps_mean.toFixed(2)} aggregate tok/s</strong><span>${row.per_request_tps_mean.toFixed(2)} tok/s per request</span></div><div class="metric-sheet"><h3>Throughput <small>${parallel.value} request${parallel.value === "1" ? "" : "s"}</small></h3>${placementBar("Aggregate", row.aggregate_tps_mean, 8, "tok/s", "gpu")}${placementBar("Per request", row.per_request_tps_mean, 4, "tok/s", "cpu")}</div><div class="metric-sheet"><h3>Client-observed latency <small>p50 / p95</small></h3>${placementBar("TTFT p50", row.ttft_ms_p50 / 1000, 13, "s", "gpu")}${placementBar("TTFT p95", row.ttft_ms_p95 / 1000, 13, "s", "cpu")}</div><div class="placement-detail"><span>Correctness: <b>${pass}</b></span><span>Peak: <b>${(data.telemetry.peak_vram_mib / 1024).toFixed(2)} GiB VRAM</b> · <b>${(data.telemetry.peak_process_rss_mib / 1024).toFixed(2)} GiB RSS</b></span></div>`;
+      };
+      parallel.addEventListener("change", render);
+      render();
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -93,6 +109,7 @@
     if (firstLesson) selectLesson(firstLesson);
     loadBuildInfo();
     loadPlacementGraphic();
+    loadGemmaGraphic();
   });
 
   return { LESSONS, summarizePlacement };
