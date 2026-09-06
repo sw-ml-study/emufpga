@@ -116,10 +116,31 @@ generated correct answers:
   amortization.
 - The `sm_86` build ran with zero CUDA errors or kernel-launch failures.
 
-Not yet run on this box (optional follow-ups, not required for the
-capacity claim): the reclaimed-vs-resident logit A/B (`MADV_DONTNEED`
-policy), the 256-token executable-code sweep, and a cold-cache campaign
-(needs `drop_caches`, i.e. sudo).
+### Reclaimed vs resident logit equivalence (same binary)
+
+The logit probe (`tools/llama-logits`) evaluated one fixed prompt twice
+through the same `sm_86` patched binary and native Q5_K_M kernels, lazy
+mode on, `-ngl 999`: the control left selected expert mmap pages
+resident; the candidate called `MADV_DONTNEED` after each expert
+(`GGML_MUL_MAT_ID_DONTNEED=1`).
+
+| Property | Result |
+| --- | --- |
+| Raw final-logit array | 262,144 floats = 1,048,576 bytes (both) |
+| SHA-256 (resident) | `2c79d245e43865fc9ece2ea00fc0aadf4c66d1cdce45e193bbeaaa8ef4f786f6` |
+| SHA-256 (reclaimed) | identical |
+| Bit-for-bit identical | YES (`cmp` clean; top-10 tokens/logits match to the hex bit pattern) |
+| Peak VRAM during probe | 2188 MiB |
+
+This reproduces the 5060 lane's finding -- reclamation does not perturb a
+single final-logit bit -- now on Ampere `sm_86`. The absolute SHA differs
+from the 5060 lane only because the prompt differs; the invariant under
+test is resident-vs-reclaimed equality within one binary, which holds.
+Derived data: [gemma4-q5km-logit-equivalence-rtx3060.json](data/gemma4-q5km-logit-equivalence-rtx3060.json).
+
+Still not run on this box: a cold-cache campaign (`bench-gemma4-cold-io`,
+which needs `drop_caches` / sudo). The 256-token executable-code sweep is
+recorded separately below once it completes.
 
 ## Expectations (to be confirmed or refuted, not assumed)
 

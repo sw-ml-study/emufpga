@@ -1,0 +1,13 @@
+{
+  "schema": "emufpga.gemma4-logit-equivalence-rtx3060.v1",
+  "hardware": "RTX 3060 12G (Ampere sm_86)",
+  "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+  "cuda_arch": "86",
+  "config": { "gpu_layers": 999, "lazy_mode": "on", "prompt_note": "single fixed prompt; not the 5060 lane's prompt" },
+  "logit_bytes": 1048576,
+  "logit_floats": 262144,
+  "sha256_resident": "2c79d245e43865fc9ece2ea00fc0aadf4c66d1cdce45e193bbeaaa8ef4f786f6",
+  "sha256_reclaimed": "2c79d245e43865fc9ece2ea00fc0aadf4c66d1cdce45e193bbeaaa8ef4f786f6",
+  "bit_identical": true,
+  "peak_vram_mib_during_probe": 2188
+}
