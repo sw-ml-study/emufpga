@@ -728,6 +728,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "spm-file-residency"
+version = "0.1.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "spm-gemv-ref"
 version = "0.1.0"
 dependencies = [

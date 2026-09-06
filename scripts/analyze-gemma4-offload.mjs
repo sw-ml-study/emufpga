@@ -40,6 +40,18 @@ const requestRecords = summaries.flatMap((summary) => {
     ? fs.readFileSync(requestPath, "utf8").trim().split("\n").filter(Boolean).map(JSON.parse)
     : [];
 });
+const snapshotsPath = path.join(input, "io-snapshots.jsonl");
+const snapshots = fs.existsSync(snapshotsPath)
+  ? fs.readFileSync(snapshotsPath, "utf8").trim().split("\n").filter(Boolean).map(JSON.parse)
+  : [];
+const startupPath = path.join(input, "startup-io.json");
+const startupIo = fs.existsSync(startupPath)
+  ? JSON.parse(fs.readFileSync(startupPath, "utf8"))
+  : null;
+const derivedStartupIo = startupIo === null ? null : {
+  ...startupIo,
+  device_read_bytes_upper_bound: startupIo.device_read_sectors_delta * startupIo.sector_bytes,
+};
 const gradedRequests = requestRecords.map((record) => {
   const task = tasks[record.request_id - 1];
   if (typeof record.passed === "boolean") return record;
@@ -55,6 +67,38 @@ const expertOps = [...serverLog.matchAll(/^spm_mmid (?:timestamp_s=([0-9.]+) )?.
   activations: Number(match[2]), assignments: Number(match[3]), selected: Number(match[4]),
   expertBytes: Number(match[5]), logicalBytes: Number(match[6]),
 }));
+const ioTrials = snapshots.filter(item => item.event === "start").map((start) => {
+  const end = snapshots.find(item => item.event === "end" &&
+    item.concurrency === start.concurrency && item.run === start.run);
+  if (!end) throw new Error(`missing I/O end snapshot for concurrency ${start.concurrency} run ${start.run}`);
+  const records = gradedRequests.filter(item => item.concurrency === start.concurrency && item.run === start.run);
+  const generatedTokens = records.reduce((sum, item) => sum + (item.output_tokens ?? 0), 0);
+  const serverReadBytes = end.server_read_bytes - start.server_read_bytes;
+  const deviceReadIos = end.device_read_ios - start.device_read_ios;
+  const deviceReadBytes = (end.device_read_sectors - start.device_read_sectors) * 512;
+  const timedOps = expertOps.filter(item => item.seconds !== null &&
+    item.seconds >= start.timestamp_ms / 1000 && item.seconds <= end.timestamp_ms / 1000);
+  return {
+    concurrency: start.concurrency,
+    run: start.run,
+    cache_mode: start.cache_mode,
+    elapsed_ms: end.timestamp_ms - start.timestamp_ms,
+    request_wall_ms_max: Math.max(...records.map(item => item.wall_ms)),
+    generated_tokens: generatedTokens,
+    passed: records.filter(item => item.passed).length,
+    server_read_bytes: serverReadBytes,
+    device_read_ios_upper_bound: deviceReadIos,
+    device_read_bytes_upper_bound: deviceReadBytes,
+    device_average_read_bytes_upper_bound: deviceReadIos === 0 ? null : deviceReadBytes / deviceReadIos,
+    server_read_bytes_per_token: generatedTokens === 0 ? null : serverReadBytes / generatedTokens,
+    device_read_bytes_per_token_upper_bound: generatedTokens === 0 ? null : deviceReadBytes / generatedTokens,
+    minor_faults: end.minor_faults - start.minor_faults,
+    major_faults: end.major_faults - start.major_faults,
+    resident_bytes_start: start.residency?.resident_bytes ?? null,
+    resident_bytes_end: end.residency?.resident_bytes ?? null,
+    expert_trace: summarizeExpertOps(timedOps),
+  };
+});
 function summarizeSamples(samples) {
   if (samples.length === 0) return null;
   const result = {
@@ -141,6 +185,14 @@ const result = {
       ...summarizeExpertOps(expertOps.filter((item) => item.seconds >= phase.start && item.seconds <= phase.end)),
     })),
   },
+  physical_io: snapshots.length === 0 ? null : {
+    scope: "llama-server /proc I/O attribution plus whole model-partition sector deltas around inference only",
+    model_source: manifest.model_source,
+    model_device_stat: manifest.model_device_stat,
+    sector_bytes: 512,
+    startup: derivedStartupIo,
+    trials: ioTrials,
+  },
   caveats: [
     manifest.client === "bench-gemma4-rust-code.mjs"
       ? "Eight dependency-free functions are bounded executable evidence, not a repository-scale coding-agent benchmark."
@@ -153,6 +205,10 @@ const result = {
     ]),
     "Zero process read_bytes can mean mmap faults were served from warm page cache; it does not prove zero memory traffic or zero prior device IO.",
     "Energy excludes CPU, DRAM, storage, motherboard, fans, and PSU losses.",
+    ...(snapshots.length === 0 ? [] : [
+      "Whole-device sector deltas are upper bounds because the model device is shared; server /proc read_bytes is the attributable counter.",
+      "Per-file POSIX_FADV_DONTNEED is used for cold trials; global drop_caches is never used.",
+    ]),
     manifest.expert_reclaim
       ? "Experimental Linux mmap pages are reclaimed after native selected-expert operations; this is not an upstream llama.cpp feature."
       : "Selected expert mappings are left resident as the control memory policy.",

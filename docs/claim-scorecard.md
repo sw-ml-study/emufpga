@@ -35,6 +35,10 @@ conventional oversized baseline. Energy at the wall has not.
 | The ~15 GiB RSS peak is runtime allocation | **Measured negative** | New peak was 14,316 MiB: 13,486 MiB file-backed versus 815 MiB anonymous; mapped weight pages dominate |
 | Text-only concurrent coding smoke is reliable | **Mixed / insufficient** | Expected answer appeared in 13/15 responses, but strict “only expression” compliance was 0/15; no compilation or tests |
 | Reclamation preserves bounded executable coding results | **Measured, small corpus** | Resident and reclaimed policies each compiled and passed 30/30; zero paired outcome disagreements; 28/30 exact-text matches |
+| Lazy experts avoid full cold model startup residency | **Measured, one HDD pilot** | Patched load read 3.83 GB at startup versus the ordinary loader's complete 19.32 GB; zero pages resident before each cold start |
+| Cold mmap faults form an efficient serial HDD stream | **Measured negative, one pilot** | One request read 8.12 GB as 1,982,353 separate 4 KiB I/Os and took 155--172 s |
+| Expert page reclamation reduces cold physical bytes | **Measured negative, one pilot** | Retained and reclaimed policies each physically read exactly 8,119,717,888 request bytes; reclamation reduced peak RSS from 11.93 to 10.44 GiB but added latency |
+| A repacked sequential SAS stream beats mmap paging | **Not measured** | Dedicated one-HDD, parallel-SAS, HDD+SSD-cache, and SSD-control experiment queued |
 | Oversized Gemma conventional offload serves independent requests | **Measured baseline smoke** | 20/30 layers on GPU; 128+16 tokens; 3 runs; aggregate 3.45/4.86/5.60/7.11 tok/s at 1/2/4/8 requests |
 | Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |
 | Lower-bit placement is automatically faster | **Measured negative** | Q2 CPU experts improve generation-only throughput at 1–4 requests, but 7–9× slower prefill reverses the end-to-end conclusion |
@@ -55,6 +59,15 @@ Linux mmap reclamation prototype.
 This validates the short-contract capacity proposition and finds no reliability
 regression on eight small executable Rust functions. It does not validate
 repository-scale coding agents or the longer qualification.
+
+The first physical-I/O pilot sharpens the claim. On the HGST HDD, the ordinary
+loader read the complete 19.32 GB file before serving. Lazy expert marking cut
+startup reads to 3.83 GB, then one correct 62-token request fetched 8.12 GB.
+Those request bytes arrived as 1,982,353 separate 4 KiB reads, so this is a
+demand-paging baseline rather than the proposed sequential stream. Reclamation
+lowered process RSS but did not lower physical bytes on the unconstrained host.
+A purpose-built execution-order layout on HDD/SAS with an SSD hot tier remains
+to be tested.
 
 The newer residency sweep explains the large RSS rather than eliminating it.
 At concurrency 1/2/4/8, peak RSS was 11,889/12,180/13,141/14,316 MiB, while

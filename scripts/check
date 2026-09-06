@@ -104,6 +104,7 @@ bash -n scripts/verify-olmoe-expert-smoke
 bash -n scripts/verify-gemma4-expert-smoke
 bash -n scripts/build-llama-gemma4-lazy-experts
 bash -n scripts/bench-gemma4-offload
+bash -n scripts/gemma4-file-residency
 node --check scripts/analyze-olmoe-placement.mjs
 node --check scripts/bench-gemma4-requests.mjs
 node --check scripts/analyze-gemma4-offload.mjs
@@ -113,6 +114,7 @@ node --check scripts/evaluate-rust-candidate.mjs
 node --check scripts/compare-gemma4-code.mjs
 node --check scripts/regrade-gemma4-code.mjs
 node scripts/check-gemma4-code-data.mjs
+node scripts/check-cold-io-data.mjs
 
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"

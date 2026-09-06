@@ -11,6 +11,7 @@ client=${CLIENT:-$root/scripts/bench-gemma4-requests.mjs}
 out=${1:-/disk1/tmp/emufpga-gemma4-$(date -u +%Y%m%dT%H%M%SZ)}
 build=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
 server=$build/bin/llama-server
+cpu_library=$(readlink -f "$build/bin/libggml-cpu.so")
 port=${PORT:-8091}
 runs=${RUNS:-3}
 prompt_tokens=${PROMPT_TOKENS:-128}
@@ -21,6 +22,9 @@ placement=${PLACEMENT:-layer-offload}
 lazy_mode=${LAZY_MODE:-off}
 expected_sha=6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493
 expert_reclaim=false
+cache_plan=${CACHE_PLAN:-}
+cache_before_load=${CACHE_BEFORE_LOAD:-untouched}
+warmup=${WARMUP:-on}
 [ -n "${GGML_MUL_MAT_ID_DONTNEED:-}" ] && expert_reclaim=true
 
 for value in "$runs" "$prompt_tokens" "$output_tokens" "$gpu_layers"; do
@@ -31,24 +35,59 @@ done
     exit 2
 }
 [ -x "$server" ] || { echo "missing llama-server: $server" >&2; exit 2; }
+[ -f "$cpu_library" ] || { echo "missing llama CPU library: $cpu_library" >&2; exit 2; }
 [ -f "$model" ] || { echo "missing Gemma-4 model: $model" >&2; exit 2; }
 [ -f "$tasks" ] || { echo "missing task corpus: $tasks" >&2; exit 2; }
 [ -f "$client" ] || { echo "missing request client: $client" >&2; exit 2; }
 nvidia-smi >/dev/null || { echo "NVIDIA device unavailable" >&2; exit 2; }
 actual_sha=$(sha256sum "$model" | awk '{print $1}')
 [ "$actual_sha" = "$expected_sha" ] || { echo "Gemma-4 SHA-256 mismatch: $actual_sha" >&2; exit 2; }
+server_sha=$(sha256sum "$server" | awk '{print $1}')
+cpu_library_sha=$(sha256sum "$cpu_library" | awk '{print $1}')
 
 mkdir -p "$out"
 revision=$(git -C /disk1/github/ggml-org/llama.cpp rev-parse HEAD)
+model_source=$(findmnt -n -o SOURCE -T "$model")
+model_target=$(findmnt -n -o TARGET -T "$model")
+model_fstype=$(findmnt -n -o FSTYPE -T "$model")
+model_identity=$(stat -c '%d:%i:%s' "$model")
+model_device=${model_source%%[*}
+model_partition=$(lsblk -n -o KNAME "$model_device")
+device_stat=/sys/class/block/$model_partition/stat
+[ -r "$device_stat" ] || { echo "missing device statistics: $device_stat" >&2; exit 2; }
+[ -x "$root/target/release/spm-file-residency" ] || {
+    (cd "$root/components/cli" && "$root/scripts/serial.sh" cargo build --release -p spm-file-residency)
+}
+if [ -n "$cache_plan" ]; then
+    IFS=, read -ra cache_values <<<"$cache_plan"
+    [ "${#cache_values[@]}" -eq "$runs" ] || {
+        echo "CACHE_PLAN must contain exactly RUNS entries" >&2
+        exit 2
+    }
+    for cache_value in "${cache_values[@]}"; do
+        case "$cache_value" in cold|warm) ;; *) echo "invalid CACHE_PLAN: $cache_plan" >&2; exit 2 ;; esac
+    done
+fi
+case "$cache_before_load" in cold|warm|untouched) ;; *) echo "invalid CACHE_BEFORE_LOAD: $cache_before_load" >&2; exit 2 ;; esac
+case "$warmup" in on) warmup_args=() ;; off) warmup_args=(--no-warmup) ;; *) echo "invalid WARMUP: $warmup" >&2; exit 2 ;; esac
 case "$placement" in
     layer-offload) override=() ;;
     experts-cpu) override=(-ot '.*ffn_.*_exps\.weight=CPU') ;;
     *) echo "unknown PLACEMENT: $placement" >&2; exit 2 ;;
 esac
-printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","placement":"%s","lazy_mode":"%s","expert_reclaim":%s,"gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"tasks":"%s","client":"%s","energy_scope":"NVIDIA board only; not whole system"}\n' \
-    "$(basename "$model")" "$actual_sha" "$revision" "$placement" "$lazy_mode" "$expert_reclaim" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" "$(basename "$tasks")" "$(basename "$client")" >"$out/manifest.json"
+printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","model_path":"%s","sha256":"%s","model_identity":"%s","model_source":"%s","model_mount":"%s","model_fstype":"%s","model_device_stat":"%s","llama_revision":"%s","llama_build":"%s","server_sha256":"%s","cpu_library_sha256":"%s","placement":"%s","lazy_mode":"%s","expert_reclaim":%s,"warmup":"%s","cache_before_load":"%s","cache_plan":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"tasks":"%s","client":"%s","energy_scope":"NVIDIA board only; not whole system"}\n' \
+    "$(basename "$model")" "$model" "$actual_sha" "$model_identity" "$model_source" "$model_target" "$model_fstype" "$device_stat" "$revision" "$build" "$server_sha" "$cpu_library_sha" "$placement" "$lazy_mode" "$expert_reclaim" "$warmup" "$cache_before_load" "$cache_plan" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" "$(basename "$tasks")" "$(basename "$client")" >"$out/manifest.json"
 
-"$server" -m "$model" -ngl "$gpu_layers" "${override[@]}" --lazy-mode "$lazy_mode" -c 4096 -np 8 \
+if [ "$cache_before_load" = cold ]; then
+    "$root/scripts/gemma4-file-residency" evict >"$out/cache-before-load.json"
+else
+    "$root/target/release/spm-file-residency" status "$model" >"$out/cache-before-load.json"
+fi
+startup_started=$(date +%s.%N)
+startup_read_ios_before=$(awk '{print $1}' "$device_stat")
+startup_sectors_before=$(awk '{print $3}' "$device_stat")
+
+"$server" -m "$model" -ngl "$gpu_layers" "${override[@]}" --lazy-mode "$lazy_mode" "${warmup_args[@]}" -c 4096 -np 8 \
     --host 127.0.0.1 --port "$port" -lv 1 >"$out/server.log" 2>&1 &
 server_pid=$!
 cleanup() {
@@ -63,6 +102,15 @@ for _ in $(seq 1 180); do
     sleep 1
 done
 curl -fsS "http://127.0.0.1:$port/health" >/dev/null || { echo "llama-server not ready" >&2; exit 1; }
+startup_ended=$(date +%s.%N)
+startup_read_ios_after=$(awk '{print $1}' "$device_stat")
+startup_sectors_after=$(awk '{print $3}' "$device_stat")
+startup_read_bytes=$(awk '/^read_bytes:/{print $2}' "/proc/$server_pid/io")
+read -r startup_minor_faults startup_major_faults < <(awk '{print $10, $12}' "/proc/$server_pid/stat")
+startup_residency=$("$root/target/release/spm-file-residency" status "$model")
+printf '{"schema":"emufpga.gemma4-startup-io.v1","started_s":%s,"ended_s":%s,"cache_before_load":"%s","server_read_bytes":%s,"minor_faults":%s,"major_faults":%s,"device_read_ios_delta":%s,"device_read_sectors_delta":%s,"sector_bytes":512,"residency_before":%s,"residency_after":%s}\n' \
+    "$startup_started" "$startup_ended" "$cache_before_load" "$startup_read_bytes" "$startup_minor_faults" "$startup_major_faults" "$((startup_read_ios_after - startup_read_ios_before))" "$((startup_sectors_after - startup_sectors_before))" \
+    "$(cat "$out/cache-before-load.json")" "$startup_residency" >"$out/startup-io.json"
 
 (
     printf 'timestamp_s,rss_kib,rss_anon_kib,rss_file_kib,pss_kib,pss_anon_kib,pss_file_kib,read_bytes,rchar,gpu_memory_mib,gpu_util_percent,gpu_power_w\n'
@@ -86,12 +134,17 @@ curl -fsS "http://127.0.0.1:$port/health" >/dev/null || { echo "llama-server not
 sampler_pid=$!
 
 : >"$out/summaries.jsonl"
+: >"$out/io-snapshots.jsonl"
 printf 'timestamp_s,concurrency,event\n' >"$out/phases.csv"
 IFS=, read -ra concurrency_values <<<"$concurrencies"
 for concurrency in "${concurrency_values[@]}"; do
     case "$concurrency" in ''|*[!0-9]*) echo "invalid CONCURRENCIES: $concurrencies" >&2; exit 2 ;; esac
     printf '%s,%s,start\n' "$(date +%s.%N)" "$concurrency" >>"$out/phases.csv"
-    node "$client" "http://127.0.0.1:$port" \
+    SERVER_PID=$server_pid GEMMA4_MODEL=$model MODEL_DEVICE_STAT=$device_stat \
+        CACHE_PLAN=$cache_plan TRIAL_METRICS=$out/io-snapshots.jsonl \
+        RESIDENCY_TOOL=$root/target/release/spm-file-residency \
+        CACHE_EVICT_TOOL=$root/scripts/gemma4-file-residency \
+        node "$client" "http://127.0.0.1:$port" \
         "$out/requests-$concurrency.jsonl" "$tasks" \
         "$prompt_tokens" "$output_tokens" "$concurrency" "$runs" >>"$out/summaries.jsonl"
     printf '%s,%s,end\n' "$(date +%s.%N)" "$concurrency" >>"$out/phases.csv"

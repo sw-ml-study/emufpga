@@ -202,6 +202,204 @@ The next measurements must identify the active bottleneck before selecting a
 different server or accelerator. Otherwise a faster component may optimize a
 stage that is already waiting on another one.
 
+## Can expert subsets make a model larger than RAM plus VRAM run?
+
+Yes, provided the non-weight working set still fits. A bounded implementation
+does not need every expert resident simultaneously. At each MoE layer it can:
+
+1. compute routing for a batch of token activations;
+2. group those activations by selected expert;
+3. load one expert, or a small expert subset, from SSD;
+4. apply it to every activation that selected it;
+5. accumulate each token's weighted result;
+6. release those expert weights and load the next subset; and
+7. continue once all selected experts for the layer are complete.
+
+The model file can therefore be larger than RAM plus VRAM because SSD is the
+backing store and only a bounded expert window is resident. This does not remove
+every capacity constraint. Shared dense layers, routing state, execution
+buffers, activations, and the KV caches for all active requests must fit in RAM
+or VRAM. Tiering KV cache to storage is possible in principle but would add a
+different, latency-sensitive stream and is likely much more expensive than
+streaming immutable expert weights.
+
+### Is this different from llama.cpp using SSD-backed mmap?
+
+Yes, although both ultimately may read model bytes from SSD. llama.cpp normally
+memory-maps a GGUF file. Linux faults file-backed pages into its page cache on
+demand and may evict them under memory pressure. If those pages are needed
+again, they are read again. This is demand paging rather than an explicitly
+scheduled expert stream. Anonymous swap is a separate mechanism and would be a
+particularly undesirable fallback for runtime state.
+
+The proposed batching policy knows the selected experts and can deliberately
+order the work. It may therefore:
+
+- issue larger, ordered reads instead of many reactive page faults;
+- load an expert once and apply it to several request activations;
+- prefetch the next expert while computing the current one;
+- explicitly limit the expert working set; and
+- avoid retaining cold experts merely because the OS has spare page cache.
+
+In simplified terms:
+
+```text
+uncoordinated demand ~= sum of expert fetches made by each request
+coordinated demand   ~= unique expert bytes needed by the whole batch
+fetch reuse          ~= expert assignments / unique experts fetched
+```
+
+For example, if eight requests make 64 expert assignments at a layer but those
+assignments cover 32 unique experts, a perfectly coordinated implementation
+gets about two expert uses per fetch. This example explains the mechanism; it
+is not a claim that every layer or real workload achieves that overlap.
+
+### Will coordinated streaming beat ordinary SSD paging?
+
+For one request, probably not. mmap and the Linux page cache are mature, and
+the current reclaimed implementation is already slower than resident offload.
+
+At useful concurrency it may beat uncoordinated demand paging if routing
+overlap is high, work is grouped by expert, reads remain ordered, prefetch
+overlaps computation, and the compute engines keep up with storage. It may lose
+if routing overlap is low, batch formation adds excessive delay, the same
+experts are reloaded frequently, or SSD bandwidth and latency dominate.
+
+The honest status is:
+
+- execution with model weights larger than RAM plus VRAM is architecturally
+  plausible;
+- better performance than uncontrolled SSD paging is plausible with batching;
+- neither claim has yet been demonstrated end to end on this model; and
+- current measurements show reduced RAM residency but worse latency.
+
+The cold-cache qualification must measure physical SSD bytes for resident and
+reclaimed policies. A later bounded-batching test must compare ordinary mmap
+paging with coordinated expert loading under a memory limit where conventional
+residency cannot succeed. The intended payoff is not necessarily a faster
+single request. It is enabling an otherwise impossible model, then amortizing
+weight reads across enough concurrent agents to provide an acceptable aggregate
+work rate.
+
+### First physical-I/O pilot: an important negative control
+
+The pinned GGUF currently resides on one HGST spinning disk. A per-file
+`POSIX_FADV_DONTNEED` probe verified zero resident pages before each cold
+startup; global cache eviction was not used.
+
+An ordinary llama.cpp build read the entire 19.32 GB GGUF during cold startup,
+took 83.8 seconds to become ready, and made every model page resident. Disabling
+the inference warmup did not change that behavior. It is therefore a useful
+conventional cold-loader control, but cannot enable a model larger than host
+memory.
+
+The patched lazy-expert build changed the split materially:
+
+| One cold request | Lazy, retained pages | Lazy, reclaimed pages |
+| --- | ---: | ---: |
+| Startup physical read | 3.83 GB | 3.83 GB |
+| Request physical read | 8.12 GB | 8.12 GB |
+| Request device reads | 1,982,353 | 1,982,353 |
+| Average request read | 4,096 bytes | 4,096 bytes |
+| Peak process RSS | 11.93 GiB | 10.44 GiB |
+| Request inference time | 155.2 s | 172.0 s |
+| Executable tests | 1/1 passed | 1/1 passed |
+
+This is encouraging capacity evidence: lazy expert marking avoided reading
+15.49 GB during startup and kept peak process RSS far below the full model file.
+It is also a poor physical streaming result. Nearly two million 4 KiB reads are
+demand paging, not sequential streaming. Reclamation reduced process RSS by
+about 1.49 GiB but did not reduce physical bytes in this unconstrained pilot and
+added latency. `MADV_DONTNEED` removed process mappings while the corresponding
+clean pages could remain in the global page cache.
+
+The HDD result must therefore be treated as the baseline that a purpose-built
+stream must beat, not as evidence that spinning disks cannot work.
+Machine-readable pilot records are checked in for the
+[lazy retained](data/gemma4-q5km-cold-hdd-lazy-pilot.json) and
+[lazy reclaimed](data/gemma4-q5km-cold-hdd-reclaimed-pilot.json) policies.
+
+### How parallel SAS HDD and SSD tiers could help
+
+A mixed SAS system permits several useful layouts:
+
+1. Keep the canonical GGUF or archival weights on HDD and store a complete
+   repacked execution-order `.spm` stream on SSD. This uses extra SSD capacity
+   but gives the cleanest large-read path.
+2. Keep all weights on HDD and prepopulate an SSD cache with shared weights and
+   frequently selected experts. Cold experts remain on HDD. Prepopulation
+   avoids unpredictable runtime cache-write traffic.
+3. Place independent layer or expert stream shards across several HDDs in JBOD
+   form. Issue large sequential reads from each drive into NUMA-local bounded
+   buffers and give each stream to a corresponding CPU-core group.
+4. Use SSD as a staging ring between parallel HDD producers and compute
+   consumers when their instantaneous rates differ. This adds writes and must
+   justify them through better sustained utilization.
+
+The first two are easiest to implement and interpret. Shared/dense weights and
+the hottest experts belong on SSD; immutable cold experts are the best HDD
+candidates. KV cache and live activations should remain in RAM or VRAM because
+they are mutable, latency-sensitive, and repeatedly accessed.
+
+For HDDs, physical order is part of the algorithm. Expert data should be laid
+out in the order consumed, reads should be large and asynchronous, and buffers
+should be reused. Within one MoE layer, different selected experts can be read
+from different drives and processed by different core groups. Across layers,
+the activation dependency remains sequential.
+
+RAID striping can provide aggregate bandwidth for large reads, while explicit
+JBOD placement provides clearer attribution and scheduling. Both should be
+tested; parity RAID is less attractive for a read-only derived stream because
+the source weights are reproducible and parity adds complexity without fixing
+the central access-pattern problem.
+
+A useful tiered-storage scorecard must report:
+
+- physical bytes and I/O operations from each drive;
+- average and percentile read size, queue depth, and sequential bandwidth;
+- SSD cache hit rate and cache-fill writes;
+- expert assignments, unique experts, and uses per fetched expert;
+- bounded RAM/VRAM residency and NUMA placement;
+- task correctness, aggregate completions, and latency; and
+- drive power, SSD endurance implications, and results per drive-hour or kWh.
+
+### Relationship to an ML-first operating system
+
+The same mechanism could become an operating-system resource manager rather
+than remain private to one inference process. A conventional OS sees files,
+pages, processes, and devices but does not know that a byte range is an
+immutable expert tensor or that several requests will shortly need the same
+range.
+
+An ML-first OS could expose first-class resources such as:
+
+- content-addressed model and quantization objects;
+- tensor, layer, and expert ranges with declared execution order;
+- immutable weight streams and bounded residency contracts;
+- mutable per-request KV caches and activation buffers;
+- routing batches that can be grouped by expert;
+- HDD, SSD, PMEM, RAM, VRAM, GPU, CPU, and FPGA placement capabilities; and
+- byte, latency, energy, endurance, and correctness accounting.
+
+Instead of allowing each agent process to fault the same expert independently,
+the OS could accept routed activation work, wait within a bounded latency
+window, and dispatch all compatible activations when that expert stream passes
+through memory. This is data-centric scheduling: move small activation work to
+the available immutable weight stream rather than repeatedly moving large
+weights to unrelated process schedules.
+
+The separation of resource types matters. Weight streams are immutable,
+reconstructible, and friendly to sequential storage. KV caches are mutable,
+request-specific, and latency-sensitive. Activations are smaller and movable
+but have layer dependencies. Treating all three as ordinary interchangeable
+virtual-memory pages loses information needed for good placement.
+
+A practical Linux prototype should come before a new kernel. A privileged or
+user-space model resource service can use existing files, `io_uring`, cgroups,
+NUMA policy, GPU APIs, and shared-memory queues while presenting the proposed
+OS contract. That lets the project measure whether semantic scheduling creates
+value before making kernel or ML-first-OS changes.
+
 ## Next measurements
 
 1. Finish the cold/warm cache experiment without globally dropping caches.
@@ -214,6 +412,9 @@ stage that is already waiting on another one.
    compare one, two, four, and eight agents on both quality and completion rate.
 4. Only after those pass, increase server slots and context budget to measure
    concurrency 12 and 16. Do not extrapolate beyond eight from current data.
+5. Repack the same selected-expert workload into a large-read sequential stream
+   and compare it with the measured 4 KiB mmap-fault baseline on one HDD, then
+   on parallel SAS HDDs with an SSD hot tier.
 
 Detailed source data and analysis are in
 [the Gemma-4 serial-expert report](gemma4-serial-experts.md),

@@ -1,0 +1,186 @@
+{
+  "schema": "emufpga.gemma4-offload-derived.v1",
+  "captured_utc": "2026-09-06T03:41:02.486Z",
+  "manifest": {
+    "schema": "emufpga.gemma4-offload.v1",
+    "model": "google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+    "model_path": "/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+    "sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+    "model_identity": "2065:4849726:19319198848",
+    "model_source": "/dev/sdb1",
+    "model_mount": "/disk1",
+    "model_fstype": "ext4",
+    "model_device_stat": "/sys/class/block/sdb1/stat",
+      "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+      "llama_build": "/disk1/tmp/llama.cpp-gemma4-lazy-build",
+      "server_sha256": "c3d1bfcf83a327050510646e51460d9bdc85bba434e9c9057bcd097d0340e487",
+      "cpu_library_sha256": "5aa19036113383c4b5cf280ed2addf63ffad0318f51913b31e63abcd69c48532",
+    "placement": "experts-cpu",
+    "lazy_mode": "on",
+    "expert_reclaim": true,
+    "warmup": "off",
+    "cache_before_load": "cold",
+    "cache_plan": "",
+    "gpu_layers": 999,
+    "prompt_tokens": 128,
+    "output_tokens": 256,
+    "runs": 1,
+    "tasks": "gemma4-rust-executable-v1.json",
+    "client": "bench-gemma4-rust-code.mjs",
+    "energy_scope": "NVIDIA board only; not whole system"
+  },
+  "telemetry": {
+    "scope": "server load plus complete 1 request sweep; NVIDIA board energy only",
+    "samples": 348,
+    "elapsed_seconds": 173.9929587841034,
+    "peak_process_rss_mib": 10443.33984375,
+    "mean_process_rss_mib": 5405.152186602011,
+    "minimum_process_rss_mib": 2531.38671875,
+    "peak_vram_mib": 4150,
+    "peak_gpu_utilization_percent": 98,
+    "gpu_board_energy_joules": 2745.5653942012805,
+    "peak_rss_anon_mib": 588.39453125,
+    "peak_rss_file_mib": 9823.53125,
+    "peak_pss_mib": 10363.5146484375,
+    "peak_pss_anon_mib": 588.39453125,
+    "peak_pss_file_mib": 9788.2060546875,
+    "process_read_bytes_delta": 8119717888,
+    "process_rchar_delta": 0,
+    "by_concurrency": [
+      {
+        "concurrency": 1,
+        "samples": 348,
+        "peak_process_rss_mib": 10443.33984375,
+        "peak_vram_mib": 4150,
+        "peak_rss_anon_mib": 588.39453125,
+        "peak_rss_file_mib": 9823.53125,
+        "peak_pss_mib": 10363.5146484375,
+        "peak_pss_anon_mib": 588.39453125,
+        "peak_pss_file_mib": 9788.2060546875,
+        "process_read_bytes_delta": 8119717888,
+        "process_rchar_delta": 0
+      }
+    ]
+  },
+  "requests": [
+    {
+      "concurrency": 1,
+      "runs": 1,
+      "requests": 1,
+      "strict": 1,
+      "compiled": 1,
+      "passed": 1,
+      "wall_ms_mean": 172042.667373,
+      "generated_tokens": 62
+    }
+  ],
+  "response_quality": {
+    "scope": "dependency-free Rust functions compiled and executed against deterministic tests in an isolated container",
+    "responses": 1,
+    "strict_instruction_following": 1,
+    "compiled": 1,
+    "tests_passed": 1,
+    "by_concurrency": [
+      {
+        "concurrency": 1,
+        "responses": 1,
+        "strict_instruction_following": 1,
+        "compiled": 1,
+        "tests_passed": 1
+      }
+    ]
+  },
+  "expert_trace": {
+    "scope": "logical selected-expert tensor bytes requested; not physical storage IO",
+    "operations": 3840,
+    "activations": 4080,
+    "assignments": 32640,
+    "selected_experts": 31252,
+    "logical_bytes": 70354425856,
+    "by_concurrency": [
+      {
+        "concurrency": 1,
+        "operations": 3780,
+        "activations": 3960,
+        "assignments": 31680,
+        "selected_experts": 30760,
+        "logical_bytes": 69248706560
+      }
+    ]
+  },
+  "physical_io": {
+    "scope": "llama-server /proc I/O attribution plus whole model-partition sector deltas around inference only",
+    "model_source": "/dev/sdb1",
+    "model_device_stat": "/sys/class/block/sdb1/stat",
+    "sector_bytes": 512,
+    "startup": {
+      "schema": "emufpga.gemma4-startup-io.v1",
+      "started_s": 1788665691.602014,
+      "ended_s": 1788665744.7656987,
+      "cache_before_load": "cold",
+      "server_read_bytes": 3826163712,
+      "minor_faults": 88170,
+      "major_faults": 259626,
+      "device_read_sectors_delta": 7472976,
+      "sector_bytes": 512,
+      "residency_before": {
+        "path": "/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+        "device": 2065,
+        "inode": 4849726,
+        "bytes": 19319198848,
+        "page_size": 4096,
+        "pages": 4716602,
+        "resident_pages": 0,
+        "resident_bytes": 0
+      },
+      "residency_after": {
+        "path": "/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+        "device": 2065,
+        "inode": 4849726,
+        "bytes": 19319198848,
+        "page_size": 4096,
+        "pages": 4716602,
+        "resident_pages": 934122,
+        "resident_bytes": 3826163712
+      },
+      "device_read_bytes_upper_bound": 3826163712
+    },
+    "trials": [
+      {
+        "concurrency": 1,
+        "run": 1,
+        "cache_mode": "untouched",
+        "elapsed_ms": 172207,
+        "request_wall_ms_max": 172042.667373,
+        "generated_tokens": 62,
+        "passed": 1,
+        "server_read_bytes": 8119717888,
+        "device_read_ios_upper_bound": 1982353,
+        "device_read_bytes_upper_bound": 8119717888,
+        "device_average_read_bytes_upper_bound": 4096,
+        "server_read_bytes_per_token": 130963191.74193548,
+        "device_read_bytes_per_token_upper_bound": 130963191.74193548,
+        "minor_faults": 1250155,
+        "major_faults": 1982353,
+        "resident_bytes_start": 3826163712,
+        "resident_bytes_end": 11945881600,
+        "expert_trace": {
+          "operations": 3780,
+          "activations": 3960,
+          "assignments": 31680,
+          "selected_experts": 30760,
+          "logical_bytes": 69248706560
+        }
+      }
+    ]
+  },
+  "caveats": [
+    "Eight dependency-free functions are bounded executable evidence, not a repository-scale coding-agent benchmark.",
+    "The telemetry phase includes sequential isolated compilation and test execution after each inference group; inference wall time is recorded separately.",
+    "Zero process read_bytes can mean mmap faults were served from warm page cache; it does not prove zero memory traffic or zero prior device IO.",
+    "Energy excludes CPU, DRAM, storage, motherboard, fans, and PSU losses.",
+    "Whole-device sector deltas are upper bounds because the model device is shared; server /proc read_bytes is the attributable counter.",
+    "Per-file POSIX_FADV_DONTNEED is used for cold trials; global drop_caches is never used.",
+    "Experimental Linux mmap pages are reclaimed after native selected-expert operations; this is not an upstream llama.cpp feature."
+  ]
+}

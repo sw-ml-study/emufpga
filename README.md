@@ -68,6 +68,15 @@ disagreements. That is bounded executable reliability evidence—not validation
 of repository-scale coding agents, which remains open.
 See [docs/gemma4-serial-experts.md](docs/gemma4-serial-experts.md).
 
+The first true cold-HDD pilot is now recorded in
+[docs/intermediate-results.md](docs/intermediate-results.md). The ordinary
+loader read the complete 19.32 GB model before serving; lazy expert marking
+reduced startup reads to 3.83 GB, but the first request then fetched 8.12 GB as
+nearly two million 4 KiB page-fault reads and took 155--172 seconds. That is a
+negative mmap-paging control, not a test of a repacked sequential HDD stream.
+The next storage experiment compares it with bounded large reads from one and
+multiple SAS disks plus an SSD hot tier.
+
 Background and the full argument: [docs/research.txt](docs/research.txt).
 
 ## What this is

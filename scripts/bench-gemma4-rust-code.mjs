@@ -13,6 +13,53 @@ const concurrency = Number(concurrencyText);
 const runs = Number(runsText);
 const tasks = JSON.parse(fs.readFileSync(tasksPath, "utf8"));
 if (tasks.length < concurrency) throw new Error("task file has fewer tasks than concurrency");
+const cachePlan = (process.env.CACHE_PLAN || "").split(",").filter(Boolean);
+const metricsPath = process.env.TRIAL_METRICS;
+
+function readNumberMap(file) {
+  return Object.fromEntries(fs.readFileSync(file, "utf8").trim().split("\n")
+    .map(line => line.split(":").map(value => value.trim()))
+    .map(([key, value]) => [key, Number(value)]));
+}
+
+function processFaults(pid) {
+  const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf8");
+  const fields = stat.slice(stat.lastIndexOf(")") + 2).trim().split(/\s+/);
+  return { minor_faults: Number(fields[7]), major_faults: Number(fields[9]) };
+}
+
+function residency() {
+  if (!process.env.RESIDENCY_TOOL || !process.env.GEMMA4_MODEL) return null;
+  const result = spawnSync(process.env.RESIDENCY_TOOL,
+    ["status", process.env.GEMMA4_MODEL], { encoding: "utf8" });
+  if (result.status !== 0) throw new Error(`residency probe failed: ${result.stderr}`);
+  return JSON.parse(result.stdout);
+}
+
+function snapshot(run, cacheMode, event) {
+  if (!metricsPath || !process.env.SERVER_PID) return;
+  const pid = Number(process.env.SERVER_PID);
+  const io = readNumberMap(`/proc/${pid}/io`);
+  const device = process.env.MODEL_DEVICE_STAT
+    ? fs.readFileSync(process.env.MODEL_DEVICE_STAT, "utf8").trim().split(/\s+/).map(Number)
+    : [];
+  const record = { schema: "emufpga.gemma4-io-snapshot.v1", timestamp_ms: Date.now(),
+    concurrency, run, cache_mode: cacheMode, event, server_read_bytes: io.read_bytes,
+    server_rchar: io.rchar, ...processFaults(pid), device_read_ios: device[0] ?? null,
+    device_read_sectors: device[2] ?? null, residency: residency() };
+  fs.appendFileSync(metricsPath, `${JSON.stringify(record)}\n`);
+}
+
+function prepareCache(run, cacheMode) {
+  if (cacheMode !== "cold") return;
+  if (!process.env.CACHE_EVICT_TOOL) throw new Error("cold cache plan requires CACHE_EVICT_TOOL");
+  const result = spawnSync(process.env.CACHE_EVICT_TOOL, ["evict"], { encoding: "utf8" });
+  if (result.status !== 0) throw new Error(`cache eviction failed for run ${run}: ${result.stderr}`);
+  const after = JSON.parse(result.stdout);
+  if (after.resident_pages !== 0) {
+    throw new Error(`cache eviction left ${after.resident_pages} pages resident; refusing false cold label`);
+  }
+}
 
 async function request(run, requestId) {
   const task = tasks[requestId - 1];
@@ -52,13 +99,19 @@ function evaluate(record) {
 
 const records = [];
 for (let run = 1; run <= runs; run += 1) {
+  const cacheMode = cachePlan[run - 1] ?? "untouched";
+  prepareCache(run, cacheMode);
+  snapshot(run, cacheMode, "start");
   const responses = await Promise.all(Array.from({ length: concurrency }, (_, id) => request(run, id + 1)));
-  records.push(...responses.map(evaluate));
+  snapshot(run, cacheMode, "end");
+  records.push(...responses.map(record => ({ ...record, cache_mode: cacheMode })));
 }
-fs.writeFileSync(output, records.map(JSON.stringify).join("\n") + "\n");
+const evaluated = records.map(evaluate);
+fs.writeFileSync(output, evaluated.map(JSON.stringify).join("\n") + "\n");
 const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
-console.log(JSON.stringify({ concurrency, runs, requests: records.length,
-  strict: records.filter(item => item.strict).length, compiled: records.filter(item => item.compiled).length,
-  passed: records.filter(item => item.passed).length,
-  wall_ms_mean: mean(records.map(item => item.wall_ms)),
-  generated_tokens: records.reduce((sum, item) => sum + (item.output_tokens ?? 0), 0) }));
+console.log(JSON.stringify({ concurrency, runs, requests: evaluated.length,
+  strict: evaluated.filter(item => item.strict).length,
+  compiled: evaluated.filter(item => item.compiled).length,
+  passed: evaluated.filter(item => item.passed).length,
+  wall_ms_mean: mean(evaluated.map(item => item.wall_ms)),
+  generated_tokens: evaluated.reduce((sum, item) => sum + (item.output_tokens ?? 0), 0) }));

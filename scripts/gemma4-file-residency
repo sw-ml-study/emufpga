@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Safety wrapper for residency queries and per-file cache eviction. It refuses
+# every artifact except the pinned Gemma-4 Q5_K_M bytes used by this study.
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
+# This identity was captured immediately after verifying expected_sha. Requiring
+# the exact canonical path, device, inode, and size avoids hashing (and thereby
+# warming) all 19.3 GB immediately before a residency measurement.
+expected_sha=6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493
+expected_path=/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf
+expected_identity=2065:4849726:19319198848
+binary=$root/target/release/spm-file-residency
+
+case "${1:-}" in
+    status|evict) ;;
+    *) echo "usage: scripts/gemma4-file-residency <status|evict>" >&2; exit 2 ;;
+esac
+[ -f "$model" ] || { echo "missing pinned model: $model" >&2; exit 2; }
+canonical_model=$(readlink -f "$model")
+[ "$canonical_model" = "$expected_path" ] || {
+    echo "refusing unpinned path: $canonical_model" >&2
+    exit 2
+}
+actual_identity=$(stat -c '%d:%i:%s' "$canonical_model")
+[ "$actual_identity" = "$expected_identity" ] || {
+    echo "refusing changed model identity: $actual_identity (expected SHA-256 $expected_sha)" >&2
+    exit 2
+}
+if [ ! -x "$binary" ]; then
+    (cd "$root/components/cli" && "$root/scripts/serial.sh" cargo build --release -p spm-file-residency)
+fi
+exec "$binary" "$1" "$canonical_model"
