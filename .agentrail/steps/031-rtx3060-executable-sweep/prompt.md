@@ -1,0 +1,1 @@
+Follow-up 2: run the 256-token executable Rust corpus through the experts-CPU/GPU-attention/lazy path on the sm_86 build, compiling and running each response in a sandboxed container, and record compile/pass rates and throughput for a like-for-like comparison with the 5060 executable qualification. Record in docs/intermediate-results-rtx3060-12g.md.
