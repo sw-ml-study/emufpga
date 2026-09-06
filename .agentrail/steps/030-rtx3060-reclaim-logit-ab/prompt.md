@@ -1,0 +1,1 @@
+Follow-up 1: confirm MADV_DONTNEED expert reclamation preserves final logits bit-for-bit on Ampere sm_86 by running the llama-logits probe resident vs reclaimed on one fixed prompt and comparing raw logit SHA-256. Record in docs/intermediate-results-rtx3060-12g.md.
