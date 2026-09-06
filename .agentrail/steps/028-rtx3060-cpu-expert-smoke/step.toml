@@ -1,0 +1,8 @@
+number = 28
+slug = "rtx3060-cpu-expert-smoke"
+status = "pending"
+description = "Run the CPU layer-0 selected-expert smoke (verify-gemma4-expert-smoke 1/2/4/8..."
+role = "validation"
+context_files = []
+created_at = "2026-09-06T14:02:25"
+commits = ["ae3d7b76b88929105efa0dea90634bf70b8479bb"]

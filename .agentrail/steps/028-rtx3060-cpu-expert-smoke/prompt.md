@@ -1,0 +1,1 @@
+Run the CPU layer-0 selected-expert smoke (verify-gemma4-expert-smoke 1/2/4/8) against the SHA-verified pinned Gemma-4 Q5_K_M model on the RTX 3060 box, and confirm routing, stream bytes, resident footprint, and max error reproduce the RTX 5060 lane's layer-0 result. Record in docs/intermediate-results-rtx3060-12g.md.
