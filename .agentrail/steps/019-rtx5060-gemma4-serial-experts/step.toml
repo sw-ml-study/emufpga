@@ -1,0 +1,9 @@
+number = 19
+slug = "rtx5060-gemma4-serial-experts"
+status = "completed"
+description = "Implement the same-quant Gemma-4 Q5_K_M ordered selected-expert path needed t..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-05T09:03:45"
+completed_at = "2026-09-05T16:35:19"
+commits = ["759110a4536d43b1670753c52e78e509283cbff1"]
