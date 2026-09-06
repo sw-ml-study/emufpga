@@ -68,12 +68,14 @@ disagreements. That is bounded executable reliability evidence—not validation
 of repository-scale coding agents, which remains open.
 See [docs/gemma4-serial-experts.md](docs/gemma4-serial-experts.md).
 
-The first true cold-HDD pilot is now recorded in
+The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary
 loader read the complete 19.32 GB model before serving; lazy expert marking
-reduced startup reads to 3.83 GB, but the first request then fetched 8.12 GB as
-nearly two million 4 KiB page-fault reads and took 155--172 seconds. That is a
-negative mmap-paging control, not a test of a repacked sequential HDD stream.
+reduced startup reads to 3.83 GB. Three repetitions at concurrency 1/2/4/8
+passed all 180 executable Rust tasks. Eight tasks read 10.70 GB versus 8.12 GB
+for one, improving resident completion rate from 23.2 to 109.8 tasks/hour.
+Reclamation saved RAM but did not reduce physical bytes. Reads remained nearly
+all 4 KiB page faults: a negative mmap control, not a sequential-stream test.
 The next storage experiment compares it with bounded large reads from one and
 multiple SAS disks plus an SSD hot tier.
 

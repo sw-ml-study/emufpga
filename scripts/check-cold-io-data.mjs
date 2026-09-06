@@ -27,3 +27,22 @@ for (const [file, reclaimed] of files) {
 }
 
 console.log("cold HDD pilot data: ok");
+
+for (const file of [
+  "docs/data/gemma4-q5km-cold-hdd-c1-c8-r3.json",
+  "docs/data/gemma4-q5km-cold-hdd-c2-c4-r3.json",
+]) {
+  const data = JSON.parse(fs.readFileSync(file, "utf8"));
+  if (data.schema !== "emufpga.gemma4-cold-io-summary.v1") throw new Error(`${file}: wrong schema`);
+  if (data.trials.length !== 24 || data.groups.length !== 8) throw new Error(`${file}: incomplete campaign`);
+  for (const group of data.groups) {
+    if (group.trials !== 3 || group.tests_passed !== group.requests) throw new Error(`${file}: failed group`);
+    if (group.cache_mode === "cold" && group.request_read_bytes_mean <= 0) throw new Error(`${file}: false cold group`);
+    if (group.cache_mode === "warm" && group.request_read_bytes_mean !== 0) throw new Error(`${file}: false warm group`);
+    if (group.request_read_size_mean !== 0 && Math.abs(group.request_read_size_mean - 4096) > 1) {
+      throw new Error(`${file}: unexpected physical read size`);
+    }
+  }
+}
+
+console.log("cold HDD repeated campaigns: ok");

@@ -218,6 +218,18 @@ inference-energy comparison or results/kWh claim. Derived data:
 The physical-I/O follow-up is predeclared in
 [`cold-cache-io-plan.md`](cold-cache-io-plan.md).
 
+That qualification is now complete at concurrency 1/2/4/8 with three cold and
+three warm repetitions per policy. All 180 executable Rust evaluations passed.
+Cold request reads grew from 8.12 GB at c1 to only 10.70 GB at c8, so bytes per
+passing task fell from 8.12 to about 1.34 GB. Resident completion rate rose from
+23.2 to 109.8 tasks/hour; reclaimed rose from 21.2 to 93.2. Reclamation saved
+1.47--2.79 GiB mean peak RSS depending on concurrency but did not reduce disk
+bytes. All physical request reads averaged approximately 4 KiB. Consequently,
+this validates shared demand-paged reuse and the memory/latency tradeoff, not a
+purpose-built sequential expert stream. See the checked-in
+[c1/c8](data/gemma4-q5km-cold-hdd-c1-c8-r3.json) and
+[c2/c4](data/gemma4-q5km-cold-hdd-c2-c4-r3.json) records.
+
 ### Does this fit an 18 GB unified-memory Mac?
 
 Not safely with the measured residency policy. On this discrete-memory Linux

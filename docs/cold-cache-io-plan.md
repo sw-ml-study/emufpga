@@ -54,3 +54,28 @@ appropriate; HDD is primarily for immutable expert streams. Attribute counters
 per physical device. Report average read size and sequential bandwidth in
 addition to bytes, because replacing millions of 4 KiB faults with large reads
 is the mechanism under test.
+
+## Completed c1/c2/c4/c8 qualification
+
+The matrix completed on 2026-09-06: three fresh-server repetitions of both
+policies, cold and warm, at concurrency 1/2/4/8. All 180 executable Rust task
+evaluations passed. Per-file eviction verified zero resident model pages before
+cold starts; warm phases attributed zero physical reads. Global caches were
+never flushed.
+
+| Requests | Policy | Seconds | Physical GB | GB/task | Tasks/hour | Peak RSS GiB |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | resident | 155.3 | 8.12 | 8.12 | 23.2 | 11.65 |
+| 1 | reclaimed | 170.2 | 8.12 | 8.12 | 21.2 | 10.18 |
+| 2 | resident | 198.3 | 9.19 | 4.59 | 36.3 | 12.71 |
+| 2 | reclaimed | 221.6 | 9.19 | 4.59 | 32.5 | 10.13 |
+| 4 | resident | 235.4 | 10.14 | 2.54 | 61.2 | 13.67 |
+| 4 | reclaimed | 320.7 | 10.16 | 2.54 | 44.9 | 10.89 |
+| 8 | resident | 262.2 | 10.70 | 1.34 | 109.8 | 14.28 |
+| 8 | reclaimed | 308.9 | 10.70 | 1.34 | 93.2 | 12.59 |
+
+Eight tasks required only 1.32 times c1's physical bytes. Unconditional
+reclamation saved 1.47--2.79 GiB peak RSS but lowered completion rate without
+lowering physical traffic. This motivates a budgeted hot-expert cache. Reads
+still averaged about 4,096 bytes, so this remains the negative mmap control,
+not evidence for the proposed large sequential stream.

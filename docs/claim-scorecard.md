@@ -37,7 +37,8 @@ conventional oversized baseline. Energy at the wall has not.
 | Reclamation preserves bounded executable coding results | **Measured, small corpus** | Resident and reclaimed policies each compiled and passed 30/30; zero paired outcome disagreements; 28/30 exact-text matches |
 | Lazy experts avoid full cold model startup residency | **Measured, one HDD pilot** | Patched load read 3.83 GB at startup versus the ordinary loader's complete 19.32 GB; zero pages resident before each cold start |
 | Cold mmap faults form an efficient serial HDD stream | **Measured negative, one pilot** | One request read 8.12 GB as 1,982,353 separate 4 KiB I/Os and took 155--172 s |
-| Expert page reclamation reduces cold physical bytes | **Measured negative, one pilot** | Retained and reclaimed policies each physically read exactly 8,119,717,888 request bytes; reclamation reduced peak RSS from 11.93 to 10.44 GiB but added latency |
+| Expert page reclamation reduces cold physical bytes | **Measured negative, 3× c1/2/4/8** | Resident/reclaimed reads were effectively identical: 8.12/9.19/10.14/10.70 GB; reclamation saved RAM but reduced completion rate |
+| Concurrent coding requests amortize cold expert reads | **Measured, small Rust corpus** | 180/180 passed; c8 used 1.32× c1 bytes for 8× tasks, reducing 8.12 to ~1.34 GB/passing task; mmap/page-cache baseline, not ordered streaming |
 | A repacked sequential SAS stream beats mmap paging | **Not measured** | Dedicated one-HDD, parallel-SAS, HDD+SSD-cache, and SSD-control experiment queued |
 | Oversized Gemma conventional offload serves independent requests | **Measured baseline smoke** | 20/30 layers on GPU; 128+16 tokens; 3 runs; aggregate 3.45/4.86/5.60/7.11 tok/s at 1/2/4/8 requests |
 | Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |

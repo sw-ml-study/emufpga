@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
+import http from "node:http";
+import https from "node:https";
 
 const [server, output, tasksPath, , outputCountText, concurrencyText, runsText] = process.argv.slice(2);
 if (!runsText) throw new Error("usage: bench-gemma4-rust-code.mjs SERVER OUTPUT TASKS PROMPT_TOKENS OUTPUT_TOKENS CONCURRENCY RUNS");
@@ -15,6 +17,28 @@ const tasks = JSON.parse(fs.readFileSync(tasksPath, "utf8"));
 if (tasks.length < concurrency) throw new Error("task file has fewer tasks than concurrency");
 const cachePlan = (process.env.CACHE_PLAN || "").split(",").filter(Boolean);
 const metricsPath = process.env.TRIAL_METRICS;
+const requestTimeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 900000);
+
+function postJson(urlText, payload) {
+  const url = new URL(urlText);
+  const transport = url.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = transport.request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": Buffer.byteLength(payload) },
+    }, response => {
+      const chunks = [];
+      response.on("data", chunk => chunks.push(chunk));
+      response.on("end", () => resolve({ status: response.statusCode,
+        ok: response.statusCode >= 200 && response.statusCode < 300,
+        body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    request.setTimeout(requestTimeoutMs, () => request.destroy(
+      new Error(`completion timed out after ${requestTimeoutMs} ms`)));
+    request.on("error", reject);
+    request.end(payload);
+  });
+}
 
 function readNumberMap(file) {
   return Object.fromEntries(fs.readFileSync(file, "utf8").trim().split("\n")
@@ -64,12 +88,10 @@ function prepareCache(run, cacheMode) {
 async function request(run, requestId) {
   const task = tasks[requestId - 1];
   const started = performance.now();
-  const response = await fetch(`${server}/v1/chat/completions`, {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ messages: [{ role: "user", content: task.prompt }], max_tokens: outputTokens,
-      temperature: 0, seed: 42, stream: false, chat_template_kwargs: { enable_thinking: false } }),
-  });
-  const body = await response.json();
+  const payload = JSON.stringify({ messages: [{ role: "user", content: task.prompt }], max_tokens: outputTokens,
+    temperature: 0, seed: 42, stream: false, chat_template_kwargs: { enable_thinking: false } });
+  const response = await postJson(`${server}/v1/chat/completions`, payload);
+  const body = JSON.parse(response.body);
   if (!response.ok) throw new Error(`completion: HTTP ${response.status}: ${JSON.stringify(body)}`);
   const choice = body.choices?.[0];
   const message = choice?.message ?? {};

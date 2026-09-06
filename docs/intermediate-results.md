@@ -319,6 +319,22 @@ Machine-readable pilot records are checked in for the
 [lazy retained](data/gemma4-q5km-cold-hdd-lazy-pilot.json) and
 [lazy reclaimed](data/gemma4-q5km-cold-hdd-reclaimed-pilot.json) policies.
 
+The completed three-repetition c1/c2/c4/c8 matrix strengthens the pilot. All
+180 executable task evaluations passed. Resident passing-task throughput was
+23.2/36.3/61.2/109.8 tasks/hour; reclaimed throughput was
+21.2/32.5/44.9/93.2. Physical traffic was 8.12/9.19/10.14/10.70 GB resident and
+effectively identical reclaimed. Thus c8 performed eight tasks with only 1.32
+times c1's bytes, reducing traffic per passing task from 8.12 to about 1.34 GB.
+Peak RSS was 11.65/12.71/13.67/14.28 GiB resident versus
+10.18/10.13/10.89/12.59 GiB reclaimed.
+
+This is multi-request reuse through Linux mmap and page cache, not proof of an
+ordered stream. Physical reads remained approximately 4 KiB. The results favor
+selective hot-expert caching: unconditional reclamation saved memory but
+lowered completion rate without lowering disk traffic. Full records are in
+[c1/c8](data/gemma4-q5km-cold-hdd-c1-c8-r3.json) and
+[c2/c4](data/gemma4-q5km-cold-hdd-c2-c4-r3.json).
+
 ### How parallel SAS HDD and SSD tiers could help
 
 A mixed SAS system permits several useful layouts:
@@ -402,14 +418,13 @@ value before making kernel or ML-first-OS changes.
 
 ## Next measurements
 
-1. Finish the cold/warm cache experiment without globally dropping caches.
-   Measure actual device reads, faults, bytes per generated token, RSS, PSS,
-   VRAM, and latency.
-2. Apply a controlled host-memory limit between the two measured working sets.
+1. Apply a controlled host-memory limit between the two measured working sets.
    Demonstrate conventional offload failing while the bounded policy completes
    the identical tests.
-3. Replace the toy-only qualification with repository-level coding tasks and
+2. Replace the toy-only qualification with repository-level coding tasks and
    compare one, two, four, and eight agents on both quality and completion rate.
+3. Profile expert demand on calibration tasks, then compare fixed and adaptive
+   hot-expert caches on held-out work.
 4. Only after those pass, increase server slots and context budget to measure
    concurrency 12 and 16. Do not extrapolate beyond eight from current data.
 5. Repack the same selected-expert workload into a large-read sequential stream

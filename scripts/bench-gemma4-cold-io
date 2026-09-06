@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Alternate cold/warm, retained/reclaimed fresh-server trials for the pinned
+# Gemma-4 artifact. Each child directory is independently reproducible.
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+out=${1:-/disk1/tmp/emufpga-gemma4-cold-io-$(date -u +%Y%m%dT%H%M%SZ)}
+repetitions=${REPETITIONS:-3}
+concurrencies=${CONCURRENCIES:-1,8}
+runner=$root/scripts/bench-gemma4-offload
+analyzer=$root/scripts/analyze-gemma4-offload.mjs
+
+case "$repetitions" in ''|*[!0-9]*) echo "REPETITIONS must be a positive integer" >&2; exit 2 ;; esac
+[ "$repetitions" -gt 0 ] || { echo "REPETITIONS must be positive" >&2; exit 2; }
+mkdir -p "$out"
+printf '{"schema":"emufpga.gemma4-cold-io-campaign.v1","repetitions":%s,"concurrencies":"%s","order":"fresh server per trial; policy order reverses each repetition"}\n' \
+    "$repetitions" "$concurrencies" >"$out/campaign.json"
+
+run_trial() {
+    local repetition=$1 concurrency=$2 cache_mode=$3 policy=$4
+    local trial=$out/r${repetition}-c${concurrency}-${cache_mode}-${policy}
+    if [ -s "$trial/derived.json" ]; then
+        echo "already complete: $trial"
+        return
+    fi
+    local reclaim=()
+    if [ "$policy" = reclaimed ]; then
+        reclaim=(GGML_MUL_MAT_ID_DONTNEED=1)
+    fi
+    env -u GGML_MUL_MAT_ID_DONTNEED \
+        LLAMA_BUILD=/disk1/tmp/llama.cpp-gemma4-lazy-build \
+        GGML_MUL_MAT_ID_TRACE=1 "${reclaim[@]}" \
+        PLACEMENT=experts-cpu LAZY_MODE=on WARMUP=off GPU_LAYERS=999 \
+        TASKS=$root/docs/data/gemma4-rust-executable-v1.json \
+        CLIENT=$root/scripts/bench-gemma4-rust-code.mjs RUNS=1 \
+        CACHE_BEFORE_LOAD=$cache_mode CONCURRENCIES=$concurrency OUTPUT_TOKENS=256 \
+        "$runner" "$trial"
+    node "$analyzer" "$trial" "$trial/derived.json"
+}
+
+IFS=, read -ra concurrency_values <<<"$concurrencies"
+for repetition in $(seq 1 "$repetitions"); do
+    policies=(resident reclaimed)
+    [ $((repetition % 2)) -eq 0 ] && policies=(reclaimed resident)
+    for concurrency in "${concurrency_values[@]}"; do
+        case "$concurrency" in ''|*[!0-9]*) echo "invalid concurrency: $concurrency" >&2; exit 2 ;; esac
+        for cache_mode in cold warm; do
+            for policy in "${policies[@]}"; do
+                echo "=== repetition=$repetition concurrency=$concurrency cache=$cache_mode policy=$policy ==="
+                run_trial "$repetition" "$concurrency" "$cache_mode" "$policy"
+            done
+        done
+    done
+done
+
+node "$root/scripts/summarize-gemma4-cold-io.mjs" "$out" "$out/summary.json"
+echo "campaign results: $out"
