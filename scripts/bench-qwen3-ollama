@@ -4,12 +4,13 @@ set -euo pipefail
 # Reproducible local Ollama baseline. Large responses and samples stay outside
 # the repository; only the small harness and distilled results are committed.
 
+scratch=${SPM_SCRATCH:-/disk1/tmp}
 MODEL="${QWEN_MODEL:-qwen3:8b}"
 RUNS="${QWEN_RUNS:-3}"
 NUM_CTX="${QWEN_NUM_CTX:-8192}"
 NUM_PREDICT="${QWEN_NUM_PREDICT:-128}"
 OLLAMA_URL="${OLLAMA_URL:-http://127.0.0.1:11434}"
-OUT="${1:-/disk1/tmp/emufpga-qwen3-q4-$(date -u +%Y%m%dT%H%M%SZ)}"
+OUT="${1:-$scratch/emufpga-qwen3-q4-$(date -u +%Y%m%dT%H%M%SZ)}"
 PROMPT='Explain in four concise bullet points why deterministic tests should separate model-loading, prompt-evaluation, and token-generation time.'
 
 case "$RUNS:$NUM_CTX:$NUM_PREDICT" in

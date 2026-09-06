@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Register the pinned official GGUF in Ollama without requantizing it.
 
-GGUF="${QWEN_Q6_GGUF:-/disk1/tmp/qwen3-8b-q6/Qwen3-8B-Q6_K.gguf}"
+scratch=${SPM_SCRATCH:-/disk1/tmp}
+GGUF="${QWEN_Q6_GGUF:-$scratch/qwen3-8b-q6/Qwen3-8B-Q6_K.gguf}"
 MODEL="${QWEN_Q6_MODEL:-qwen3:8b-q6}"
 TEMPLATE_MODEL="${QWEN_TEMPLATE_MODEL:-qwen3:8b}"
 EXPECTED_SIZE=6725899040

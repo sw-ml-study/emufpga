@@ -5,8 +5,9 @@ set -euo pipefail
 # bounded packed serial stream. This is an expert-layer check, not inference.
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-model=${OLMOE_Q6_MODEL:-/disk1/tmp/olmoe-1b-7b-0125/OLMoE-1B-7B-0125-Instruct-Q6_K.gguf}
-output=${OLMOE_EXPERT_SPM:-/disk1/tmp/olmoe-expert-smoke.spm}
+scratch=${SPM_SCRATCH:-/disk1/tmp}
+model=${OLMOE_Q6_MODEL:-$scratch/olmoe-1b-7b-0125/OLMoE-1B-7B-0125-Instruct-Q6_K.gguf}
+output=${OLMOE_EXPERT_SPM:-$scratch/olmoe-expert-smoke.spm}
 batch=${1:-1}
 expected=075a946cf693221a409054e86051b560ac688518476d2a87cc57c77a5103f224
 

@@ -2,10 +2,11 @@
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-model=${1:-/disk1/tmp/granite-3.1-1b-a400m-q6/granite-3.1-1b-a400m-instruct-Q6_K.gguf}
-log=${2:-/disk1/tmp/emufpga-granite-timing.log}
+scratch=${SPM_SCRATCH:-/disk1/tmp}
+model=${1:-$scratch/granite-3.1-1b-a400m-q6/granite-3.1-1b-a400m-instruct-Q6_K.gguf}
+log=${2:-$scratch/emufpga-granite-timing.log}
 : > "$log"
-export SPM_GRANITE_SPM_PATH=${SPM_GRANITE_SPM_PATH:-/disk1/tmp/granite-moe-block0-q6.spm}
+export SPM_GRANITE_SPM_PATH=${SPM_GRANITE_SPM_PATH:-$scratch/granite-moe-block0-q6.spm}
 export SPM_GRANITE_BLOCK0_ONLY=1
 
 run() {

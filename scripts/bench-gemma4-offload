@@ -5,11 +5,15 @@ set -euo pipefail
 # responses and telemetry remain outside Git; derived results may be checked in.
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
+scratch=${SPM_SCRATCH:-/disk1/tmp}
+src=${SPM_SRC:-/disk1/github}
+arch=$("$root/scripts/cuda-arch.sh")
+source_dir=${LLAMA_SOURCE:-$src/ggml-org/llama.cpp}
+model=${GEMMA4_MODEL:-$scratch/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
 tasks=${TASKS:-$root/docs/data/gemma4-correctness-tasks.json}
 client=${CLIENT:-$root/scripts/bench-gemma4-requests.mjs}
-out=${1:-/disk1/tmp/emufpga-gemma4-$(date -u +%Y%m%dT%H%M%SZ)}
-build=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
+out=${1:-$scratch/emufpga-gemma4-$(date -u +%Y%m%dT%H%M%SZ)}
+build=${LLAMA_BUILD:-$scratch/llama.cpp-sm${arch}-build}
 server=$build/bin/llama-server
 cpu_library=$(readlink -f "$build/bin/libggml-cpu.so")
 port=${PORT:-8091}
@@ -51,7 +55,7 @@ server_sha=$(sha256sum "$server" | awk '{print $1}')
 cpu_library_sha=$(sha256sum "$cpu_library" | awk '{print $1}')
 
 mkdir -p "$out"
-revision=$(git -C /disk1/github/ggml-org/llama.cpp rev-parse HEAD)
+revision=$(git -C "$source_dir" rev-parse HEAD)
 model_source=$(findmnt -n -o SOURCE -T "$model")
 model_target=$(findmnt -n -o TARGET -T "$model")
 model_fstype=$(findmnt -n -o FSTYPE -T "$model")

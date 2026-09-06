@@ -5,7 +5,9 @@ set -euo pipefail
 # Gemma-4 artifact. Each child directory is independently reproducible.
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-out=${1:-/disk1/tmp/emufpga-gemma4-cold-io-$(date -u +%Y%m%dT%H%M%SZ)}
+scratch=${SPM_SCRATCH:-/disk1/tmp}
+arch=$("$root/scripts/cuda-arch.sh")
+out=${1:-$scratch/emufpga-gemma4-cold-io-$(date -u +%Y%m%dT%H%M%SZ)}
 repetitions=${REPETITIONS:-3}
 concurrencies=${CONCURRENCIES:-1,8}
 runner=$root/scripts/bench-gemma4-offload
@@ -29,7 +31,7 @@ run_trial() {
         reclaim=(GGML_MUL_MAT_ID_DONTNEED=1)
     fi
     env -u GGML_MUL_MAT_ID_DONTNEED \
-        LLAMA_BUILD=/disk1/tmp/llama.cpp-gemma4-lazy-build \
+        LLAMA_BUILD=${LLAMA_BUILD:-$scratch/llama.cpp-gemma4-lazy-sm${arch}-build} \
         GGML_MUL_MAT_ID_TRACE=1 "${reclaim[@]}" \
         PLACEMENT=experts-cpu LAZY_MODE=on WARMUP=off GPU_LAYERS=999 \
         TASKS=$root/docs/data/gemma4-rust-executable-v1.json \

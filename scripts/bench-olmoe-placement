@@ -4,10 +4,14 @@ set -euo pipefail
 # Same-artifact OLMoE placement sweep. Raw logs and telemetry stay outside Git.
 # This measures synthetic batched throughput, not task correctness or TTFT.
 
+root=$(cd "$(dirname "$0")/.." && pwd)
+scratch=${SPM_SCRATCH:-/disk1/tmp}
+src=${SPM_SRC:-/disk1/github}
+arch=$("$root/scripts/cuda-arch.sh")
 MODEL=${1:?usage: scripts/bench-olmoe-placement MODEL.gguf [OUTPUT_DIR]}
-OUT=${2:-/disk1/tmp/emufpga-olmoe-placement-$(date -u +%Y%m%dT%H%M%SZ)}
-LLAMA_BUILD=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
-LLAMA_SOURCE=${LLAMA_SOURCE:-/disk1/github/ggml-org/llama.cpp}
+OUT=${2:-$scratch/emufpga-olmoe-placement-$(date -u +%Y%m%dT%H%M%SZ)}
+LLAMA_BUILD=${LLAMA_BUILD:-$scratch/llama.cpp-sm${arch}-build}
+LLAMA_SOURCE=${LLAMA_SOURCE:-$src/ggml-org/llama.cpp}
 BENCH=$LLAMA_BUILD/bin/llama-batched-bench
 RUNS=${RUNS:-3}
 PLACEMENTS=${PLACEMENTS:-all-gpu,experts-cpu}

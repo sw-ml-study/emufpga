@@ -2,8 +2,14 @@
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-source_dir=${LLAMA_SOURCE:-/disk1/github/ggml-org/llama.cpp}
-build_dir=${LLAMA_LAZY_BUILD:-/disk1/tmp/llama.cpp-gemma4-lazy-build}
+scratch=${SPM_SCRATCH:-/disk1/tmp}
+src=${SPM_SRC:-/disk1/github}
+arch=$("$root/scripts/cuda-arch.sh")
+source_dir=${LLAMA_SOURCE:-$src/ggml-org/llama.cpp}
+build_dir=${LLAMA_LAZY_BUILD:-$scratch/llama.cpp-gemma4-lazy-sm${arch}-build}
+# The Blackwell (sm_120) parts want the accelerated "a" variant; other
+# architectures (e.g. Ampere sm_86 on an RTX 3060) take the plain number.
+case "$arch" in 120) cuda_arch=120a ;; *) cuda_arch=$arch ;; esac
 expected_revision=4d9176092d00586775af140581bb0b558ddc4389
 
 [ -d "$source_dir/.git" ] || { echo "missing llama.cpp checkout: $source_dir" >&2; exit 2; }
@@ -21,7 +27,7 @@ restore() { git -C "$source_dir" apply -R --recount "$root/patches/llama.cpp-gem
 trap restore EXIT INT TERM
 
 cmake -S "$source_dir" -B "$build_dir" -DGGML_CUDA=ON \
-    -DCMAKE_CUDA_ARCHITECTURES=120a -DLLAMA_CURL=OFF -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_CUDA_ARCHITECTURES="$cuda_arch" -DLLAMA_CURL=OFF -DCMAKE_BUILD_TYPE=Release
 cmake --build "$build_dir" --target llama-server llama-cli -j "$(nproc)"
 
 echo "built patched llama.cpp in $build_dir"
