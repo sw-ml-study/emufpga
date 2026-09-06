@@ -29,6 +29,7 @@ cp "$repo_dir/docs/data/gemma4-q5km-experts-cpu-smoke.json" "$output_dir/gemma4-
 cp "$repo_dir/docs/data/gemma4-q5km-bounded-end-to-end.json" "$output_dir/gemma4-q5km-bounded-end-to-end.json"
 cp "$repo_dir/docs/data/gemma4-q5km-coding-residency.json" "$output_dir/gemma4-q5km-coding-residency.json"
 cp "$repo_dir/docs/data/gemma4-q5km-logit-equivalence.json" "$output_dir/gemma4-q5km-logit-equivalence.json"
+cp "$repo_dir/docs/data/gemma4-q5km-executable-code.json" "$output_dir/gemma4-q5km-executable-code.json"
 touch "$output_dir/.nojekyll"
 
 build_host=$(hostname -s)

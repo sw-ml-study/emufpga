@@ -7,6 +7,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
 tasks=${TASKS:-$root/docs/data/gemma4-correctness-tasks.json}
+client=${CLIENT:-$root/scripts/bench-gemma4-requests.mjs}
 out=${1:-/disk1/tmp/emufpga-gemma4-$(date -u +%Y%m%dT%H%M%SZ)}
 build=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
 server=$build/bin/llama-server
@@ -19,6 +20,8 @@ gpu_layers=${GPU_LAYERS:-20}
 placement=${PLACEMENT:-layer-offload}
 lazy_mode=${LAZY_MODE:-off}
 expected_sha=6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493
+expert_reclaim=false
+[ -n "${GGML_MUL_MAT_ID_DONTNEED:-}" ] && expert_reclaim=true
 
 for value in "$runs" "$prompt_tokens" "$output_tokens" "$gpu_layers"; do
     case "$value" in ''|*[!0-9]*) echo "counts must be nonnegative integers" >&2; exit 2 ;; esac
@@ -30,6 +33,7 @@ done
 [ -x "$server" ] || { echo "missing llama-server: $server" >&2; exit 2; }
 [ -f "$model" ] || { echo "missing Gemma-4 model: $model" >&2; exit 2; }
 [ -f "$tasks" ] || { echo "missing task corpus: $tasks" >&2; exit 2; }
+[ -f "$client" ] || { echo "missing request client: $client" >&2; exit 2; }
 nvidia-smi >/dev/null || { echo "NVIDIA device unavailable" >&2; exit 2; }
 actual_sha=$(sha256sum "$model" | awk '{print $1}')
 [ "$actual_sha" = "$expected_sha" ] || { echo "Gemma-4 SHA-256 mismatch: $actual_sha" >&2; exit 2; }
@@ -41,8 +45,8 @@ case "$placement" in
     experts-cpu) override=(-ot '.*ffn_.*_exps\.weight=CPU') ;;
     *) echo "unknown PLACEMENT: $placement" >&2; exit 2 ;;
 esac
-printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","placement":"%s","lazy_mode":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"tasks":"%s","energy_scope":"NVIDIA board only; not whole system"}\n' \
-    "$(basename "$model")" "$actual_sha" "$revision" "$placement" "$lazy_mode" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" "$(basename "$tasks")" >"$out/manifest.json"
+printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","placement":"%s","lazy_mode":"%s","expert_reclaim":%s,"gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"tasks":"%s","client":"%s","energy_scope":"NVIDIA board only; not whole system"}\n' \
+    "$(basename "$model")" "$actual_sha" "$revision" "$placement" "$lazy_mode" "$expert_reclaim" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" "$(basename "$tasks")" "$(basename "$client")" >"$out/manifest.json"
 
 "$server" -m "$model" -ngl "$gpu_layers" "${override[@]}" --lazy-mode "$lazy_mode" -c 4096 -np 8 \
     --host 127.0.0.1 --port "$port" -lv 1 >"$out/server.log" 2>&1 &
@@ -87,7 +91,7 @@ IFS=, read -ra concurrency_values <<<"$concurrencies"
 for concurrency in "${concurrency_values[@]}"; do
     case "$concurrency" in ''|*[!0-9]*) echo "invalid CONCURRENCIES: $concurrencies" >&2; exit 2 ;; esac
     printf '%s,%s,start\n' "$(date +%s.%N)" "$concurrency" >>"$out/phases.csv"
-    node "$root/scripts/bench-gemma4-requests.mjs" "http://127.0.0.1:$port" \
+    node "$client" "http://127.0.0.1:$port" \
         "$out/requests-$concurrency.jsonl" "$tasks" \
         "$prompt_tokens" "$output_tokens" "$concurrency" "$runs" >>"$out/summaries.jsonl"
     printf '%s,%s,end\n' "$(date +%s.%N)" "$concurrency" >>"$out/phases.csv"

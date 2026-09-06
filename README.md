@@ -61,9 +61,11 @@ pages. The three-run short smoke passed 45/45 tasks at 4.17 GiB peak VRAM;
 all 262,144 final logits for one complete prompt were bit-identical with and
 without per-expert page reclamation. A residency audit found the 13.98 GiB
 peak RSS was 13.17 GiB file-backed mappings and only 0.80 GiB anonymous memory.
-This is a capacity success and one-path arithmetic check—not coding-quality
-validation. The first coding smoke found expected text in 13/15 answers but
-strict format compliance in 0/15, so the coding-agent claim remains open.
+This is a capacity success and one-path arithmetic check. A follow-up paired
+Rust corpus compiled and executed generated functions in isolated containers:
+both resident and reclaimed policies passed 30/30, with zero outcome
+disagreements. That is bounded executable reliability evidence—not validation
+of repository-scale coding agents, which remains open.
 See [docs/gemma4-serial-experts.md](docs/gemma4-serial-experts.md).
 
 Background and the full argument: [docs/research.txt](docs/research.txt).

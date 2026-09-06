@@ -42,6 +42,7 @@ const requestRecords = summaries.flatMap((summary) => {
 });
 const gradedRequests = requestRecords.map((record) => {
   const task = tasks[record.request_id - 1];
+  if (typeof record.passed === "boolean") return record;
   const accepted = task === undefined ? [record.expected] : [task.expected, ...(task.accepted ?? [])];
   return {
     ...record,
@@ -110,17 +111,25 @@ const result = {
   },
   requests: summaries,
   response_quality: gradedRequests.length === 0 ? null : {
-    scope: "small deterministic smoke corpus; not an agentic coding benchmark",
+    scope: manifest.client === "bench-gemma4-rust-code.mjs"
+      ? "dependency-free Rust functions compiled and executed against deterministic tests in an isolated container"
+      : "small deterministic smoke corpus; not an agentic coding benchmark",
     responses: gradedRequests.length,
-    strict_instruction_following: gradedRequests.filter((item) => item.correct).length,
-    expected_answer_present: gradedRequests.filter((item) => item.answer_present).length,
+    strict_instruction_following: gradedRequests.filter((item) => item.strict ?? item.correct).length,
+    ...(manifest.client === "bench-gemma4-rust-code.mjs" ? {
+      compiled: gradedRequests.filter((item) => item.compiled).length,
+      tests_passed: gradedRequests.filter((item) => item.passed).length,
+    } : { expected_answer_present: gradedRequests.filter((item) => item.answer_present).length }),
     by_concurrency: summaries.map((summary) => {
       const records = gradedRequests.filter((item) => item.concurrency === summary.concurrency);
       return {
         concurrency: summary.concurrency,
         responses: records.length,
-        strict_instruction_following: records.filter((item) => item.correct).length,
-        expected_answer_present: records.filter((item) => item.answer_present).length,
+        strict_instruction_following: records.filter((item) => item.strict ?? item.correct).length,
+        ...(manifest.client === "bench-gemma4-rust-code.mjs" ? {
+          compiled: records.filter((item) => item.compiled).length,
+          tests_passed: records.filter((item) => item.passed).length,
+        } : { expected_answer_present: records.filter((item) => item.answer_present).length }),
       };
     }),
   },
@@ -133,14 +142,20 @@ const result = {
     })),
   },
   caveats: [
-    "Simple deterministic correctness probes are smoke tests, not a benchmark of model quality.",
-    "Expected-answer containment tolerates explanatory wrappers and is weaker than executable semantic validation.",
+    manifest.client === "bench-gemma4-rust-code.mjs"
+      ? "Eight dependency-free functions are bounded executable evidence, not a repository-scale coding-agent benchmark."
+      : "Simple deterministic correctness probes are smoke tests, not a benchmark of model quality.",
+    ...(manifest.client === "bench-gemma4-rust-code.mjs" ? [
+      "The telemetry phase includes sequential isolated compilation and test execution after each inference group; inference wall time is recorded separately.",
+    ] : [
+      "Expected-answer containment tolerates explanatory wrappers and is weaker than executable semantic validation.",
+      "TTFT is client-observed; inter-token intervals are timestamps of streamed content events.",
+    ]),
     "Zero process read_bytes can mean mmap faults were served from warm page cache; it does not prove zero memory traffic or zero prior device IO.",
-    "TTFT is client-observed; inter-token intervals are timestamps of streamed content events.",
     "Energy excludes CPU, DRAM, storage, motherboard, fans, and PSU losses.",
-    manifest.lazy_mode === "on"
+    manifest.expert_reclaim
       ? "Experimental Linux mmap pages are reclaimed after native selected-expert operations; this is not an upstream llama.cpp feature."
-      : "The conventional control is not bounded ordered expert streaming.",
+      : "Selected expert mappings are left resident as the control memory policy.",
   ],
 };
 fs.writeFileSync(output, JSON.stringify(result, null, 2) + "\n");

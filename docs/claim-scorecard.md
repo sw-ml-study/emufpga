@@ -33,7 +33,8 @@ conventional oversized baseline. Energy at the wall has not.
 | Reclaimable selected-expert pages complete Gemma generation | **Measured preliminary capacity success** | Three 128+16 runs; 45/45 short tasks correct; 4,172 MiB VRAM; 15,070 MiB peak and 9,723 MiB mean RSS |
 | Reclamation preserves complete-path logits | **Measured, one prompt** | All 262,144 float logits byte-identical; equal 1 MiB arrays and SHA-256; same binary, Q5_K_M weights, placement, and kernels |
 | The ~15 GiB RSS peak is runtime allocation | **Measured negative** | New peak was 14,316 MiB: 13,486 MiB file-backed versus 815 MiB anonymous; mapped weight pages dominate |
-| Small concurrent coding smoke is reliable | **Mixed / insufficient** | Expected answer appeared in 13/15 responses, but strict “only expression” compliance was 0/15; no compilation or tests |
+| Text-only concurrent coding smoke is reliable | **Mixed / insufficient** | Expected answer appeared in 13/15 responses, but strict “only expression” compliance was 0/15; no compilation or tests |
+| Reclamation preserves bounded executable coding results | **Measured, small corpus** | Resident and reclaimed policies each compiled and passed 30/30; zero paired outcome disagreements; 28/30 exact-text matches |
 | Oversized Gemma conventional offload serves independent requests | **Measured baseline smoke** | 20/30 layers on GPU; 128+16 tokens; 3 runs; aggregate 3.45/4.86/5.60/7.11 tok/s at 1/2/4/8 requests |
 | Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |
 | Lower-bit placement is automatically faster | **Measured negative** | Q2 CPU experts improve generation-only throughput at 1–4 requests, but 7–9× slower prefill reverses the end-to-end conclusion |
@@ -51,8 +52,9 @@ GPU-board energy over model load plus the complete request sweep. At four
 requests it provides 1.40 generated tok/s/request. Gemma's layer-0 experts run
 through the standalone serial path, and complete inference succeeds through a
 Linux mmap reclamation prototype.
-This validates the short-contract capacity proposition, not coding reliability
-or the longer qualification.
+This validates the short-contract capacity proposition and finds no reliability
+regression on eight small executable Rust functions. It does not validate
+repository-scale coding agents or the longer qualification.
 
 The newer residency sweep explains the large RSS rather than eliminating it.
 At concurrency 1/2/4/8, peak RSS was 11,889/12,180/13,141/14,316 MiB, while

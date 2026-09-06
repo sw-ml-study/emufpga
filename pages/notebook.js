@@ -142,17 +142,20 @@
     if (!target || !parallel) return;
     try {
       const [data, logits] = await Promise.all([
-        fetch("gemma4-q5km-coding-residency.json").then(r => r.json()),
+        fetch("gemma4-q5km-executable-code.json").then(r => r.json()),
         fetch("gemma4-q5km-logit-equivalence.json").then(r => r.json()),
       ]);
       const render = () => {
         const concurrency = Number(parallel.value);
-        const memory = data.telemetry.by_concurrency.find(item => item.concurrency === concurrency);
-        const experts = data.expert_trace.by_concurrency.find(item => item.concurrency === concurrency);
-        const quality = data.response_quality.by_concurrency.find(item => item.concurrency === concurrency);
-        const presentPercent = 100 * quality.expected_answer_present / quality.responses;
-        const strictPercent = 100 * quality.strict_instruction_following / quality.responses;
-        target.innerHTML = `<div class="placement-callout"><strong>${logits.logits.toLocaleString()} / ${logits.logits.toLocaleString()} logits bit-identical</strong><span>max error ${logits.max_absolute_error} · same native quant arithmetic</span></div><div class="metric-sheet"><h3>Peak host memory <small>${concurrency} request${concurrency === 1 ? "" : "s"}</small></h3>${placementBar("File-backed weights", memory.peak_rss_file_mib, 15000, "MiB", "cpu")}${placementBar("Anonymous runtime", memory.peak_rss_anon_mib, 15000, "MiB", "gpu")}</div><div class="metric-sheet"><h3>Coding smoke <small>answer vs instruction</small></h3>${placementBar("Expected answer present", presentPercent, 100, "%", "gpu")}${placementBar("Strict only-code format", strictPercent, 100, "%", "cpu")}</div><div class="placement-detail"><span>Expert work: <b>${experts.selected_experts.toLocaleString()} selected tensors</b> · <b>${(experts.logical_bytes / 1e9).toFixed(2)} GB logical</b></span><span>Peak: <b>${(memory.peak_process_rss_mib / 1024).toFixed(2)} GiB RSS</b> · <b>${(memory.peak_vram_mib / 1024).toFixed(2)} GiB VRAM</b></span></div>`;
+        const resident = data.policies.resident;
+        const reclaimed = data.policies.reclaimed;
+        const residentMemory = resident.telemetry.by_concurrency.find(item => item.concurrency === concurrency);
+        const reclaimedMemory = reclaimed.telemetry.by_concurrency.find(item => item.concurrency === concurrency);
+        const residentQuality = resident.response_quality.by_concurrency.find(item => item.concurrency === concurrency);
+        const reclaimedQuality = reclaimed.response_quality.by_concurrency.find(item => item.concurrency === concurrency);
+        const expert = reclaimed.expert_trace.by_concurrency.find(item => item.concurrency === concurrency);
+        const strict = 100 * reclaimedQuality.strict_instruction_following / reclaimedQuality.responses;
+        target.innerHTML = `<div class="placement-callout"><strong>${residentQuality.tests_passed + reclaimedQuality.tests_passed}/${residentQuality.responses + reclaimedQuality.responses} executable tests passed</strong><span>zero paired outcome disagreements · ${logits.logits.toLocaleString()} logits also bit-identical</span></div><div class="metric-sheet"><h3>Peak host RSS <small>${concurrency} request${concurrency === 1 ? "" : "s"}</small></h3>${placementBar("Resident expert pages", residentMemory.peak_process_rss_mib, 16000, "MiB", "cpu")}${placementBar("Reclaimed experts", reclaimedMemory.peak_process_rss_mib, 16000, "MiB", "gpu")}</div><div class="metric-sheet"><h3>Executable Rust <small>two repetitions</small></h3>${placementBar("Resident tests passed", 100 * residentQuality.tests_passed / residentQuality.responses, 100, "%", "gpu")}${placementBar("Reclaimed tests passed", 100 * reclaimedQuality.tests_passed / reclaimedQuality.responses, 100, "%", "gpu")}${placementBar("Strict output format", strict, 100, "%", "cpu")}</div><div class="placement-detail"><span>Reclaimed expert work: <b>${expert.assignments.toLocaleString()} assignments</b> · <b>${(expert.logical_bytes / 1e9).toFixed(2)} GB logical</b></span><span>Reclaimed peak: <b>${(reclaimedMemory.peak_process_rss_mib / 1024).toFixed(2)} GiB RSS</b> · <b>${(reclaimedMemory.peak_vram_mib / 1024).toFixed(2)} GiB VRAM</b></span></div>`;
       };
       parallel.addEventListener("change", render);
       render();

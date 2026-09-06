@@ -44,9 +44,9 @@ union expert once and applies it to every waiting request that selected it.
 Attention, KV cache, sampling, and matrix arithmetic remain per request.
 
 Quality should be unchanged in principle because bytes are not requantized and
-request states are not combined. This layer comparison supports that claim
-numerically. Reliability and coding quality still require complete greedy
-generation to match a same-quant llama.cpp oracle and the coding task suite.
+request states are not combined. The later complete-logit and executable-code
+experiments support that claim on bounded samples. Repository-scale coding
+quality remains untested.
 
 No defensible maximum agent count exists yet. Route-union growth, KV capacity,
 latency, and the batching window jointly set it. The end-to-end experiment must
@@ -70,8 +70,8 @@ Derived data: [`data/gemma4-q5km-serial-layer0.json`](data/gemma4-q5km-serial-la
 llama.cpp tensor placement alone is not serial selected-expert execution. The
 experiment below therefore adds a narrow native-operation patch: lazy expert
 mappings plus post-expert page reclamation. The remaining validation boundary
-is reference logits, coding tasks, finer residency tracing, and actual storage
-IO—not connecting the model graph, which is now complete.
+is broader coding tasks, finer residency tracing, and actual storage IO—not
+connecting the model graph, which is now complete.
 
 ## End-to-end partition bridge
 
@@ -174,6 +174,49 @@ agents. Derived data:
 [`data/gemma4-q5km-logit-equivalence.json`](data/gemma4-q5km-logit-equivalence.json)
 and
 [`data/gemma4-q5km-coding-residency.json`](data/gemma4-q5km-coding-residency.json).
+
+## Executable Rust qualification
+
+The follow-up replaced text containment with eight dependency-free Rust
+function tasks. Tests were omitted from prompts, then each response was
+compiled and executed in disposable Docker containers. Both compiler and test
+runner had networking disabled, read-only roots, no Linux capabilities,
+`no-new-privileges`, CPU/memory/PID limits, and timeouts. No generated code or
+compile-time macro ran directly against the host.
+
+Two repetitions at each concurrency produced 30 responses per policy:
+
+| Requests | Resident passed | Reclaimed passed | Resident peak RSS | Reclaimed peak RSS | Peak VRAM |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2/2 | 2/2 | 12,118 MiB | 10,556 MiB | 4,150 MiB |
+| 2 | 4/4 | 4/4 | 13,264 MiB | 10,836 MiB | 4,150 MiB |
+| 4 | 8/8 | 8/8 | 14,376 MiB | 11,163 MiB | 4,152 MiB |
+| 8 | 16/16 | 16/16 | 15,165 MiB | 12,962 MiB | 4,152 MiB |
+
+| Requests | Resident mean inference | Reclaimed mean inference | Resident logical GB | Reclaimed logical GB |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 10.75 s | 16.52 s | 138.49 | 138.49 |
+| 2 | 10.59 s | 22.47 s | 223.14 | 223.14 |
+| 4 | 16.92 s | 34.90 s | 425.73 | 398.55 |
+| 8 | 27.57 s | 52.20 s | 641.40 | 634.13 |
+
+All 60 generated programs compiled and passed. Across 30 paired cases there
+were zero pass/fail disagreements and 28 exact-text matches. The two text
+differences were both palindrome implementations at concurrency eight; both
+passed. Strict function-only formatting was only 8/30 for each policy, showing
+that textual compliance is unstable even when the executable result is sound.
+
+This is positive bounded reliability evidence, not proof that several coding
+agents can complete repository work at equal quality. The corpus is small, the
+tests are deterministic, and there are only two repetitions. Reclamation also
+increased mean inference wall time; speed is a usability cost, not the capacity
+success criterion. NVIDIA-board telemetry integrated 4.35 kJ resident and
+6.60 kJ reclaimed, but the sampling window included sequential compiler/test
+containers after inference. Those values are disclosed but are not a valid
+inference-energy comparison or results/kWh claim. Derived data:
+[`data/gemma4-q5km-executable-code.json`](data/gemma4-q5km-executable-code.json).
+The physical-I/O follow-up is predeclared in
+[`cold-cache-io-plan.md`](cold-cache-io-plan.md).
 
 ### Does this fit an 18 GB unified-memory Mac?
 
