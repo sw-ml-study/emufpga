@@ -1,0 +1,1 @@
+Run the end-to-end too-large-to-fit workaround (bench-gemma4-offload: experts on CPU, GPU attention/KV, lazy mode) on the RTX 3060 with the sm_86 patched llama.cpp, concurrency 1/2/4/8, and record whether the capacity result reproduces (correctness, peak VRAM under 12 GiB, throughput). Record in docs/intermediate-results-rtx3060-12g.md.

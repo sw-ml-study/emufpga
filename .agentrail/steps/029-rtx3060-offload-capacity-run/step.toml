@@ -1,0 +1,8 @@
+number = 29
+slug = "rtx3060-offload-capacity-run"
+status = "pending"
+description = "Run the end-to-end too-large-to-fit workaround (bench-gemma4-offload: experts..."
+role = "validation"
+context_files = []
+created_at = "2026-09-06T14:27:42"
+commits = ["3d6a3829fbb3e82aa83b4dab9cce3d602ad89752"]
