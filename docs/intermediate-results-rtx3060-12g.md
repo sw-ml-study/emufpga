@@ -53,15 +53,37 @@ hardware is described in [rtx3060-port.md](rtx3060-port.md).
 | Rust tree builds (`spm-granite-moe`) | DONE |
 | llama.cpp cloned + checked out at pinned rev | DONE |
 | llama.cpp CUDA build for `sm_86` | DONE (llama-server, llama-cli link; device enumerates as `CUDA0: RTX 3060`) |
-| Pinned model download + SHA-256 verify | IN PROGRESS |
+| Pinned model download + SHA-256 verify | DONE (sha256sum -c OK) |
 
 ## Measured results
 
 Nothing here is claimed until it is measured on this box.
 
+### Layer-0 selected-expert smoke (CPU, `verify-gemma4-expert-smoke`)
+
+This path is deterministic CPU code (the `spm-granite-moe` Rust engine
+against exact GGUF bytes), so an exact match to the 5060 lane is the
+correct expectation, and that is what was observed. Routing, distinct
+fetches, stream bytes, the 176-byte resident footprint (one Q5_K block),
+and the maximum error are bit-for-bit identical to the 5060 lane's
+layer-0 table in [gemma4-serial-experts.md](gemma4-serial-experts.md).
+
+| Batch | Assignments | Distinct fetches | Stream MB | Resident B | Max abs error (3060) | Max abs error (5060) |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 8 | 8 | 41.14 | 176 | 0.00000191 | 0.00000191 |
+| 2 | 16 | 12 | 61.70 | 176 | 0.00000381 | 0.00000381 |
+| 4 | 32 | 20 | 102.84 | 176 | 0.00000381 | 0.00000381 |
+| 8 | 64 | 33 | 169.69 | 176 | 0.00000381 | 0.00000381 |
+
+CPU timings differ from the 5060 lane, as expected on a different host
+(dual Xeon E5-2697 v4): direct-path 144/228/396/699 ms and scalar serial
+stream 455/738/1305/2313 ms at batch 1/2/4/8. These are usability
+numbers, not correctness, and the scalar stream loop is unoptimized.
+
+### Remaining (GPU end-to-end)
+
 | Experiment | Metric | RTX 3060 12G |
 | --- | --- | --- |
-| Layer-0 expert smoke (`verify-gemma4-expert-smoke`) | max abs error vs direct GGUF | PENDING |
 | End-to-end offload (`bench-gemma4-offload`) | peak VRAM | PENDING |
 | End-to-end offload | executable tasks passed | PENDING |
 | End-to-end offload | aggregate tok/s, c1..c8 | PENDING |
