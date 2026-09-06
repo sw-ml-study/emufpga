@@ -138,9 +138,37 @@ from the 5060 lane only because the prompt differs; the invariant under
 test is resident-vs-reclaimed equality within one binary, which holds.
 Derived data: [gemma4-q5km-logit-equivalence-rtx3060.json](data/gemma4-q5km-logit-equivalence-rtx3060.json).
 
+### Executable-code sweep (256-token, Docker-sandboxed)
+
+The 256-token executable corpus (`gemma4-rust-executable-v1`) through the
+same experts-CPU / GPU-attention / lazy path, with each response compiled
+and run in a locked-down `rust:1.89-slim-bookworm` container (no network,
+read-only root, memory/CPU/PID limits, timeouts). Resident policy, one
+repetition.
+
+| Concurrency | Compiled | Passed | Strict format | Tokens | Wall ms (mean/req) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1/1 | 1/1 | 1/1 | 62 | 4958 |
+| 2 | 2/2 | 2/2 | 1/2 | 127 | 5613 |
+| 4 | 4/4 | 4/4 | 1/4 | 289 | 7591 |
+| 8 | 8/8 | 8/8 | 1/8 | 541 | 15299 |
+
+- **All 15 generated programs compiled and passed** in the sandbox, the
+  same executable outcome the 5060 lane reported (which ran more
+  repetitions and both policies). Peak VRAM 3380 MiB, peak RSS ~14.3 GiB
+  -- consistent with the correctness-corpus run.
+- **Strict function-only formatting is unstable** (1 strict response per
+  batch) even though every executable result was sound -- the 5060 lane
+  saw the same effect. Text compliance is not a reliable signal;
+  compile-and-run is.
+- This is one warm resident repetition on 15 tasks, not the 5060 lane's
+  multi-repetition resident-and-reclaimed matrix; it confirms the
+  executable outcome travels, not a full statistical re-run.
+
+Derived data: [gemma4-q5km-executable-rtx3060.json](data/gemma4-q5km-executable-rtx3060.json).
+
 Still not run on this box: a cold-cache campaign (`bench-gemma4-cold-io`,
-which needs `drop_caches` / sudo). The 256-token executable-code sweep is
-recorded separately below once it completes.
+which needs `drop_caches` / sudo).
 
 ## Expectations (to be confirmed or refuted, not assumed)
 

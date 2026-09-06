@@ -1,0 +1,57 @@
+{
+  "schema": "emufpga.gemma4-executable-rtx3060.v1",
+  "hardware": "RTX 3060 12G (Ampere sm_86), dual Xeon E5-2697 v4, 503 GiB RAM",
+  "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+  "cuda_arch": "86",
+  "config": {
+    "placement": "experts-cpu",
+    "gpu_layers": 999,
+    "lazy_mode": "on",
+    "expert_reclaim": false,
+    "output_tokens": 256,
+    "runs": 1,
+    "policy": "resident",
+    "corpus": "gemma4-rust-executable-v1",
+    "sandbox": "rust:1.89-slim-bookworm --network none"
+  },
+  "peak_vram_mib": 3380,
+  "peak_rss_kib": 15020136,
+  "per_concurrency": [
+    {
+      "concurrency": 1,
+      "requests": 1,
+      "compiled": 1,
+      "passed": 1,
+      "strict": 1,
+      "generated_tokens": 62,
+      "wall_ms_mean": 4958.431888
+    },
+    {
+      "concurrency": 2,
+      "requests": 2,
+      "compiled": 2,
+      "passed": 2,
+      "strict": 1,
+      "generated_tokens": 127,
+      "wall_ms_mean": 5612.6927845
+    },
+    {
+      "concurrency": 4,
+      "requests": 4,
+      "compiled": 4,
+      "passed": 4,
+      "strict": 1,
+      "generated_tokens": 289,
+      "wall_ms_mean": 7590.676091750001
+    },
+    {
+      "concurrency": 8,
+      "requests": 8,
+      "compiled": 8,
+      "passed": 8,
+      "strict": 1,
+      "generated_tokens": 541,
+      "wall_ms_mean": 15298.94574275
+    }
+  ]
+}
