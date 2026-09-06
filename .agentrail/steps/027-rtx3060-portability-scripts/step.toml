@@ -1,0 +1,8 @@
+number = 27
+slug = "rtx3060-portability-scripts"
+status = "pending"
+description = "Port the GPU/model experiment scripts off the large12-specific assumptions (h..."
+role = "production"
+context_files = []
+created_at = "2026-09-06T13:19:32"
+commits = ["1ee54552f205f5b557fac1168f3776abcc97fcf9"]
