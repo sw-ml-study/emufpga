@@ -6,6 +6,7 @@ set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
+tasks=${TASKS:-$root/docs/data/gemma4-correctness-tasks.json}
 out=${1:-/disk1/tmp/emufpga-gemma4-$(date -u +%Y%m%dT%H%M%SZ)}
 build=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
 server=$build/bin/llama-server
@@ -13,6 +14,7 @@ port=${PORT:-8091}
 runs=${RUNS:-3}
 prompt_tokens=${PROMPT_TOKENS:-128}
 output_tokens=${OUTPUT_TOKENS:-16}
+concurrencies=${CONCURRENCIES:-1,2,4,8}
 gpu_layers=${GPU_LAYERS:-20}
 placement=${PLACEMENT:-layer-offload}
 lazy_mode=${LAZY_MODE:-off}
@@ -27,6 +29,7 @@ done
 }
 [ -x "$server" ] || { echo "missing llama-server: $server" >&2; exit 2; }
 [ -f "$model" ] || { echo "missing Gemma-4 model: $model" >&2; exit 2; }
+[ -f "$tasks" ] || { echo "missing task corpus: $tasks" >&2; exit 2; }
 nvidia-smi >/dev/null || { echo "NVIDIA device unavailable" >&2; exit 2; }
 actual_sha=$(sha256sum "$model" | awk '{print $1}')
 [ "$actual_sha" = "$expected_sha" ] || { echo "Gemma-4 SHA-256 mismatch: $actual_sha" >&2; exit 2; }
@@ -38,8 +41,8 @@ case "$placement" in
     experts-cpu) override=(-ot '.*ffn_.*_exps\.weight=CPU') ;;
     *) echo "unknown PLACEMENT: $placement" >&2; exit 2 ;;
 esac
-printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","placement":"%s","lazy_mode":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"energy_scope":"NVIDIA board only; not whole system"}\n' \
-    "$(basename "$model")" "$actual_sha" "$revision" "$placement" "$lazy_mode" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" >"$out/manifest.json"
+printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","sha256":"%s","llama_revision":"%s","placement":"%s","lazy_mode":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"tasks":"%s","energy_scope":"NVIDIA board only; not whole system"}\n' \
+    "$(basename "$model")" "$actual_sha" "$revision" "$placement" "$lazy_mode" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" "$(basename "$tasks")" >"$out/manifest.json"
 
 "$server" -m "$model" -ngl "$gpu_layers" "${override[@]}" --lazy-mode "$lazy_mode" -c 4096 -np 8 \
     --host 127.0.0.1 --port "$port" -lv 1 >"$out/server.log" 2>&1 &
@@ -58,21 +61,36 @@ done
 curl -fsS "http://127.0.0.1:$port/health" >/dev/null || { echo "llama-server not ready" >&2; exit 1; }
 
 (
+    printf 'timestamp_s,rss_kib,rss_anon_kib,rss_file_kib,pss_kib,pss_anon_kib,pss_file_kib,read_bytes,rchar,gpu_memory_mib,gpu_util_percent,gpu_power_w\n'
     while kill -0 "$server_pid" 2>/dev/null; do
         stamp=$(date +%s.%N)
         gpu=$(nvidia-smi --query-gpu=memory.used,utilization.gpu,power.draw --format=csv,noheader,nounits)
-        rss=$(ps -o rss= -p "$server_pid" | tr -d ' ')
-        printf '%s,%s,%s\n' "$stamp" "$rss" "$gpu"
+        rss=$(awk '/^VmRSS:/{print $2}' "/proc/$server_pid/status" 2>/dev/null || true)
+        rss_anon=$(awk '/^RssAnon:/{print $2}' "/proc/$server_pid/status" 2>/dev/null || true)
+        rss_file=$(awk '/^RssFile:/{print $2}' "/proc/$server_pid/status" 2>/dev/null || true)
+        pss=$(awk '/^Pss:/{print $2}' "/proc/$server_pid/smaps_rollup" 2>/dev/null || true)
+        pss_anon=$(awk '/^Pss_Anon:/{print $2}' "/proc/$server_pid/smaps_rollup" 2>/dev/null || true)
+        pss_file=$(awk '/^Pss_File:/{print $2}' "/proc/$server_pid/smaps_rollup" 2>/dev/null || true)
+        read_bytes=$(awk '/^read_bytes:/{print $2}' "/proc/$server_pid/io" 2>/dev/null || true)
+        rchar=$(awk '/^rchar:/{print $2}' "/proc/$server_pid/io" 2>/dev/null || true)
+        printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$stamp" "${rss:-0}" "${rss_anon:-0}" \
+            "${rss_file:-0}" "${pss:-0}" "${pss_anon:-0}" "${pss_file:-0}" \
+            "${read_bytes:-0}" "${rchar:-0}" "$gpu"
         sleep 0.2
     done
 ) >"$out/telemetry.csv" &
 sampler_pid=$!
 
 : >"$out/summaries.jsonl"
-for concurrency in 1 2 4 8; do
+printf 'timestamp_s,concurrency,event\n' >"$out/phases.csv"
+IFS=, read -ra concurrency_values <<<"$concurrencies"
+for concurrency in "${concurrency_values[@]}"; do
+    case "$concurrency" in ''|*[!0-9]*) echo "invalid CONCURRENCIES: $concurrencies" >&2; exit 2 ;; esac
+    printf '%s,%s,start\n' "$(date +%s.%N)" "$concurrency" >>"$out/phases.csv"
     node "$root/scripts/bench-gemma4-requests.mjs" "http://127.0.0.1:$port" \
-        "$out/requests-$concurrency.jsonl" "$root/docs/data/gemma4-correctness-tasks.json" \
+        "$out/requests-$concurrency.jsonl" "$tasks" \
         "$prompt_tokens" "$output_tokens" "$concurrency" "$runs" >>"$out/summaries.jsonl"
+    printf '%s,%s,end\n' "$(date +%s.%N)" "$concurrency" >>"$out/phases.csv"
 done
 
 echo "results: $out"

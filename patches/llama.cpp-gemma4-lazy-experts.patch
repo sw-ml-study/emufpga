@@ -22,9 +22,12 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
 +        for (int cur_a = 0; cur_a < n_as; ++cur_a) {
 +            selected += matrix_row_counts[cur_a] != 0;
 +        }
++        struct timespec now;
++        clock_gettime(CLOCK_REALTIME, &now);
++        const double timestamp_s = now.tv_sec + now.tv_nsec / 1e9;
 +        fprintf(stderr,
-+                "spm_mmid tensor=%s activations=%" PRId64 " assignments=%" PRId64 " selected=%" PRId64 " expert_bytes=%zu logical_bytes=%zu\n",
-+                src0->name, ids->ne[1], ids->ne[1] * n_ids, selected, nb02, (size_t) selected * nb02);
++                "spm_mmid timestamp_s=%.9f tensor=%s activations=%" PRId64 " assignments=%" PRId64 " selected=%" PRId64 " expert_bytes=%zu logical_bytes=%zu\n",
++                timestamp_s, src0->name, ids->ne[1], ids->ne[1] * n_ids, selected, nb02, (size_t) selected * nb02);
 +    }
 +
      for (int cur_a = 0; cur_a < n_as; ++cur_a) {
@@ -35,6 +38,19 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
          }
  
 +        const char * src0_cur = (const char *) src0->data + cur_a * nb02;
++#if defined(__linux__)
++        if (getenv("GGML_MUL_MAT_ID_DONTNEED") != NULL) {
++            if (ith == 0) {
++                const uintptr_t page = (uintptr_t) sysconf(_SC_PAGESIZE);
++                const uintptr_t begin = ((uintptr_t) src0_cur + page - 1) & ~(page - 1);
++                const uintptr_t end = ((uintptr_t) src0_cur + nb02) & ~(page - 1);
++                if (begin < end) {
++                    madvise((void *) begin, end - begin, MADV_RANDOM);
++                }
++            }
++            ggml_barrier(params->threadpool);
++        }
++#endif
 +
          if (iqp && ggml_cpu_iqp_mul_mat_id_min_batch(cne1)) {
              ggml_compute_forward_mul_mat_id_iqp(params, dst, cur_a, cne1, (const int32_t *) &MMID_MATRIX_ROW(cur_a, 0),

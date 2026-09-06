@@ -1,0 +1,148 @@
+{
+  "schema": "emufpga.gemma4-offload-derived.v1",
+  "captured_utc": "2026-09-06T00:26:47.430Z",
+  "manifest": {
+    "schema": "emufpga.gemma4-offload.v1",
+    "model": "google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+    "sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+    "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+    "placement": "experts-cpu",
+    "lazy_mode": "on",
+    "gpu_layers": 999,
+    "prompt_tokens": 128,
+    "output_tokens": 16,
+    "runs": 1,
+    "tasks": "gemma4-coding-smoke-tasks.json",
+    "energy_scope": "NVIDIA board only; not whole system"
+  },
+  "telemetry": {
+    "scope": "server load plus complete 1/8 request sweep; NVIDIA board energy only",
+    "samples": 83,
+    "elapsed_seconds": 50.55844759941101,
+    "peak_process_rss_mib": 13513.515625,
+    "mean_process_rss_mib": 9253.01407191265,
+    "minimum_process_rss_mib": 2611.88671875,
+    "peak_vram_mib": 4170,
+    "peak_gpu_utilization_percent": 100,
+    "gpu_board_energy_joules": 1150.3845389819144,
+    "peak_rss_anon_mib": 827.0703125,
+    "peak_rss_file_mib": 12862.21875,
+    "peak_pss_mib": 13468.1630859375,
+    "peak_pss_anon_mib": 827.0703125,
+    "peak_pss_file_mib": 12841.8701171875,
+    "process_read_bytes_delta": 0,
+    "process_rchar_delta": 0,
+    "by_concurrency": [
+      {
+        "concurrency": 1,
+        "samples": 21,
+        "peak_process_rss_mib": 11862.953125,
+        "peak_vram_mib": 4150,
+        "peak_rss_anon_mib": 604.69921875,
+        "peak_rss_file_mib": 11273.953125,
+        "peak_pss_mib": 11833.5341796875,
+        "peak_pss_anon_mib": 604.69921875,
+        "peak_pss_file_mib": 11159.9091796875,
+        "process_read_bytes_delta": 0,
+        "process_rchar_delta": 0
+      },
+      {
+        "concurrency": 8,
+        "samples": 61,
+        "peak_process_rss_mib": 13513.515625,
+        "peak_vram_mib": 4170,
+        "peak_rss_anon_mib": 827.0703125,
+        "peak_rss_file_mib": 12862.21875,
+        "peak_pss_mib": 13468.1630859375,
+        "peak_pss_anon_mib": 827.0703125,
+        "peak_pss_file_mib": 12841.8701171875,
+        "process_read_bytes_delta": 0,
+        "process_rchar_delta": 0
+      }
+    ]
+  },
+  "requests": [
+    {
+      "concurrency": 1,
+      "runs": 1,
+      "requests": 1,
+      "correct": 0,
+      "answer_present": 1,
+      "generated_tokens": 16,
+      "aggregate_tps_mean": 1.243809323410371,
+      "per_request_tps_mean": 1.243809323410371,
+      "ttft_ms_p50": 9066.601723,
+      "ttft_ms_p95": 9066.601723,
+      "inter_token_ms_p50": 256.9525969999995,
+      "inter_token_ms_p95": 511.78117400000156
+    },
+    {
+      "concurrency": 8,
+      "runs": 1,
+      "requests": 8,
+      "correct": 2,
+      "answer_present": 6,
+      "generated_tokens": 128,
+      "aggregate_tps_mean": 3.3769068115542185,
+      "per_request_tps_mean": 0.4229804583538601,
+      "ttft_ms_p50": 26567.61221,
+      "ttft_ms_p95": 26574.709616,
+      "inter_token_ms_p50": 759.0385929999975,
+      "inter_token_ms_p95": 936.0453049999996
+    }
+  ],
+  "response_quality": {
+    "scope": "small deterministic smoke corpus; not an agentic coding benchmark",
+    "responses": 9,
+    "strict_instruction_following": 2,
+    "expected_answer_present": 7,
+    "by_concurrency": [
+      {
+        "concurrency": 1,
+        "responses": 1,
+        "strict_instruction_following": 0,
+        "expected_answer_present": 1
+      },
+      {
+        "concurrency": 8,
+        "responses": 8,
+        "strict_instruction_following": 2,
+        "expected_answer_present": 6
+      }
+    ]
+  },
+  "expert_trace": {
+    "scope": "logical selected-expert tensor bytes requested; not physical storage IO",
+    "operations": 2100,
+    "activations": 10260,
+    "assignments": 82080,
+    "selected_experts": 38864,
+    "logical_bytes": 87723164672,
+    "by_concurrency": [
+      {
+        "concurrency": 1,
+        "operations": 960,
+        "activations": 1140,
+        "assignments": 9120,
+        "selected_experts": 8408,
+        "logical_bytes": 18936372224
+      },
+      {
+        "concurrency": 8,
+        "operations": 1020,
+        "activations": 8880,
+        "assignments": 71040,
+        "selected_experts": 29146,
+        "logical_bytes": 65837877248
+      }
+    ]
+  },
+  "caveats": [
+    "Simple deterministic correctness probes are smoke tests, not a benchmark of model quality.",
+    "Expected-answer containment tolerates explanatory wrappers and is weaker than executable semantic validation.",
+    "Zero process read_bytes can mean mmap faults were served from warm page cache; it does not prove zero memory traffic or zero prior device IO.",
+    "TTFT is client-observed; inter-token intervals are timestamps of streamed content events.",
+    "Energy excludes CPU, DRAM, storage, motherboard, fans, and PSU losses.",
+    "Experimental Linux mmap pages are reclaimed after native selected-expert operations; this is not an upstream llama.cpp feature."
+  ]
+}

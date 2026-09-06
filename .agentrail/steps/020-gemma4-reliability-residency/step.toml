@@ -1,6 +1,6 @@
 number = 20
 slug = "gemma4-reliability-residency"
-status = "pending"
+status = "in-progress"
 description = "Strengthen the preliminary Gemma-4 capacity result without making speed a suc..."
 role = "validation"
 context_files = []

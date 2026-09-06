@@ -54,6 +54,12 @@ int main(int argc, char ** argv) {
     auto model_params = llama_model_default_params();
     const char * gpu_layers = std::getenv("LLAMA_LOGITS_GPU_LAYERS");
     model_params.n_gpu_layers = gpu_layers == nullptr ? 0 : std::atoi(gpu_layers);
+    const char * lazy = std::getenv("LLAMA_LOGITS_LAZY");
+    if (lazy != nullptr) {
+        const std::string mode = lazy;
+        model_params.lazy_mode = mode == "on" ? LLAMA_LAZY_MODE_ON :
+            mode == "auto" ? LLAMA_LAZY_MODE_AUTO : LLAMA_LAZY_MODE_OFF;
+    }
     llama_model * model = llama_model_load_from_file(argv[1], model_params);
     if (model == nullptr) {
         return 1;
@@ -91,6 +97,19 @@ int main(int argc, char ** argv) {
     }
     const float * logits = llama_get_logits_ith(context, -1);
     const int vocab_size = llama_vocab_n_tokens(vocab);
+    const char * raw_path = std::getenv("LLAMA_LOGITS_RAW");
+    if (raw_path != nullptr) {
+        std::ofstream raw(raw_path, std::ios::binary);
+        raw.write(reinterpret_cast<const char *>(logits), sizeof(float) * vocab_size);
+        if (!raw.good()) {
+            std::fprintf(stderr, "failed to write raw logits: %s\n", raw_path);
+            llama_free(context);
+            llama_model_free(model);
+            return 1;
+        }
+        std::printf("raw_logits %s floats=%d bytes=%zu\n", raw_path, vocab_size,
+            sizeof(float) * static_cast<size_t>(vocab_size));
+    }
     std::vector<scored_token> ranked;
     ranked.reserve(vocab_size);
     for (int token = 0; token < vocab_size; ++token) {

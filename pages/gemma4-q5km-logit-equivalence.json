@@ -1,0 +1,16 @@
+{
+  "schema": "emufpga.logit-equivalence.v1",
+  "model": "google_gemma-4-26B-A4B-it-Q5_K_M.gguf",
+  "model_sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+  "llama_cpp_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+  "comparison": "same patched binary, model, Q5_K_M weights, GPU placement, prompt, and native kernels; resident expert mmap pages versus MADV_RANDOM before and MADV_DONTNEED after each selected expert",
+  "logits": 262144,
+  "bytes_per_array": 1048576,
+  "differing_float_values": 0,
+  "max_absolute_error": 0,
+  "root_mean_square_error": 0,
+  "cosine_similarity": 1,
+  "reference_sha256": "49bd5aaffc65a8775c68b2b8b8a016aa2dfb54dc48543ce1fce0ebc5d6223c91",
+  "candidate_sha256": "49bd5aaffc65a8775c68b2b8b8a016aa2dfb54dc48543ce1fce0ebc5d6223c91",
+  "caveat": "This isolates the memory-policy change for one complete prompt path; it is not an independent implementation oracle or a coding-quality evaluation."
+}

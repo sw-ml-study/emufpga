@@ -33,7 +33,8 @@ const filler = (await jsonPost("/tokenize", {
 })).tokens;
 if (!Array.isArray(filler) || filler.length === 0) throw new Error("tokenizer returned no filler tokens");
 const prepared = await Promise.all(tasks.slice(0, concurrency).map(async (item) => {
-  if (typeof item.prompt !== "string" || typeof item.expected !== "string") throw new Error("invalid task record");
+  if (typeof item.prompt !== "string" || typeof item.expected !== "string" ||
+      (item.accepted !== undefined && !Array.isArray(item.accepted))) throw new Error("invalid task record");
   const task = (await jsonPost("/tokenize", { content: item.prompt, add_special: true })).tokens;
   if (!Array.isArray(task) || task.length > promptTokens) throw new Error("task exceeds fixed prompt length");
   const prompt = [];
@@ -98,6 +99,8 @@ async function request(run, requestId) {
     output_tokens: outputTokens,
     expected: task.expected,
     correct: content.trimStart().toLocaleLowerCase().startsWith(task.expected.toLocaleLowerCase()),
+    answer_present: [task.expected, ...(task.accepted ?? [])]
+      .some((answer) => content.toLocaleLowerCase().includes(answer.toLocaleLowerCase())),
     ttft_ms: first - started,
     wall_ms: ended - started,
     inter_token_ms: interTokenMs,
@@ -124,6 +127,7 @@ console.log(JSON.stringify({
   runs,
   requests: records.length,
   correct: records.filter((item) => item.correct).length,
+  answer_present: records.filter((item) => item.answer_present).length,
   generated_tokens: totalTokens,
   aggregate_tps_mean: aggregateTps.reduce((sum, item) => sum + item, 0) / aggregateTps.length,
   per_request_tps_mean: records.reduce((sum, item) => sum + outputTokens * 1000 / item.wall_ms, 0) / records.length,

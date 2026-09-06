@@ -11,7 +11,7 @@ else
 fi
 model=${1:?usage: scripts/llama-logits-oracle MODEL.gguf PROMPT}
 prompt=${2:?usage: scripts/llama-logits-oracle MODEL.gguf PROMPT}
-expected=6e6725459a892b49602b596339de4916c7c7965a
+expected=4d9176092d00586775af140581bb0b558ddc4389
 actual=$(git -C "$llama_dir" rev-parse HEAD)
 if [[ "$actual" != "$expected" ]]; then
     echo "llama.cpp revision mismatch: expected $expected, found $actual" >&2

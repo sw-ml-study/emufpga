@@ -5,10 +5,12 @@
 **Today emufpga proves that real Granite, OLMoE, and oversized Gemma-4 expert
 weights can be processed in selected serial order with bounded parameter
 residency and close agreement to direct same-quant paths. Oversized Gemma now
-completes a short end-to-end correctness smoke on the small GPU; coding-task
-reliability is not yet established.**
+completes a short end-to-end correctness smoke on the small GPU, and expert
+page reclamation preserves all final logits on one complete prompt path.
+Coding-agent reliability is not yet established.**
 
-> **Preliminary oversized-model capacity success: measured. Coding reliability: not measured.**
+> **Oversized-model capacity success: measured. Arithmetic equivalence: one
+> path measured. Coding reliability: still unqualified.**
 
 An “agent” must be an independent request stream, not several tokens from one
 prompt. A small deterministic task smoke suite has now been measured for the
@@ -29,6 +31,9 @@ conventional oversized baseline. Energy at the wall has not.
 | Real Gemma Q5_K_M selected experts execute serially | **Measured layer mechanism** | Layer 0, batches 1/2/4/8; B8 collapses 64 assignments to 33 streams; max direct/stream error 0.00000381 |
 | GPU state plus CPU experts completes Gemma generation | **Measured partition bridge** | 1/2/4/8 short tasks correct; 4,170 MiB VRAM but 19,514.5 MiB RSS; conventional mapped tensors, not bounded serial supply |
 | Reclaimable selected-expert pages complete Gemma generation | **Measured preliminary capacity success** | Three 128+16 runs; 45/45 short tasks correct; 4,172 MiB VRAM; 15,070 MiB peak and 9,723 MiB mean RSS |
+| Reclamation preserves complete-path logits | **Measured, one prompt** | All 262,144 float logits byte-identical; equal 1 MiB arrays and SHA-256; same binary, Q5_K_M weights, placement, and kernels |
+| The ~15 GiB RSS peak is runtime allocation | **Measured negative** | New peak was 14,316 MiB: 13,486 MiB file-backed versus 815 MiB anonymous; mapped weight pages dominate |
+| Small concurrent coding smoke is reliable | **Mixed / insufficient** | Expected answer appeared in 13/15 responses, but strict “only expression” compliance was 0/15; no compilation or tests |
 | Oversized Gemma conventional offload serves independent requests | **Measured baseline smoke** | 20/30 layers on GPU; 128+16 tokens; 3 runs; aggregate 3.45/4.86/5.60/7.11 tok/s at 1/2/4/8 requests |
 | Conventional CPU expert placement improves complete service time | **Measured negative** | With 3,840 prompt + 256 generated tokens, median end-to-end time is 2.7–5.9× Q6 all-GPU and 2.1–4.4× Q2 all-GPU |
 | Lower-bit placement is automatically faster | **Measured negative** | Q2 CPU experts improve generation-only throughput at 1–4 requests, but 7–9× slower prefill reverses the end-to-end conclusion |
@@ -48,6 +53,18 @@ through the standalone serial path, and complete inference succeeds through a
 Linux mmap reclamation prototype.
 This validates the short-contract capacity proposition, not coding reliability
 or the longer qualification.
+
+The newer residency sweep explains the large RSS rather than eliminating it.
+At concurrency 1/2/4/8, peak RSS was 11,889/12,180/13,141/14,316 MiB, while
+anonymous RSS was only 605/641/703/815 MiB. The balance was file-backed model
+pages. Linux process `read_bytes` stayed zero because this run faulted mmap
+pages from warm page cache; that is not evidence of zero DRAM traffic or zero
+SSD reads after a cold start. Logical selected-expert traffic was
+18.94/29.29/46.57/59.66 GB respectively. It grows 3.15× from one to eight
+requests rather than 8×, demonstrating union reuse, but remains substantial.
+One `MADV_RANDOM` follow-up reduced the eight-request peak by 802 MiB but did
+not materially change the one-request peak; differing route work and a
+single-run sample make this inconclusive.
 
 ## The experiment that validates the capacity claim
 

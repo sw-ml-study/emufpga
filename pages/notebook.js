@@ -136,6 +136,29 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadValidationGemmaGraphic() {
+    const target = document.getElementById("validation-gemma-graphic");
+    const parallel = document.getElementById("validation-gemma-parallel");
+    if (!target || !parallel) return;
+    try {
+      const [data, logits] = await Promise.all([
+        fetch("gemma4-q5km-coding-residency.json").then(r => r.json()),
+        fetch("gemma4-q5km-logit-equivalence.json").then(r => r.json()),
+      ]);
+      const render = () => {
+        const concurrency = Number(parallel.value);
+        const memory = data.telemetry.by_concurrency.find(item => item.concurrency === concurrency);
+        const experts = data.expert_trace.by_concurrency.find(item => item.concurrency === concurrency);
+        const quality = data.response_quality.by_concurrency.find(item => item.concurrency === concurrency);
+        const presentPercent = 100 * quality.expected_answer_present / quality.responses;
+        const strictPercent = 100 * quality.strict_instruction_following / quality.responses;
+        target.innerHTML = `<div class="placement-callout"><strong>${logits.logits.toLocaleString()} / ${logits.logits.toLocaleString()} logits bit-identical</strong><span>max error ${logits.max_absolute_error} · same native quant arithmetic</span></div><div class="metric-sheet"><h3>Peak host memory <small>${concurrency} request${concurrency === 1 ? "" : "s"}</small></h3>${placementBar("File-backed weights", memory.peak_rss_file_mib, 15000, "MiB", "cpu")}${placementBar("Anonymous runtime", memory.peak_rss_anon_mib, 15000, "MiB", "gpu")}</div><div class="metric-sheet"><h3>Coding smoke <small>answer vs instruction</small></h3>${placementBar("Expected answer present", presentPercent, 100, "%", "gpu")}${placementBar("Strict only-code format", strictPercent, 100, "%", "cpu")}</div><div class="placement-detail"><span>Expert work: <b>${experts.selected_experts.toLocaleString()} selected tensors</b> · <b>${(experts.logical_bytes / 1e9).toFixed(2)} GB logical</b></span><span>Peak: <b>${(memory.peak_process_rss_mib / 1024).toFixed(2)} GiB RSS</b> · <b>${(memory.peak_vram_mib / 1024).toFixed(2)} GiB VRAM</b></span></div>`;
+      };
+      parallel.addEventListener("change", render);
+      render();
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -146,6 +169,7 @@
     loadGemmaGraphic();
     loadSerialGemmaGraphic();
     loadBoundedGemmaGraphic();
+    loadValidationGemmaGraphic();
   });
 
   return { LESSONS, summarizePlacement };

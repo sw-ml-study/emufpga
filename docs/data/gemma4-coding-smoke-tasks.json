@@ -1,0 +1,10 @@
+[
+  {"prompt":"Return only a Rust expression that selects the larger i32 named a and b:","expected":"a.max(b)","accepted":["b.max(a)"]},
+  {"prompt":"Return only a Python expression that reverses the list named values:","expected":"values[::-1]","accepted":["list(reversed(values))","reversed(values)"]},
+  {"prompt":"Return only a JavaScript expression that finds the maximum number in array xs:","expected":"Math.max(...xs)"},
+  {"prompt":"Return only the SQL aggregate expression that counts all rows:","expected":"COUNT(*)"},
+  {"prompt":"Return only a Rust expression testing whether integer n is even:","expected":"n % 2 == 0"},
+  {"prompt":"Return only a Python expression joining strings in parts with commas:","expected":"','.join(parts)"},
+  {"prompt":"Return only a JavaScript expression testing whether array xs includes x:","expected":"xs.includes(x)"},
+  {"prompt":"Return only a Rust expression converting String s to lowercase:","expected":"s.to_lowercase()"}
+]

@@ -58,8 +58,12 @@ mixed-result thresholds needed to make that claim.
 Newest result: the oversized Gemma-4 Q5_K_M artifact now completes end-to-end
 generation with native GPU attention/state and reclaimable CPU selected-expert
 pages. The three-run short smoke passed 45/45 tasks at 4.17 GiB peak VRAM;
-15.07 GiB peak RSS remains much larger than the theoretical expert working set.
-This is a preliminary capacity success, not coding-quality validation.
+all 262,144 final logits for one complete prompt were bit-identical with and
+without per-expert page reclamation. A residency audit found the 13.98 GiB
+peak RSS was 13.17 GiB file-backed mappings and only 0.80 GiB anonymous memory.
+This is a capacity success and one-path arithmetic check—not coding-quality
+validation. The first coding smoke found expected text in 13/15 answers but
+strict format compliance in 0/15, so the coding-agent claim remains open.
 See [docs/gemma4-serial-experts.md](docs/gemma4-serial-experts.md).
 
 Background and the full argument: [docs/research.txt](docs/research.txt).

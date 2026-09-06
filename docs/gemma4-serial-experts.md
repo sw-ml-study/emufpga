@@ -130,3 +130,62 @@ Derived data:
 [`data/gemma4-q5km-bounded-end-to-end.json`](data/gemma4-q5km-bounded-end-to-end.json).
 The reproducible patch is
 [`patches/llama.cpp-gemma4-lazy-experts.patch`](../patches/llama.cpp-gemma4-lazy-experts.patch).
+
+## Complete-path equivalence and residency audit
+
+The logits probe ran one identical 32-token prompt twice through the same
+patched llama.cpp binary and native Q5_K_M kernels. The control left selected
+expert mmap pages resident; the candidate called `MADV_DONTNEED` after each
+expert. All **262,144** final logits were bit-for-bit identical: zero differing
+floats, zero maximum error, cosine similarity 1, and identical SHA-256 for both
+1,048,576-byte arrays. This isolates the reclamation policy successfully for
+one complete prompt path. It is not an independent implementation oracle.
+
+A separately instrumented 1/2/4/8 coding-smoke sweep explains the surprising
+RSS peak:
+
+| Requests | Peak RSS MiB | File RSS MiB | Anonymous RSS MiB | Selected tensors | Logical expert GB |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 11,889 | 11,203 | 605 | 8,408 | 18.94 |
+| 2 | 12,180 | 11,582 | 641 | 12,980 | 29.29 |
+| 4 | 13,141 | 12,451 | 703 | 20,632 | 46.57 |
+| 8 | 14,316 | 13,486 | 815 | 26,428 | 59.66 |
+
+The peak is overwhelmingly file-backed mapped weights, not activations or an
+anonymous copy of the model. Reclamation therefore has not produced the
+one-expert theoretical resident set. More concurrent routes expand the union
+of recently touched mappings. The next memory experiment should tighten mmap
+access advice/readahead and measure cold-cache block-device traffic.
+
+Adding `MADV_RANDOM` around each selected range preserved the bit-identical
+logits. In a single follow-up run it changed peak RSS from 11,889 to 11,863 MiB
+at one request (effectively unchanged) and from 14,316 to 13,514 MiB at eight.
+The eight-request routes and operation count differed, so the 802 MiB reduction
+is promising but **inconclusive**, not a claimed optimization. Repeated matched
+runs are required. Raw-derived summary:
+[`data/gemma4-q5km-madv-random.json`](data/gemma4-q5km-madv-random.json).
+
+The small coding corpus produced expected answer text in 13/15 responses, but
+obeyed the strict “return only the expression” prefix contract in 0/15. This
+is a useful warning, not a coding-quality score: containment accepts prose and
+the outputs were neither compiled nor tested. A sandboxed executable suite and
+same-reference comparison remain required before claiming reliable coding
+agents. Derived data:
+[`data/gemma4-q5km-logit-equivalence.json`](data/gemma4-q5km-logit-equivalence.json)
+and
+[`data/gemma4-q5km-coding-residency.json`](data/gemma4-q5km-coding-residency.json).
+
+### Does this fit an 18 GB unified-memory Mac?
+
+Not safely with the measured residency policy. On this discrete-memory Linux
+host, the 8-request peak combines about 14.0 GiB process RSS with about 4.1 GiB
+VRAM. Those pools overlap differently on Apple unified memory, so simply adding
+them is not a prediction; nevertheless, their roughly 18.1 GiB sum leaves no
+space for macOS, Metal allocations, page tables, or other applications. Even
+the one-request 11.6 GiB RSS plus GPU-resident state would be tight.
+
+The model file itself may remain on SSD and mmap does permit reclaimable pages,
+so 18 GB is not ruled out architecturally. It requires a materially smaller
+file-backed working set, a one-request experiment first, and macOS measurements
+of resident/compressed memory and swap. The current data supports “plausible
+after residency repair,” not “expected to fit.”
