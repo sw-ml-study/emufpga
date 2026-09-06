@@ -183,6 +183,19 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadStreamTierGraphic() {
+    const target = document.getElementById("stream-tier-graphic");
+    if (!target) return;
+    try {
+      const data = await fetch("gemma4-stream-tier-analysis.json").then(r => r.json());
+      const find = (tier, backend) => data.groups.find(row => row.tier === tier && row.cache === "cold" && row.backend === backend);
+      const hdd = find("hdd", "prefetch");
+      const nvme = find("nvme", "prefetch");
+      const sync = find("hdd", "sync");
+      target.innerHTML = `<div class="placement-callout"><strong>${(hdd.bytes / 1e6).toFixed(2)} MB through a 2 MiB buffer</strong><span>identical digest in ${data.groups.reduce((sum, row) => sum + row.runs, 0)} replays</span></div><div class="metric-sheet"><h3>Cold payload rate <small>higher is better</small></h3>${placementBar("HDD sequential", hdd.bandwidth_mib_s.p50, 900, "MiB/s", "cpu")}${placementBar("NVMe control", nvme.bandwidth_mib_s.p50, 900, "MiB/s", "gpu")}</div><div class="metric-sheet"><h3>HDD physical request shape <small>large forward reads</small></h3>${placementBar("Synchronous", sync.device_average_read_bytes.p50 / 1e6, 4, "MB/read", "cpu")}${placementBar("Double buffer", hdd.device_average_read_bytes.p50 / 1e6, 4, "MB/read", "gpu")}</div><div class="placement-detail"><span>Cold HDD: <b>${hdd.elapsed_ms.p50.toFixed(1)} ms</b> · <b>${hdd.device_read_ios.p50} device reads</b></span><span>Prefetch gain: HDD <b>${(100 * (sync.elapsed_ms.p50 - hdd.elapsed_ms.p50) / sync.elapsed_ms.p50).toFixed(1)}%</b> · storage remains the bottleneck</span></div>`;
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -195,6 +208,7 @@
     loadBoundedGemmaGraphic();
     loadValidationGemmaGraphic();
     loadColdCurveGraphic();
+    loadStreamTierGraphic();
   });
 
   return { LESSONS, summarizePlacement };
