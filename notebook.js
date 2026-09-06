@@ -162,6 +162,27 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadColdCurveGraphic() {
+    const target = document.getElementById("cold-curve-graphic");
+    const parallel = document.getElementById("cold-curve-parallel");
+    if (!target || !parallel) return;
+    try {
+      const data = await Promise.all([
+        fetch("gemma4-q5km-cold-hdd-c1-c8-r3.json").then(r => r.json()),
+        fetch("gemma4-q5km-cold-hdd-c2-c4-r3.json").then(r => r.json()),
+      ]);
+      const groups = data.flatMap(item => item.groups).filter(item => item.cache_mode === "cold");
+      const render = () => {
+        const concurrency = Number(parallel.value);
+        const resident = groups.find(item => item.concurrency === concurrency && item.policy === "resident");
+        const reclaimed = groups.find(item => item.concurrency === concurrency && item.policy === "reclaimed");
+        target.innerHTML = `<div class="placement-callout"><strong>${resident.tests_passed + reclaimed.tests_passed}/${resident.requests + reclaimed.requests} executable tests passed</strong><span>three cold repetitions per policy · identical Q5_K_M model</span></div><div class="metric-sheet"><h3>Passing tasks/hour <small>higher is more usable</small></h3>${placementBar("Resident pages", resident.passing_tasks_per_hour, 120, "", "cpu")}${placementBar("Reclaimed pages", reclaimed.passing_tasks_per_hour, 120, "", "gpu")}</div><div class="metric-sheet"><h3>Peak host RSS <small>lower is better</small></h3>${placementBar("Resident pages", resident.peak_rss_mib_mean / 1024, 16, " GiB", "cpu")}${placementBar("Reclaimed pages", reclaimed.peak_rss_mib_mean / 1024, 16, " GiB", "gpu")}</div><div class="placement-detail"><span>Physical reads: <b>${(resident.request_read_bytes_mean / 1e9).toFixed(2)} GB</b> · <b>${(resident.request_read_bytes_per_passing_task / 1e9).toFixed(2)} GB/passing task</b></span><span>Aggregate generation: <b>${resident.generated_tokens_per_second.toFixed(2)} tok/s resident</b> · <b>${reclaimed.generated_tokens_per_second.toFixed(2)} tok/s reclaimed</b></span></div>`;
+      };
+      parallel.addEventListener("change", render);
+      render();
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -173,6 +194,7 @@
     loadSerialGemmaGraphic();
     loadBoundedGemmaGraphic();
     loadValidationGemmaGraphic();
+    loadColdCurveGraphic();
   });
 
   return { LESSONS, summarizePlacement };
