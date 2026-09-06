@@ -1,0 +1,9 @@
+number = 13
+slug = "rtx3060-moe-routing-distributions"
+status = "completed"
+description = "Replace the dashboard's uniform-independent MoE routing assumption and single..."
+role = "validation"
+context_files = []
+created_at = "2026-09-04T10:06:14"
+completed_at = "2026-09-04T10:20:41"
+commits = ["713b31c26a93346449133677147370a65f5a4805"]

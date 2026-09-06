@@ -1,0 +1,8 @@
+number = 25
+slug = "rtx3060-workload-aware-expert-cache"
+status = "pending"
+description = "Using the pinned oversized Gemma-4 Q5_K_M model, build a realistic but focuse..."
+role = "validation"
+context_files = []
+created_at = "2026-09-06T08:32:49"
+commits = []

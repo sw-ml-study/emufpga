@@ -1,0 +1,9 @@
+number = 24
+slug = "rtx3060-ml-first-model-resource-service"
+status = "pending"
+description = "Prototype the Serial Parameter Machine as a Linux user-space model resource s..."
+role = "production"
+context_files = []
+created_at = "2026-09-05T20:42:49"
+task_type = "architecture"
+commits = []

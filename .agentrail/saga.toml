@@ -1,4 +1,4 @@
-name = "llama-sm120-rust-parity"
+name = "rtx3060-llama-sm120-rust-parity"
 status = "active"
 current_step = 24
 created_at = "2026-09-02T14:30:12"
