@@ -71,6 +71,14 @@ name = "spm-stream-metrics"
 version = "0.1.0"
 
 [[package]]
+name = "spm-stream-replay"
+version = "0.1.0"
+dependencies = [
+ "spm-stream",
+ "spm-stream-file",
+]
+
+[[package]]
 name = "spm-stream-throttle"
 version = "0.1.0"
 dependencies = [

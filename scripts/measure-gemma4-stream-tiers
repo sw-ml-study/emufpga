@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 3 ]; then
+    echo "usage: measure-gemma4-stream-tiers OUTPUT.csv LABEL:FILE:DEVICE_STAT [...]" >&2
+    exit 2
+fi
+root=$(cd "$(dirname "$0")/.." && pwd)
+output=$1
+shift
+replay=$root/target/release/spm-stream-replay
+residency=$root/target/release/spm-file-residency
+runs=${RUNS:-7}
+capacity=${BUFFER_BYTES:-1048576}
+
+[ -x "$replay" ] || { echo "missing replay binary: $replay" >&2; exit 2; }
+[ -x "$residency" ] || { echo "missing residency binary: $residency" >&2; exit 2; }
+printf '# schema=emufpga.gemma4-stream-tiers.v1\n' >"$output"
+printf 'tier,cache,backend,run,bytes,digest,elapsed_ms,bandwidth_mib_s,process_read_bytes,rchar,buffer_bytes,device_read_ios,device_read_bytes\n' >>"$output"
+
+for spec in "$@"; do
+    IFS=: read -r tier file device_stat <<<"$spec"
+    [ -f "$file" ] || { echo "missing stream: $file" >&2; exit 2; }
+    [ -r "$device_stat" ] || { echo "missing device stat: $device_stat" >&2; exit 2; }
+    for run in $(seq 1 "$runs"); do
+        for cache in cold warm; do
+            for backend in sync prefetch; do
+                if [ "$cache" = cold ]; then
+                    state=$($residency evict "$file")
+                    [ "$(jq -r .resident_pages <<<"$state")" = 0 ] || { echo "eviction failed: $file" >&2; exit 1; }
+                else
+                    dd if="$file" of=/dev/null bs=4M status=none
+                fi
+                before=$(<"$device_stat")
+                result=$($replay "$file" "$backend" "$capacity")
+                after=$(<"$device_stat")
+                read -ra before_fields <<<"$before"
+                read -ra after_fields <<<"$after"
+                ios=$((${after_fields[0]} - ${before_fields[0]}))
+                bytes=$((${after_fields[2]} - ${before_fields[2]}))
+                printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+                    "$tier" "$cache" "$backend" "$run" "$(jq -r .bytes <<<"$result")" \
+                    "$(jq -r .digest <<<"$result")" "$(jq -r .elapsed_ms <<<"$result")" \
+                    "$(jq -r .bandwidth_mib_s <<<"$result")" "$(jq -r .read_bytes <<<"$result")" \
+                    "$(jq -r .rchar <<<"$result")" "$(jq -r .buffer_resident_bytes <<<"$result")" \
+                    "$ios" "$((bytes * 512))" >>"$output"
+            done
+        done
+    done
+done

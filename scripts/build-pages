@@ -32,6 +32,7 @@ cp "$repo_dir/docs/data/gemma4-q5km-logit-equivalence.json" "$output_dir/gemma4-
 cp "$repo_dir/docs/data/gemma4-q5km-executable-code.json" "$output_dir/gemma4-q5km-executable-code.json"
 cp "$repo_dir/docs/data/gemma4-q5km-cold-hdd-c1-c8-r3.json" "$output_dir/gemma4-q5km-cold-hdd-c1-c8-r3.json"
 cp "$repo_dir/docs/data/gemma4-q5km-cold-hdd-c2-c4-r3.json" "$output_dir/gemma4-q5km-cold-hdd-c2-c4-r3.json"
+cp "$repo_dir/docs/data/gemma4-stream-tier-analysis.json" "$output_dir/gemma4-stream-tier-analysis.json"
 touch "$output_dir/.nojekyll"
 
 build_host=$(hostname -s)

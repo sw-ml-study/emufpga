@@ -1,6 +1,6 @@
 number = 23
 slug = "sas-tiered-sequential-streams"
-status = "pending"
+status = "in-progress"
 description = "Build a fair physical-stream comparison for reused SAS storage. Keep the pinn..."
 role = "validation"
 context_files = []

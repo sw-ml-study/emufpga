@@ -1,0 +1,12 @@
+[package]
+name = "spm-stream-replay"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spm-stream = { path = "../spm-stream" }
+spm-stream-file = { path = "../spm-stream-file" }

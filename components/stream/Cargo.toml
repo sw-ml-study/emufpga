@@ -11,6 +11,7 @@ members = [
     "crates/spm-stream-groups",
     "crates/spm-stream-metrics",
     "crates/spm-stream-throttle",
+    "crates/spm-stream-replay",
 ]
 resolver = "2"
 

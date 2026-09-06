@@ -1,0 +1,325 @@
+{
+  "schema": "emufpga.gemma4-stream-tiers-analysis.v1",
+  "captured_utc": "2026-09-06T18:59:00.428Z",
+  "source_sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd",
+  "groups": [
+    {
+      "tier": "hdd",
+      "cache": "cold",
+      "backend": "sync",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 921.867,
+        "p50": 931.941,
+        "p90": 934.941
+      },
+      "bandwidth_mib_s": {
+        "p10": 171.709,
+        "p50": 173.645,
+        "p90": 174.261
+      },
+      "process_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_read_ios": {
+        "p10": 46,
+        "p50": 46,
+        "p90": 46
+      },
+      "device_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_average_read_bytes": {
+        "p10": 3688893.217391304,
+        "p50": 3688893.217391304,
+        "p90": 3688893.217391304
+      }
+    },
+    {
+      "tier": "hdd",
+      "cache": "cold",
+      "backend": "prefetch",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 919.579,
+        "p50": 925.538,
+        "p90": 934.245
+      },
+      "bandwidth_mib_s": {
+        "p10": 173.185,
+        "p50": 174.847,
+        "p90": 175.632
+      },
+      "process_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_read_ios": {
+        "p10": 46,
+        "p50": 46,
+        "p90": 46
+      },
+      "device_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_average_read_bytes": {
+        "p10": 3688893.217391304,
+        "p50": 3688893.217391304,
+        "p90": 3688893.217391304
+      }
+    },
+    {
+      "tier": "hdd",
+      "cache": "warm",
+      "backend": "sync",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 188.361,
+        "p50": 205.333,
+        "p90": 208.796
+      },
+      "bandwidth_mib_s": {
+        "p10": 770.337,
+        "p50": 788.121,
+        "p90": 852.335
+      },
+      "process_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_ios": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_average_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      }
+    },
+    {
+      "tier": "hdd",
+      "cache": "warm",
+      "backend": "prefetch",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 167.335,
+        "p50": 184.076,
+        "p90": 185.783
+      },
+      "bandwidth_mib_s": {
+        "p10": 870.549,
+        "p50": 879.134,
+        "p90": 955.479
+      },
+      "process_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_ios": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_average_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      }
+    },
+    {
+      "tier": "nvme",
+      "cache": "cold",
+      "backend": "sync",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 261.409,
+        "p50": 285.989,
+        "p90": 295.535
+      },
+      "bandwidth_mib_s": {
+        "p10": 491.502,
+        "p50": 565.851,
+        "p90": 600.839
+      },
+      "process_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_read_ios": {
+        "p10": 324,
+        "p50": 324,
+        "p90": 324
+      },
+      "device_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_average_read_bytes": {
+        "p10": 523731.7530864198,
+        "p50": 523731.7530864198,
+        "p90": 523731.7530864198
+      }
+    },
+    {
+      "tier": "nvme",
+      "cache": "cold",
+      "backend": "prefetch",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 180.484,
+        "p50": 184.823,
+        "p90": 187.242
+      },
+      "bandwidth_mib_s": {
+        "p10": 864.094,
+        "p50": 875.581,
+        "p90": 890.917
+      },
+      "process_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_read_ios": {
+        "p10": 324,
+        "p50": 324,
+        "p90": 324
+      },
+      "device_read_bytes": {
+        "p10": 169689088,
+        "p50": 169689088,
+        "p90": 169689088
+      },
+      "device_average_read_bytes": {
+        "p10": 523731.7530864198,
+        "p50": 523731.7530864198,
+        "p90": 523731.7530864198
+      }
+    },
+    {
+      "tier": "nvme",
+      "cache": "warm",
+      "backend": "sync",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 186.059,
+        "p50": 203.663,
+        "p90": 205.015
+      },
+      "bandwidth_mib_s": {
+        "p10": 774.769,
+        "p50": 794.583,
+        "p90": 863.881
+      },
+      "process_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_ios": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_average_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      }
+    },
+    {
+      "tier": "nvme",
+      "cache": "warm",
+      "backend": "prefetch",
+      "runs": 7,
+      "digest": "3a7affa3b6a16627",
+      "bytes": 169688672,
+      "buffer_bytes": 2097152,
+      "elapsed_ms": {
+        "p10": 167.211,
+        "p50": 184.452,
+        "p90": 185.213
+      },
+      "bandwidth_mib_s": {
+        "p10": 870.154,
+        "p50": 877.338,
+        "p90": 955.388
+      },
+      "process_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_ios": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "device_average_read_bytes": {
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      }
+    }
+  ],
+  "caveats": [
+    "The artifact is a validated Gemma-4 layer-0 selected-expert trace slice, not full inference.",
+    "Device counters are idle-device upper bounds; process read_bytes is attributable.",
+    "The digest consumer is deterministic byte work, while activation correctness was validated separately.",
+    "No parallel-SAS or SSD-hot/HDD-cold expert segmentation was available on this host."
+  ]
+}
