@@ -1,0 +1,10 @@
+{
+  "schema": "emufpga.resource.v1",
+  "id": "sha256:453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd",
+  "kind": "expert_stream",
+  "bytes": 169688672,
+  "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd",
+  "tier": "hdd",
+  "mutable": false,
+  "residency_limit_bytes": 2097152
+}

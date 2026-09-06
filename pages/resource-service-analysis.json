@@ -1,0 +1,108 @@
+{
+  "schema": "emufpga.resource-service-analysis.v1",
+  "measured_at": "2026-09-06T20:35:07.956Z",
+  "groups": [
+    {
+      "policy": "independent",
+      "clients": 1,
+      "runs": 3,
+      "requested_bytes": 169688672,
+      "stream_bytes": 169688672,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 1048576,
+      "elapsed_ms_p50": 949.645,
+      "fairness_ratio_p50": 1,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    },
+    {
+      "policy": "shared",
+      "clients": 1,
+      "runs": 3,
+      "requested_bytes": 169688672,
+      "stream_bytes": 169688672,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 2097152,
+      "elapsed_ms_p50": 954.539,
+      "fairness_ratio_p50": 1,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    },
+    {
+      "policy": "independent",
+      "clients": 2,
+      "runs": 3,
+      "requested_bytes": 339377344,
+      "stream_bytes": 339377344,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 2097152,
+      "elapsed_ms_p50": 964.341,
+      "fairness_ratio_p50": 0.999854,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    },
+    {
+      "policy": "shared",
+      "clients": 2,
+      "runs": 3,
+      "requested_bytes": 339377344,
+      "stream_bytes": 169688672,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 2097152,
+      "elapsed_ms_p50": 941.988,
+      "fairness_ratio_p50": 1,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    },
+    {
+      "policy": "independent",
+      "clients": 4,
+      "runs": 3,
+      "requested_bytes": 678754688,
+      "stream_bytes": 678754688,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 4194304,
+      "elapsed_ms_p50": 957.303,
+      "fairness_ratio_p50": 0.998198,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    },
+    {
+      "policy": "shared",
+      "clients": 4,
+      "runs": 3,
+      "requested_bytes": 678754688,
+      "stream_bytes": 169688672,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 2097152,
+      "elapsed_ms_p50": 965.026,
+      "fairness_ratio_p50": 1,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    },
+    {
+      "policy": "independent",
+      "clients": 8,
+      "runs": 3,
+      "requested_bytes": 1357509376,
+      "stream_bytes": 1357509376,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 8388608,
+      "elapsed_ms_p50": 1263.245,
+      "fairness_ratio_p50": 0.864636,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    },
+    {
+      "policy": "shared",
+      "clients": 8,
+      "runs": 3,
+      "requested_bytes": 1357509376,
+      "stream_bytes": 169688672,
+      "read_bytes_p50": 169689088,
+      "buffer_bytes": 2097152,
+      "elapsed_ms_p50": 961.787,
+      "fairness_ratio_p50": 1,
+      "sha256": "453cc38f761e0bb8f6af101081aa969b3938a8d0d7a220a2408131a8dbf8cbfd"
+    }
+  ],
+  "caveats": [
+    "This is byte-stream service work, not model arithmetic or coding quality.",
+    "Linux page cache already coalesced concurrent independent readers into one physical HDD read.",
+    "The shared policy removes duplicate userspace hashing and stream traversal; full expert computation is not measured.",
+    "GPU, cgroup, NUMA, wall power, and long-lived admission fairness remain unmeasured."
+  ]
+}

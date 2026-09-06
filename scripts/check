@@ -107,6 +107,7 @@ bash -n scripts/bench-gemma4-offload
 bash -n scripts/gemma4-file-residency
 bash -n scripts/bench-gemma4-cold-io
 bash -n scripts/measure-gemma4-stream-tiers
+bash -n scripts/measure-resource-service
 node --check scripts/analyze-olmoe-placement.mjs
 node --check scripts/bench-gemma4-requests.mjs
 node --check scripts/analyze-gemma4-offload.mjs
@@ -120,6 +121,8 @@ node scripts/check-cold-io-data.mjs
 node --check scripts/summarize-gemma4-cold-io.mjs
 node --check scripts/analyze-gemma4-stream-tiers.mjs
 node scripts/check-gemma4-stream-tier-data.mjs
+node --check scripts/analyze-resource-service.mjs
+node scripts/check-resource-service-data.mjs
 
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"

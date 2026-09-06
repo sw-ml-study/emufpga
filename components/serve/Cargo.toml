@@ -11,6 +11,7 @@
 members = [
     "crates/spm-batch",
     "crates/spm-kv",
+    "crates/spm-resource-service",
 ]
 resolver = "2"
 

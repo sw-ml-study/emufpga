@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+    echo "usage: measure-resource-service STREAM OUTPUT.csv" >&2
+    exit 2
+fi
+root=$(cd "$(dirname "$0")/.." && pwd)
+stream=$1
+output=$2
+service=$root/target/release/spm-resource-service
+residency=$root/target/release/spm-file-residency
+runs=${RUNS:-3}
+buffer=${BUFFER_BYTES:-1048576}
+
+(cd "$root/components/serve" && "$root/scripts/serial.sh" cargo build --release -p spm-resource-service)
+[ -x "$residency" ] || { echo "missing residency binary: $residency" >&2; exit 2; }
+printf '# schema=emufpga.resource-measurements.v1\npolicy,clients,run,requested_bytes,stream_bytes,read_bytes,buffer_bytes,elapsed_ms,fairness_ratio,sha256\n' >"$output"
+for clients in 1 2 4 8; do
+    for run in $(seq 1 "$runs"); do
+        for policy in independent shared; do
+            state=$($residency evict "$stream")
+            [ "$(jq -r .resident_pages <<<"$state")" = 0 ] || { echo "eviction failed" >&2; exit 1; }
+            result=$($service measure "$policy" "$stream" "$clients" "$buffer")
+            printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$policy" "$clients" "$run" \
+                "$(jq -r .requested_bytes <<<"$result")" "$(jq -r .stream_bytes <<<"$result")" \
+                "$(jq -r .read_bytes <<<"$result")" "$(jq -r .buffer_bytes <<<"$result")" \
+                "$(jq -r .elapsed_ms <<<"$result")" "$(jq -r .fairness_ratio <<<"$result")" \
+                "$(jq -r .sha256 <<<"$result")" >>"$output"
+        done
+    done
+done

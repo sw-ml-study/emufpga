@@ -1,0 +1,15 @@
+[package]
+name = "spm-resource-service"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+spm-stream = { path = "../../../stream/crates/spm-stream" }
+spm-stream-file = { path = "../../../stream/crates/spm-stream-file" }
