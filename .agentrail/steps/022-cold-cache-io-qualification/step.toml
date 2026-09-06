@@ -1,6 +1,6 @@
 number = 22
 slug = "cold-cache-io-qualification"
-status = "pending"
+status = "in-progress"
 description = "Measure actual storage demand for the pinned oversized Gemma-4 Q5_K_M residen..."
 role = "legacy"
 context_files = []
