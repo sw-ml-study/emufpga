@@ -196,6 +196,23 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadResourceGraphic() {
+    const target = document.getElementById("resource-graphic");
+    const clients = document.getElementById("resource-clients");
+    if (!target || !clients) return;
+    try {
+      const data = await fetch("resource-service-analysis.json").then(r => r.json());
+      const render = () => {
+        const count = Number(clients.value);
+        const independent = data.groups.find(row => row.clients === count && row.policy === "independent");
+        const shared = data.groups.find(row => row.clients === count && row.policy === "shared");
+        const saved = 100 * (1 - shared.stream_bytes / independent.stream_bytes);
+        target.innerHTML = `<div class="placement-callout"><strong>${saved.toFixed(0)}% less user-space stream work</strong><span>physical HDD bytes are equal: ${(shared.read_bytes_p50 / 1e6).toFixed(2)} MB</span></div><div class="metric-sheet"><h3>Bytes traversed <small>hash consumer</small></h3>${placementBar("Independent", independent.stream_bytes / 1e6, 1360, "MB", "cpu")}${placementBar("Shared sweep", shared.stream_bytes / 1e6, 1360, "MB", "gpu")}</div><div class="metric-sheet"><h3>Cold completion time <small>p50; lower is better</small></h3>${placementBar("Independent", independent.elapsed_ms_p50, 1400, "ms", "cpu")}${placementBar("Shared sweep", shared.elapsed_ms_p50, 1400, "ms", "gpu")}</div><div class="placement-detail"><span>Buffer bound: <b>${(independent.buffer_bytes / 1048576).toFixed(0)} MiB independent</b> · <b>2 MiB shared</b></span><span>Fairness: <b>${independent.fairness_ratio_p50.toFixed(3)}</b> independent · <b>1.000</b> shared batch</span></div>`;
+      };
+      clients.addEventListener("change", render); render();
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -209,6 +226,7 @@
     loadValidationGemmaGraphic();
     loadColdCurveGraphic();
     loadStreamTierGraphic();
+    loadResourceGraphic();
   });
 
   return { LESSONS, summarizePlacement };
