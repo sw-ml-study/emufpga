@@ -1,0 +1,8 @@
+number = 21
+slug = "executable-coding-qualification"
+status = "pending"
+description = "Replace the weak Gemma coding text-containment smoke with a safe executable s..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-05T17:33:35"
+commits = []
