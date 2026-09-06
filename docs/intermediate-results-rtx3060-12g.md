@@ -17,9 +17,12 @@ weights on the GPU and streams the MoE experts from host memory with
 lazy reclamation, so the GPU-resident footprint (about 4.17 GiB on the
 5060 lane) is far below 12 GiB and the card size is not the ceiling.
 
-As of 2026-09-06 the environment and build are ready and the pinned
-model is still downloading. No inference results are claimed yet; the
-results table below carries PENDING until each experiment runs.
+As of 2026-09-06 the reproduction is complete for the two primary
+checks: the CPU layer-0 expert smoke matches the 5060 lane bit-for-bit,
+and the end-to-end GPU offload run is a capacity success (all requests
+correct, peak VRAM 3384 MiB on the 12 GiB card). Optional follow-ups
+(reclamation logit A/B, 256-token executable sweep, cold-cache campaign)
+are listed but not yet run.
 
 ## Environment (this box)
 
@@ -80,14 +83,43 @@ CPU timings differ from the 5060 lane, as expected on a different host
 stream 455/738/1305/2313 ms at batch 1/2/4/8. These are usability
 numbers, not correctness, and the scalar stream loop is unoptimized.
 
-### Remaining (GPU end-to-end)
+### End-to-end offload capacity run (GPU, `bench-gemma4-offload`)
 
-| Experiment | Metric | RTX 3060 12G |
-| --- | --- | --- |
-| End-to-end offload (`bench-gemma4-offload`) | peak VRAM | PENDING |
-| End-to-end offload | executable tasks passed | PENDING |
-| End-to-end offload | aggregate tok/s, c1..c8 | PENDING |
-| Reclaimed vs resident logits (same binary) | bit-identical? | PENDING |
+Configuration: patched llama.cpp built for `sm_86`, `PLACEMENT=experts-cpu`
+(MoE experts on CPU), `-ngl 999` (all non-expert layers on GPU),
+`--lazy-mode on`, resident policy (no `MADV_DONTNEED`), warmup off,
+`RUNS=1`, output 16 tokens, the `gemma4-correctness-tasks` corpus.
+
+The 19.3 GB Q5_K_M model cannot be held resident on a 12 GiB card
+(all-GPU allocation is arithmetically impossible, and the 5060 lane
+recorded it failing even at 16 GiB). The workaround nonetheless
+generated correct answers:
+
+| Concurrency | Correct | Peak VRAM | Aggregate tok/s | Per-request tok/s | TTFT p50 |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1/1 | -- | 5.05 | 5.05 | 2507 ms |
+| 2 | 2/2 | -- | 12.14 | 6.08 | 1675 ms |
+| 4 | 4/4 | -- | 18.61 | 4.66 | 2065 ms |
+| 8 | 8/8 | 3384 MiB | 19.28 | 2.41 | 4466 ms |
+
+- **Capacity success reproduced.** All 15 requests correct; peak GPU
+  memory was 3384 MiB (sustained 3346-3384 across the run; 43 MiB idle),
+  well under the 12 GiB card and in the same range as the 5060 lane's
+  ~4170 MiB offload peak. Peak process RSS was 15,178 MiB (~14.8 GiB),
+  overwhelmingly file-backed expert mappings, which the 503 GiB host RAM
+  absorbs easily.
+- **Throughput is not comparable to the 5060 bounded table.** That table
+  used 256 output tokens and the executable corpus; this run used 16
+  tokens and the correctness corpus, so the tok/s here characterize this
+  configuration only. Aggregate throughput still rises with concurrency
+  (5.05 -> 19.28 tok/s from c1 to c8), the expected expert-reuse
+  amortization.
+- The `sm_86` build ran with zero CUDA errors or kernel-launch failures.
+
+Not yet run on this box (optional follow-ups, not required for the
+capacity claim): the reclaimed-vs-resident logit A/B (`MADV_DONTNEED`
+policy), the 256-token executable-code sweep, and a cold-cache campaign
+(needs `drop_caches`, i.e. sudo).
 
 ## Expectations (to be confirmed or refuted, not assumed)
 

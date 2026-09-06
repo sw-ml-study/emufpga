@@ -1,0 +1,53 @@
+{
+  "schema": "emufpga.gemma4-offload-rtx3060.v1",
+  "hardware": "RTX 3060 12G (Ampere sm_86), dual Xeon E5-2697 v4, 503 GiB RAM",
+  "model_sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+  "llama_revision": "4d9176092d00586775af140581bb0b558ddc4389",
+  "cuda_arch": "86",
+  "config": {
+    "placement": "experts-cpu",
+    "gpu_layers": 999,
+    "lazy_mode": "on",
+    "expert_reclaim": false,
+    "warmup": "off",
+    "runs": 1,
+    "output_tokens": 16,
+    "corpus": "gemma4-correctness-tasks"
+  },
+  "peak_vram_mib": 3384,
+  "peak_rss_kib": 15542696,
+  "per_concurrency": [
+    {
+      "concurrency": 1,
+      "correct": 1,
+      "requests": 1,
+      "aggregate_tps_mean": 5.045096999544849,
+      "per_request_tps_mean": 5.045096999544849,
+      "ttft_ms_p50": 2507.3978429999997
+    },
+    {
+      "concurrency": 2,
+      "correct": 2,
+      "requests": 2,
+      "aggregate_tps_mean": 12.138776521614991,
+      "per_request_tps_mean": 6.079086024035237,
+      "ttft_ms_p50": 1674.800798
+    },
+    {
+      "concurrency": 4,
+      "correct": 4,
+      "requests": 4,
+      "aggregate_tps_mean": 18.6054760614513,
+      "per_request_tps_mean": 4.656120880467809,
+      "ttft_ms_p50": 2065.04111
+    },
+    {
+      "concurrency": 8,
+      "correct": 8,
+      "requests": 8,
+      "aggregate_tps_mean": 19.279738706930935,
+      "per_request_tps_mean": 2.4120638513359176,
+      "ttft_ms_p50": 4466.308333
+    }
+  ]
+}
