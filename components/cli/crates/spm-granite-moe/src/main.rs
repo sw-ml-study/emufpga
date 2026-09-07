@@ -1,6 +1,7 @@
 use std::{env, path::Path};
 
 mod attention;
+mod expert_cache;
 mod gemma_smoke;
 mod layout;
 mod math;

@@ -1,4 +1,4 @@
-use crate::{math, weights};
+use crate::{expert_cache::ExpertCache, math, weights};
 use spm_file::SpmWriter;
 use spm_layout::{Encoding, OpDescriptor};
 use spm_stream_file::FileWeightStream;
@@ -32,7 +32,7 @@ fn inputs(batch: usize) -> Vec<Vec<f32>> {
         .collect()
 }
 
-fn expert_bytes(
+pub(crate) fn expert_bytes(
     model: &Path,
     content: &spm_gguf::Content,
     name: &str,
@@ -90,12 +90,13 @@ fn gelu(value: f32) -> f32 {
 }
 
 fn direct_expert(
+    cache: &mut ExpertCache,
     model: &Path,
     content: &spm_gguf::Content,
     expert: usize,
     input: &[&[f32]],
 ) -> Result<Vec<Vec<f32>>, String> {
-    let gate_up = expert_bytes(
+    let gate_up = cache.get(
         model,
         content,
         "blk.0.ffn_gate_up_exps.weight",
@@ -117,7 +118,7 @@ fn direct_expert(
                 .collect()
         })
         .collect();
-    let down = expert_bytes(
+    let down = cache.get(
         model,
         content,
         "blk.0.ffn_down_exps.weight",
@@ -234,10 +235,35 @@ fn stream_matrix(
     Ok(output)
 }
 
+fn cache_configuration() -> (usize, usize) {
+    let cache_mib = std::env::var("SPM_GEMMA_CACHE_MIB")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(128);
+    let repeats = std::env::var("SPM_GEMMA_CACHE_REPEATS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(1);
+    (cache_mib * 1024 * 1024, repeats)
+}
+
+fn maximum_error(expected: &[Vec<f32>], actual: &[Vec<f32>]) -> f32 {
+    expected
+        .iter()
+        .flatten()
+        .zip(actual.iter().flatten())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0_f32, f32::max)
+}
+
+fn validate_batch(batch: usize) -> Result<(), String> {
+    (batch > 0)
+        .then_some(())
+        .ok_or_else(|| "Gemma expert batch must be nonzero".into())
+}
+
 pub fn run(model: &Path, output: &Path, batch: usize) -> Result<(), String> {
-    if batch == 0 {
-        return Err("Gemma expert batch must be nonzero".into());
-    }
+    validate_batch(batch)?;
     let content = spm_gguf::read(model)?;
     if content
         .metadata
@@ -266,6 +292,8 @@ pub fn run(model: &Path, output: &Path, batch: usize) -> Result<(), String> {
     let mut direct = vec![vec![0.0; WIDTH]; batch];
     let mut streamed = vec![vec![0.0; WIDTH]; batch];
     let mut direct_time = Duration::ZERO;
+    let (cache_bytes, repeats) = cache_configuration();
+    let mut cache = ExpertCache::new(cache_bytes);
     let mut serial_time = Duration::ZERO;
     for &expert in &selected {
         let tokens: Vec<_> = routes
@@ -278,7 +306,10 @@ pub fn run(model: &Path, output: &Path, batch: usize) -> Result<(), String> {
             .map(|&token| expert_inputs[token].as_slice())
             .collect();
         let started = Instant::now();
-        let oracle = direct_expert(model, &content, expert, &refs)?;
+        for _ in 1..repeats {
+            let _ = direct_expert(&mut cache, model, &content, expert, &refs)?;
+        }
+        let oracle = direct_expert(&mut cache, model, &content, expert, &refs)?;
         direct_time += started.elapsed();
         let started = Instant::now();
         let projected = stream_matrix(&mut groups, 2 * FF, WIDTH, Encoding::Q5K, &refs)?;
@@ -313,23 +344,22 @@ pub fn run(model: &Path, output: &Path, batch: usize) -> Result<(), String> {
     }
     let direct_ms = direct_time.as_secs_f64() * 1000.0;
     let serial_ms = serial_time.as_secs_f64() * 1000.0;
-    let max_error = direct
-        .iter()
-        .flatten()
-        .zip(streamed.iter().flatten())
-        .map(|(a, b)| (a - b).abs())
-        .fold(0.0_f32, f32::max);
+    let max_error = maximum_error(&direct, &streamed);
     if max_error > 0.002 {
         return Err(format!(
             "Gemma packed expert error {max_error} exceeds 0.002"
         ));
     }
     println!(
-        "gemma_expert_smoke batch={batch} assignments={} selected_union={} bytes={} resident={} emit_ms={emit_ms:.3} direct_ms={direct_ms:.3} serial_ms={serial_ms:.3} max_error={max_error:.8}",
+        "gemma_expert_smoke batch={batch} assignments={} selected_union={} bytes={} resident={} cache_resident={} cache_hits={} cache_misses={} cache_evictions={} emit_ms={emit_ms:.3} direct_ms={direct_ms:.3} serial_ms={serial_ms:.3} max_error={max_error:.8}",
         batch * USED,
         selected.len(),
         fs::metadata(output).map_err(|e| e.to_string())?.len(),
-        groups.resident_parameter_bytes()
+        groups.resident_parameter_bytes(),
+        cache.resident(),
+        cache.hits,
+        cache.misses,
+        cache.evictions
     );
     Ok(())
 }

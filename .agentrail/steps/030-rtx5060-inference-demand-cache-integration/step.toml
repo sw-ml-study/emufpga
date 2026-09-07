@@ -1,6 +1,6 @@
 number = 30
 slug = "rtx5060-inference-demand-cache-integration"
-status = "pending"
+status = "in-progress"
 description = "Design and implement the smallest correct integration that lets complete Gemm..."
 role = "legacy"
 context_files = []

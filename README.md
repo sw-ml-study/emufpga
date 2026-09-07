@@ -106,6 +106,13 @@ six-batch runs, breaking even by batch two. This is controlled expert-byte
 replay, not inference. See
 [docs/direct-cache-break-even.md](docs/direct-cache-break-even.md).
 
+The first arithmetic integration now feeds immutable cached Q5_K/Q8_0 expert
+bytes into the real Gemma layer oracle: 40 hits, 96.6 MB resident, and maximum
+error 0.00000381 versus the independent packed path. Complete llama.cpp still
+requires an explicit leased expert-span backend because its kernels assume one
+stable mmap tensor pointer. See
+[docs/inference-cache-integration.md](docs/inference-cache-integration.md).
+
 
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary

@@ -42,6 +42,7 @@ cp "$repo_dir/docs/data/granite-install-profile.json" "$output_dir/granite-insta
 cp "$repo_dir/docs/data/gemma4-profile-cache-analysis.json" "$output_dir/gemma4-profile-cache-analysis.json"
 cp "$repo_dir/docs/data/gemma4-demand-cache-break-even.json" "$output_dir/gemma4-demand-cache-break-even.json"
 cp "$repo_dir/docs/data/gemma4-direct-cache-break-even.json" "$output_dir/gemma4-direct-cache-break-even.json"
+cp "$repo_dir/docs/data/gemma4-inference-cache-adapter.json" "$output_dir/gemma4-inference-cache-adapter.json"
 touch "$output_dir/.nojekyll"
 
 build_host=$(hostname -s)
