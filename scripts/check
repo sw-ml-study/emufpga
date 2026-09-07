@@ -130,6 +130,8 @@ node scripts/check-model-install-profiles.mjs
 node --check scripts/replay-profile-cache.mjs
 node --check scripts/analyze-profile-cache.mjs
 node --check scripts/analyze-demand-break-even.mjs
+node --check scripts/analyze-direct-cache-break-even.mjs
+bash -n scripts/measure-direct-cache-break-even
 bash -n scripts/measure-profile-cache
 
 echo "=== Cargo.lock consistency ==="

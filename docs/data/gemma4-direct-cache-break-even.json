@@ -1,0 +1,75 @@
+{
+  "schema": "emufpga.direct-cache-break-even.v1",
+  "model": "Gemma-4 26B-A4B Q5_K_M",
+  "protocol": "128 MiB admit-on-second-use; six repeated c4 held-out batches; per-file POSIX_FADV_DONTNEED verified between batches; three recorded route runs",
+  "runs": [
+    {
+      "run": 1,
+      "applications": 1614,
+      "hits": 160,
+      "hit_rate": 0.09913258983890955,
+      "physical_byte_reduction": 0.054779312494712684,
+      "source_byte_reduction": 0.10557303827022635,
+      "expert_wait_reduction": 0.05856288748288496,
+      "elapsed_reduction": 0.05053261321289715,
+      "demand_physical_bytes": 7069016064,
+      "adaptive_physical_bytes": 6681780224,
+      "demand_peak_rss_bytes": 192561152,
+      "adaptive_peak_rss_bytes": 320196608,
+      "break_even_batch": 2
+    },
+    {
+      "run": 2,
+      "applications": 2100,
+      "hits": 160,
+      "hit_rate": 0.0761904761904762,
+      "physical_byte_reduction": 0.03824628449076484,
+      "source_byte_reduction": 0.0809653561697159,
+      "expert_wait_reduction": 0.039792997250533535,
+      "elapsed_reduction": 0.034683977175643976,
+      "demand_physical_bytes": 10134970368,
+      "adaptive_physical_bytes": 9747345408,
+      "demand_peak_rss_bytes": 221466624,
+      "adaptive_peak_rss_bytes": 326365184,
+      "break_even_batch": 2
+    },
+    {
+      "run": 3,
+      "applications": 1536,
+      "hits": 150,
+      "hit_rate": 0.09765625,
+      "physical_byte_reduction": 0.05118724609959302,
+      "source_byte_reduction": 0.10434503424657537,
+      "expert_wait_reduction": 0.054895279109738015,
+      "elapsed_reduction": 0.04847116764627746,
+      "demand_physical_bytes": 7092166656,
+      "adaptive_physical_bytes": 6729138176,
+      "demand_peak_rss_bytes": 222564352,
+      "adaptive_peak_rss_bytes": 317640704,
+      "break_even_batch": 2
+    }
+  ],
+  "confidence_95": {
+    "physical_byte_reduction": {
+      "mean": 0.048070947695023514,
+      "ci95_half_width": 0.02160356573137117
+    },
+    "elapsed_reduction": {
+      "mean": 0.044562586011606196,
+      "ci95_half_width": 0.021407525742795013
+    },
+    "expert_wait_reduction": {
+      "mean": 0.05108372128105217,
+      "ci95_half_width": 0.02471550389158441
+    }
+  },
+  "correctness": {
+    "digest_mismatches": 0,
+    "scope": "exact expert byte order; source campaign model tasks passed separately"
+  },
+  "caveats": [
+    "FADV_DONTNEED is a controlled page-cache-bypass proxy, not O_DIRECT and not memory pressure.",
+    "Byte replay excludes expert arithmetic and GPU work.",
+    "The same batch repeats six times, favoring stable reuse."
+  ]
+}

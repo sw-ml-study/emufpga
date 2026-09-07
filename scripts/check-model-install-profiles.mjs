@@ -14,4 +14,6 @@ const cache = JSON.parse(fs.readFileSync("docs/data/gemma4-profile-cache-analysi
 if (cache.groups.length !== 16 || cache.correctness.mismatches !== 0) throw new Error("profile cache analysis incomplete");
 const lifetime = JSON.parse(fs.readFileSync("docs/data/gemma4-demand-cache-break-even.json"));
 if (lifetime.groups.length !== 6 || lifetime.correctness.policy_digest_mismatches !== 0) throw new Error("break-even analysis incomplete");
+const direct = JSON.parse(fs.readFileSync("docs/data/gemma4-direct-cache-break-even.json"));
+if (direct.runs.length !== 3 || direct.correctness.digest_mismatches !== 0) throw new Error("direct cache analysis incomplete");
 console.log("model install profiles: structurally valid; Rust tests cover payload checksums");

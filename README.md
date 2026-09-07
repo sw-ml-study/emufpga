@@ -100,6 +100,12 @@ batch two on repeated held-out routing. It saves zero physical HDD bytes because
 Linux page cache already retains the file, and 512 MiB buys no extra hits. See
 [docs/demand-cache-break-even.md](docs/demand-cache-break-even.md).
 
+With model pages forcibly evicted between batches, the same 128 MiB cache does
+save storage traffic: 4.8% +/-2.2 percentage points physical bytes across three
+six-batch runs, breaking even by batch two. This is controlled expert-byte
+replay, not inference. See
+[docs/direct-cache-break-even.md](docs/direct-cache-break-even.md).
+
 
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary

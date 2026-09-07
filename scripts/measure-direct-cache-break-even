@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+out=${1:-/disk1/tmp/emufpga-direct-cache-break-even}
+model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
+trace=/disk1/tmp/emufpga-gemma4-share-concurrent-c4-r3/server.log
+tool=$root/target/release/spm-file-residency
+runs=${RUNS:-3}
+batches=${BATCHES:-6}
+mkdir -p "$out"
+source=$(findmnt -n -o SOURCE -T "$model")
+partition=${source%%[*}; partition=${partition##*/}
+export MODEL_DEVICE_STAT=/sys/class/block/$partition/stat
+export CACHE_BYPASS_TOOL=$tool
+for run in $(seq 1 "$runs"); do
+    for policy in demand adaptive; do
+        "$tool" evict "$model" >/dev/null
+        BATCHES=$batches RUN_INDEX=$run node "$root/scripts/replay-profile-cache.mjs" \
+            "$root/docs/data/gemma4-install-calibration-profile.json" "$model" "$trace" \
+            "$policy" 128 32 "$out/${policy}-r${run}.json"
+    done
+done
+echo "results: $out"

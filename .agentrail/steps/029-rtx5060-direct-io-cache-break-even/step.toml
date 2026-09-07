@@ -1,6 +1,6 @@
 number = 29
 slug = "rtx5060-direct-io-cache-break-even"
-status = "pending"
+status = "in-progress"
 description = "Implement a bounded direct-I/O or equivalently controlled page-cache-bypass e..."
 role = "legacy"
 context_files = []

@@ -3,6 +3,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { performance } from "node:perf_hooks";
+import { spawnSync } from "node:child_process";
 
 const [manifestPath, modelPath, tracePath, policy, budgetText, limitText, output] = process.argv.slice(2);
 if (!output) throw new Error("usage: replay-profile-cache.mjs MANIFEST MODEL TRACE demand|static|warm|adaptive|recency BUDGET_MIB MAX_EVENTS OUTPUT");
@@ -106,12 +107,19 @@ for (let batch = 1; batch <= batches; batch += 1) for (const event of events) fo
       process_rchar: currentIo.rchar - startedIo.rchar,
       device_read_bytes: currentDevice.length ? (currentDevice[2] - startedDevice[2]) * 512 : null,
       resident_bytes: resident, expert_wait_ms: expertWaitMs, elapsed_ms: performance.now() - started });
+    if (process.env.CACHE_BYPASS_TOOL && batch < batches) {
+      const evicted = spawnSync(process.env.CACHE_BYPASS_TOOL, ["evict", modelPath], { encoding: "utf8" });
+      if (evicted.status !== 0) throw new Error(`page-cache bypass failed after batch ${batch}: ${evicted.stderr}`);
+      const state = JSON.parse(evicted.stdout);
+      if (state.resident_pages !== 0) throw new Error(`page-cache bypass retained ${state.resident_pages} pages`);
+    }
   }
 }
 const endedIo = io(), endedDevice = device();
 fs.closeSync(fd);
 const result = { schema: "emufpga.profile-cache-replay.v1", policy, budget_bytes: budget,
   batches, events_per_batch: events.length, applications: events.flat().length * batches, hits, misses, evictions,
+  source_mode: process.env.CACHE_BYPASS_TOOL ? "fadvise_dontneed_between_batches" : "buffered_page_cache",
   hit_rate: hits / (events.flat().length * batches), source_bytes: sourceBytes,
   process_read_bytes: endedIo.read_bytes - startedIo.read_bytes,
   read_syscalls: endedIo.syscr - startedIo.syscr,
