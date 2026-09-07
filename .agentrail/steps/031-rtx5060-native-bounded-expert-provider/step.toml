@@ -1,0 +1,8 @@
+number = 31
+slug = "rtx5060-native-bounded-expert-provider"
+status = "pending"
+description = "Implement an explicit opt-in bounded native provider for the new GGML mul_mat..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-07T08:50:09"
+commits = []
