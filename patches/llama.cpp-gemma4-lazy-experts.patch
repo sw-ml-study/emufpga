@@ -186,3 +186,47 @@ diff --git a/src/models/gemma4.cpp b/src/models/gemma4.cpp
  
              // per-expert scale will be loaded as down_exps_s at the end of the current switch case
          }
+
+diff --git a/tools/server/server.cpp b/tools/server/server.cpp
+--- a/tools/server/server.cpp
++++ b/tools/server/server.cpp
+@@ -8,6 +8,14 @@
+ #include "common.h"
+ #include "fit.h"
+ #include "llama.h"
++#include "ggml-cpu.h"
++
++using mmid_span = ggml_mmid_span;
++using mmid_acquire = ggml_mmid_span_acquire_t;
++using mmid_release = ggml_mmid_span_release_t;
++using set_mmid_provider = void (*)(mmid_acquire, mmid_release, void *);
++#define SPM_MMID_EXTERNAL_ABI
++#include "spm-mmid-cache.hpp"
+ #include "log.h"
+ 
+ #include <atomic>
+@@ -108,7 +116,22 @@ int llama_server(int argc, char ** argv) {
+     llama_backend_init();
+     llama_numa_init(params.numa);
+ 
+-    return llama_server(params, argc, argv);
++    const char * cache_mib = std::getenv("GGML_MMID_CACHE_MIB");
++    const size_t cache_budget = cache_mib == nullptr ? 0 : std::strtoull(cache_mib, nullptr, 10) * 1024 * 1024;
++    const char * cache_policy = std::getenv("GGML_MMID_CACHE_POLICY");
++    std::unique_ptr<mmid_cache> expert_cache;
++    if (cache_budget > 0) {
++        expert_cache = std::make_unique<mmid_cache>(
++            cache_budget, cache_policy != nullptr && std::string(cache_policy) == "layer");
++        ggml_cpu_set_mmid_span_provider(cache_acquire, cache_release, expert_cache.get());
++        SRV_INF("native expert cache enabled: %zu bytes, policy=%s\n", cache_budget,
++                cache_policy == nullptr ? "lru" : cache_policy);
++    }
++    const int result = llama_server(params, argc, argv);
++    if (expert_cache) {
++        ggml_cpu_set_mmid_span_provider(nullptr, nullptr, nullptr);
++        expert_cache->report();
++    }
++    return result;
+ }
+ 
+ int llama_server(common_params & params, int argc, char ** argv) {

@@ -13,25 +13,25 @@ int main() {
     mmid_cache cache(64);
 
     mmid_span first_span{first.data(), nullptr};
-    assert(cache.acquire(&first_span, first.size()));
+    assert(cache.acquire(nullptr, &first_span, first.size()));
     assert(first_span.data == first.data());
     cache.release(&first_span);
 
     first_span = {first.data(), nullptr};
-    assert(cache.acquire(&first_span, first.size()));
+    assert(cache.acquire(nullptr, &first_span, first.size()));
     assert(first_span.data != first.data());
 
     mmid_span second_span{second.data(), nullptr};
-    assert(cache.acquire(&second_span, second.size()));
+    assert(cache.acquire(nullptr, &second_span, second.size()));
     cache.release(&second_span);
     second_span = {second.data(), nullptr};
-    assert(cache.acquire(&second_span, second.size()));
+    assert(cache.acquire(nullptr, &second_span, second.size()));
     assert(second_span.data == second.data());
     cache.release(&second_span);
     cache.release(&first_span);
 
     second_span = {second.data(), nullptr};
-    assert(cache.acquire(&second_span, second.size()));
+    assert(cache.acquire(nullptr, &second_span, second.size()));
     assert(second_span.data != second.data());
     cache.release(&second_span);
 
@@ -39,7 +39,7 @@ int main() {
     for (int index = 0; index < 8; ++index) {
         workers.emplace_back([&] {
             mmid_span span{second.data(), nullptr};
-            assert(cache.acquire(&span, second.size()));
+            assert(cache.acquire(nullptr, &span, second.size()));
             assert(static_cast<const unsigned char *>(span.data)[0] == 29);
             cache.release(&span);
         });

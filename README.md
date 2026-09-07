@@ -118,6 +118,12 @@ three-step single-request test saved zero source bytes: 610 loads and 549
 evictions expose a reuse distance larger than the cache. This is a useful
 negative result. Concurrent-agent and layer-aware reuse remain to be tested.
 
+A first CPU-only long-lived-server pilot now shows 10.94% fewer logical source
+bytes with a 512 MiB layer-aware cache, but roughly 40% to 45% lower aggregate
+throughput from copying and global locking. This is promising traffic evidence,
+not a win. See
+[docs/concurrent-agent-cache-pilot.md](docs/concurrent-agent-cache-pilot.md).
+
 
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary

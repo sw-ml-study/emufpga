@@ -23,4 +23,8 @@ if (new Set([adapter.native_span_hook.resident_sha256, adapter.native_span_hook.
 const native = adapter.native_bounded_provider;
 if (!native.balanced || native.acquires !== native.releases || native.control_sha256 !== native.candidate_sha256) throw new Error("native bounded provider failed correctness");
 if (native.peak_bytes > native.budget_bytes) throw new Error("native bounded provider exceeded budget");
+const concurrent = JSON.parse(fs.readFileSync("docs/data/gemma4-concurrent-native-cache-pilot.json"));
+if (concurrent.candidate.correct !== concurrent.candidate.requests) throw new Error("native server pilot tasks failed");
+if (concurrent.candidate.peak_bytes > 512 * 1024 * 1024) throw new Error("native server cache exceeded budget");
+if (!concurrent.oracle_layer_policy.bit_identical) throw new Error("layer-aware provider changed logits");
 console.log("model install profiles: structurally valid; Rust tests cover payload checksums");

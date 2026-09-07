@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ggml.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -12,8 +14,7 @@
 #include <mutex>
 #include <utility>
 
-struct ggml_tensor;
-
+#ifndef SPM_MMID_EXTERNAL_ABI
 struct mmid_span {
     const void * data;
     void * lease;
@@ -22,6 +23,7 @@ struct mmid_span {
 using mmid_acquire = bool (*)(const ggml_tensor *, int64_t, size_t, mmid_span *, void *);
 using mmid_release = void (*)(mmid_span *, void *);
 using set_mmid_provider = void (*)(mmid_acquire, mmid_release, void *);
+#endif
 
 class mmid_cache {
     struct entry {
@@ -31,14 +33,15 @@ class mmid_cache {
         uint64_t observations = 0;
         uint64_t active = 0;
         uint64_t age = 0;
+        int layer = -1;
     };
 
     using key = std::pair<const void *, size_t>;
 
 public:
-    explicit mmid_cache(size_t budget) : budget_(budget) {}
+    explicit mmid_cache(size_t budget, bool layer_aware = false) : budget_(budget), layer_aware_(layer_aware) {}
 
-    bool acquire(mmid_span * span, size_t size) {
+    bool acquire(const ggml_tensor * tensor, mmid_span * span, size_t size) {
         const auto started = std::chrono::steady_clock::now();
         std::lock_guard<std::mutex> lock(mutex_);
         auto & item = entries_[{span->data, size}];
@@ -46,11 +49,18 @@ public:
             item = std::make_unique<entry>();
             item->source = span->data;
             item->size = size;
+            std::sscanf(tensor == nullptr ? "" : tensor->name, "blk.%d.", &item->layer);
         }
         entry & value = *item;
         const bool new_observation = value.active == 0;
         if (new_observation) {
             ++value.observations;
+            ++operations_;
+            if (value.bytes) {
+                ++operation_hits_;
+            } else {
+                ++operation_misses_;
+            }
         }
         ++acquires_;
         if (value.bytes) {
@@ -84,7 +94,8 @@ public:
     void report() {
         std::lock_guard<std::mutex> lock(mutex_);
         std::printf(
-            "mmid_cache acquires=%llu releases=%llu hits=%llu misses=%llu loads=%llu evictions=%llu source_bytes=%llu resident=%zu peak=%zu wait_ms=%.3f balanced=%s\n",
+            "mmid_cache operations=%llu operation_hits=%llu operation_misses=%llu acquires=%llu releases=%llu worker_hits=%llu worker_misses=%llu loads=%llu evictions=%llu source_bytes=%llu resident=%zu peak=%zu wait_ms=%.3f balanced=%s\n",
+            value(operations_), value(operation_hits_), value(operation_misses_),
             value(acquires_), value(releases_), value(hits_), value(misses_), value(loads_),
             value(evictions_), value(source_bytes_), resident_, peak_, value(wait_ns_) / 1e6,
             acquires_ == releases_ && acquires_ > 0 ? "true" : "false");
@@ -109,8 +120,13 @@ private:
             auto victim = entries_.end();
             for (auto it = entries_.begin(); it != entries_.end(); ++it) {
                 const entry & candidate = *it->second;
+                const bool same_layer = candidate.layer == incoming->layer;
+                const bool victim_same = victim != entries_.end() && victim->second->layer == incoming->layer;
                 if (&candidate != incoming && candidate.bytes && candidate.active == 0 &&
-                        (victim == entries_.end() || candidate.age < victim->second->age)) {
+                        (victim == entries_.end() ||
+                         (!layer_aware_ && candidate.age < victim->second->age) ||
+                         (layer_aware_ && ((same_layer && !victim_same) ||
+                          (same_layer == victim_same && candidate.age < victim->second->age))))) {
                     victim = it;
                 }
             }
@@ -141,9 +157,13 @@ private:
     }
 
     size_t budget_;
+    bool layer_aware_;
     size_t resident_ = 0;
     size_t peak_ = 0;
     uint64_t age_ = 0;
+    uint64_t operations_ = 0;
+    uint64_t operation_hits_ = 0;
+    uint64_t operation_misses_ = 0;
     uint64_t acquires_ = 0;
     uint64_t releases_ = 0;
     uint64_t hits_ = 0;
@@ -156,8 +176,8 @@ private:
     std::map<key, std::unique_ptr<entry>> entries_;
 };
 
-inline bool cache_acquire(const ggml_tensor *, int64_t, size_t size, mmid_span * span, void * data) {
-    return static_cast<mmid_cache *>(data)->acquire(span, size);
+inline bool cache_acquire(const ggml_tensor * tensor, int64_t, size_t size, mmid_span * span, void * data) {
+    return static_cast<mmid_cache *>(data)->acquire(tensor, span, size);
 }
 
 inline void cache_release(mmid_span * span, void * data) {

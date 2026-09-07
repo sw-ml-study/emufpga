@@ -72,7 +72,8 @@ int main(int argc, char ** argv) {
     mmid_probe probe;
     const char * cache_mib = std::getenv("LLAMA_MMID_CACHE_MIB");
     const size_t cache_budget = cache_mib == nullptr ? 0 : std::strtoull(cache_mib, nullptr, 10) * 1024 * 1024;
-    mmid_cache cache(cache_budget);
+    const char * cache_policy = std::getenv("LLAMA_MMID_CACHE_POLICY");
+    mmid_cache cache(cache_budget, cache_policy != nullptr && std::string(cache_policy) == "layer");
     set_mmid_provider install_provider = nullptr;
     if (cache_budget > 0 || std::getenv("LLAMA_MMID_SPAN_PASSTHROUGH") != nullptr) {
         install_provider = reinterpret_cast<set_mmid_provider>(

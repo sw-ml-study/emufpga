@@ -16,8 +16,13 @@ expected_revision=4d9176092d00586775af140581bb0b558ddc4389
     exit 2
 }
 
+cache_header=$source_dir/tools/server/spm-mmid-cache.hpp
+cp "$root/tools/llama-logits/mmid-cache.hpp" "$cache_header"
 git -C "$source_dir" apply --recount "$root/patches/llama.cpp-gemma4-lazy-experts.patch"
-restore() { git -C "$source_dir" apply -R --recount "$root/patches/llama.cpp-gemma4-lazy-experts.patch"; }
+restore() {
+    git -C "$source_dir" apply -R --recount "$root/patches/llama.cpp-gemma4-lazy-experts.patch"
+    rm -f "$cache_header"
+}
 trap restore EXIT INT TERM
 
 cmake -S "$source_dir" -B "$build_dir" -DGGML_CUDA=ON \

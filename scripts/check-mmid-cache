@@ -5,6 +5,7 @@ repo_dir=$(cd "$(dirname "$0")/.." && pwd)
 binary=/tmp/emufpga-check-mmid-cache
 c++ -std=c++20 -O2 -Wall -Wextra -Werror -pthread \
     "$repo_dir/tools/llama-logits/test-mmid-cache.cpp" \
-    -I"$repo_dir/tools/llama-logits" -o "$binary"
+    -I"$repo_dir/tools/llama-logits" \
+    -I/disk1/github/ggml-org/llama.cpp/ggml/include -o "$binary"
 "$binary"
 echo "GGML expert-span cache lease checks: ok"
