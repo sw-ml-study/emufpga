@@ -1,0 +1,8 @@
+number = 29
+slug = "rtx5060-direct-io-cache-break-even"
+status = "pending"
+description = "Implement a bounded direct-I/O or equivalently controlled page-cache-bypass e..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-06T20:53:27"
+commits = []

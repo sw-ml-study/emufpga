@@ -1,8 +1,9 @@
 number = 28
 slug = "rtx5060-demand-cache-break-even"
-status = "in-progress"
+status = "completed"
 description = "Measure a long-lived application-owned demand-admitted expert cache across su..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-06T20:41:06"
-commits = []
+completed_at = "2026-09-06T20:53:27"
+commits = ["9ffb4687abadd408ce6b32e37b047dc55d937fa8"]
