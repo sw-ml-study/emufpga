@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+out=${1:-/disk1/tmp/emufpga-profile-cache-$(date -u +%Y%m%dT%H%M%SZ)}
+model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_M.gguf}
+profile=${PROFILE:-$root/docs/data/gemma4-install-calibration-profile.json}
+events=${EVENTS:-36}
+runs=${RUNS:-3}
+model_source=$(findmnt -n -o SOURCE -T "$model")
+model_device=${model_source%%[*}
+model_partition=${model_device##*/}
+export MODEL_DEVICE_STAT=/sys/class/block/$model_partition/stat
+mkdir -p "$out"
+
+declare -A traces
+traces[1]="/disk1/tmp/emufpga-gemma4-share-isolated-0-r3/server.log"
+traces[2]="/disk1/tmp/emufpga-gemma4-share-concurrent-c2a-r3/server.log"
+traces[4]="/disk1/tmp/emufpga-gemma4-share-concurrent-c4-r3/server.log"
+traces[8]="/disk1/tmp/emufpga-gemma4-share-concurrent-c8-r3/server.log"
+for concurrency in 1 2 4 8; do
+    for policy in demand static warm adaptive; do
+        for run in $(seq 1 "$runs"); do
+            "$root/scripts/gemma4-file-residency" evict >/dev/null
+            RUN_INDEX=$run node "$root/scripts/replay-profile-cache.mjs" "$profile" "$model" \
+                "${traces[$concurrency]}" "$policy" 512 "$events" \
+                "$out/c${concurrency}-${policy}-r${run}.json"
+        done
+    done
+done
+echo "results: $out"

@@ -9,4 +9,7 @@ function check(path, expectedState) {
 
 check("docs/data/granite-install-profile.json", "cold_fallback");
 check("docs/data/gemma4-install-profile.json", "calibrated");
+check("docs/data/gemma4-install-calibration-profile.json", "calibrated");
+const cache = JSON.parse(fs.readFileSync("docs/data/gemma4-profile-cache-analysis.json"));
+if (cache.groups.length !== 16 || cache.correctness.mismatches !== 0) throw new Error("profile cache analysis incomplete");
 console.log("model install profiles: structurally valid; Rust tests cover payload checksums");

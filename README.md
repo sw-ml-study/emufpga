@@ -87,6 +87,14 @@ graceful no-prior cold start; Gemma demonstrates a workload-derived proposal.
 The placement is not yet a measured speedup. See
 [docs/model-install-expert-profile.md](docs/model-install-expert-profile.md).
 
+The first physical use of that frozen profile is a useful negative result.
+Across 48 cold expert-byte replays, static preload hit 12.6-15.9% but increased
+physical reads 8.4-9.8%; the wider warm tier hit 23.4-27.6% but increased reads
+18.4-22.0%. All byte-path digests agreed. Do not confuse multi-agent sharing,
+which remains measured, with speculative preload, which did not repay its cold
+cost. See [docs/profile-driven-cache-results.md](docs/profile-driven-cache-results.md).
+
+
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary
 loader read the complete 19.32 GB model before serving; lazy expert marking

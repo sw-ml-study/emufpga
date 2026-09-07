@@ -37,7 +37,9 @@ cp "$repo_dir/docs/data/resource-service-analysis.json" "$output_dir/resource-se
 cp "$repo_dir/docs/data/gemma4-agent-sharing-curve.json" "$output_dir/gemma4-agent-sharing-curve.json"
 cp "$repo_dir/docs/data/gemma4-agent-sharing-c8-r3.json" "$output_dir/gemma4-agent-sharing-c8-r3.json"
 cp "$repo_dir/docs/data/gemma4-install-profile.json" "$output_dir/gemma4-install-profile.json"
+cp "$repo_dir/docs/data/gemma4-install-calibration-profile.json" "$output_dir/gemma4-install-calibration-profile.json"
 cp "$repo_dir/docs/data/granite-install-profile.json" "$output_dir/granite-install-profile.json"
+cp "$repo_dir/docs/data/gemma4-profile-cache-analysis.json" "$output_dir/gemma4-profile-cache-analysis.json"
 touch "$output_dir/.nojekyll"
 
 build_host=$(hostname -s)

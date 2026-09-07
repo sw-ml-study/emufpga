@@ -127,6 +127,9 @@ node --check scripts/analyze-gemma4-agent-sharing.mjs
 node --check scripts/analyze-gemma4-sharing-curve.mjs
 node scripts/check-gemma4-agent-sharing-data.mjs
 node scripts/check-model-install-profiles.mjs
+node --check scripts/replay-profile-cache.mjs
+node --check scripts/analyze-profile-cache.mjs
+bash -n scripts/measure-profile-cache
 
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"
