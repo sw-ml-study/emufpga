@@ -1,0 +1,995 @@
+{
+  "schema": "emufpga.install-manifest-envelope.v1",
+  "payload_sha256": "2bc5306963199a4f548fccd7b49c5e66b2c86d01674d8097d42463b2f4977071",
+  "payload": {
+    "hardware": {
+      "cpu": "Intel Xeon E5-2699 v3",
+      "cpu_sockets": 2,
+      "gpu": "NVIDIA GeForce RTX 5060 Ti",
+      "gpu_vram_bytes": 17103388672,
+      "host": "large12",
+      "model_storage": {
+        "class": "single rotational disk",
+        "filesystem": "ext4",
+        "mount": "/disk1"
+      },
+      "physical_cores": 36,
+      "schema": "emufpga.hardware-profile.v1",
+      "system_ram_bytes": 270582939648
+    },
+    "hardware_sha256": "00e46d1098fce0d14d381e3d21217847090aa823857c2ccf5844bf4d3e5c3960",
+    "inventory": {
+      "active_experts_per_token": 8,
+      "expert_tensor_bytes": 990904320,
+      "experts_per_layer": 32,
+      "layers": 24,
+      "tensors": [
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 0,
+          "name": "blk.0.ffn_down_exps.weight",
+          "offset": 45618496
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 0,
+          "name": "blk.0.ffn_gate_exps.weight",
+          "offset": 59381056
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 0,
+          "name": "blk.0.ffn_up_exps.weight",
+          "offset": 73278784
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 1,
+          "name": "blk.1.ffn_down_exps.weight",
+          "offset": 89625920
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 1,
+          "name": "blk.1.ffn_gate_exps.weight",
+          "offset": 103388480
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 1,
+          "name": "blk.1.ffn_up_exps.weight",
+          "offset": 117286208
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 2,
+          "name": "blk.2.ffn_down_exps.weight",
+          "offset": 133633344
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 2,
+          "name": "blk.2.ffn_gate_exps.weight",
+          "offset": 147395904
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 2,
+          "name": "blk.2.ffn_up_exps.weight",
+          "offset": 161293632
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 3,
+          "name": "blk.3.ffn_down_exps.weight",
+          "offset": 177640768
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 3,
+          "name": "blk.3.ffn_gate_exps.weight",
+          "offset": 191403328
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 3,
+          "name": "blk.3.ffn_up_exps.weight",
+          "offset": 205301056
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 4,
+          "name": "blk.4.ffn_down_exps.weight",
+          "offset": 221648192
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 4,
+          "name": "blk.4.ffn_gate_exps.weight",
+          "offset": 235410752
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 4,
+          "name": "blk.4.ffn_up_exps.weight",
+          "offset": 249308480
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 5,
+          "name": "blk.5.ffn_down_exps.weight",
+          "offset": 265655616
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 5,
+          "name": "blk.5.ffn_gate_exps.weight",
+          "offset": 279418176
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 5,
+          "name": "blk.5.ffn_up_exps.weight",
+          "offset": 293315904
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 6,
+          "name": "blk.6.ffn_down_exps.weight",
+          "offset": 309663040
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 6,
+          "name": "blk.6.ffn_gate_exps.weight",
+          "offset": 323425600
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 6,
+          "name": "blk.6.ffn_up_exps.weight",
+          "offset": 337323328
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 7,
+          "name": "blk.7.ffn_down_exps.weight",
+          "offset": 353670464
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 7,
+          "name": "blk.7.ffn_gate_exps.weight",
+          "offset": 367433024
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 7,
+          "name": "blk.7.ffn_up_exps.weight",
+          "offset": 381330752
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 8,
+          "name": "blk.8.ffn_down_exps.weight",
+          "offset": 397677888
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 8,
+          "name": "blk.8.ffn_gate_exps.weight",
+          "offset": 411440448
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 8,
+          "name": "blk.8.ffn_up_exps.weight",
+          "offset": 425338176
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 9,
+          "name": "blk.9.ffn_down_exps.weight",
+          "offset": 441685312
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 9,
+          "name": "blk.9.ffn_gate_exps.weight",
+          "offset": 455447872
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 9,
+          "name": "blk.9.ffn_up_exps.weight",
+          "offset": 469345600
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 10,
+          "name": "blk.10.ffn_down_exps.weight",
+          "offset": 485692736
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 10,
+          "name": "blk.10.ffn_gate_exps.weight",
+          "offset": 499455296
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 10,
+          "name": "blk.10.ffn_up_exps.weight",
+          "offset": 513353024
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 11,
+          "name": "blk.11.ffn_down_exps.weight",
+          "offset": 529700160
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 11,
+          "name": "blk.11.ffn_gate_exps.weight",
+          "offset": 543462720
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 11,
+          "name": "blk.11.ffn_up_exps.weight",
+          "offset": 557360448
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 12,
+          "name": "blk.12.ffn_down_exps.weight",
+          "offset": 573707584
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 12,
+          "name": "blk.12.ffn_gate_exps.weight",
+          "offset": 587470144
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 12,
+          "name": "blk.12.ffn_up_exps.weight",
+          "offset": 601367872
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 13,
+          "name": "blk.13.ffn_down_exps.weight",
+          "offset": 617715008
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 13,
+          "name": "blk.13.ffn_gate_exps.weight",
+          "offset": 631477568
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 13,
+          "name": "blk.13.ffn_up_exps.weight",
+          "offset": 645375296
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 14,
+          "name": "blk.14.ffn_down_exps.weight",
+          "offset": 661722432
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 14,
+          "name": "blk.14.ffn_gate_exps.weight",
+          "offset": 675484992
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 14,
+          "name": "blk.14.ffn_up_exps.weight",
+          "offset": 689382720
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 15,
+          "name": "blk.15.ffn_down_exps.weight",
+          "offset": 705729856
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 15,
+          "name": "blk.15.ffn_gate_exps.weight",
+          "offset": 719492416
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 15,
+          "name": "blk.15.ffn_up_exps.weight",
+          "offset": 733390144
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 16,
+          "name": "blk.16.ffn_down_exps.weight",
+          "offset": 749737280
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 16,
+          "name": "blk.16.ffn_gate_exps.weight",
+          "offset": 763499840
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 16,
+          "name": "blk.16.ffn_up_exps.weight",
+          "offset": 777397568
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 17,
+          "name": "blk.17.ffn_down_exps.weight",
+          "offset": 793744704
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 17,
+          "name": "blk.17.ffn_gate_exps.weight",
+          "offset": 807507264
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 17,
+          "name": "blk.17.ffn_up_exps.weight",
+          "offset": 821404992
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 18,
+          "name": "blk.18.ffn_down_exps.weight",
+          "offset": 837752128
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 18,
+          "name": "blk.18.ffn_gate_exps.weight",
+          "offset": 851514688
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 18,
+          "name": "blk.18.ffn_up_exps.weight",
+          "offset": 865412416
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 19,
+          "name": "blk.19.ffn_down_exps.weight",
+          "offset": 881759552
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 19,
+          "name": "blk.19.ffn_gate_exps.weight",
+          "offset": 895522112
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 19,
+          "name": "blk.19.ffn_up_exps.weight",
+          "offset": 909419840
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 20,
+          "name": "blk.20.ffn_down_exps.weight",
+          "offset": 925766976
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 20,
+          "name": "blk.20.ffn_gate_exps.weight",
+          "offset": 939529536
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 20,
+          "name": "blk.20.ffn_up_exps.weight",
+          "offset": 953427264
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 21,
+          "name": "blk.21.ffn_down_exps.weight",
+          "offset": 969774400
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 21,
+          "name": "blk.21.ffn_gate_exps.weight",
+          "offset": 983536960
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 21,
+          "name": "blk.21.ffn_up_exps.weight",
+          "offset": 997434688
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 22,
+          "name": "blk.22.ffn_down_exps.weight",
+          "offset": 1013781824
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 22,
+          "name": "blk.22.ffn_gate_exps.weight",
+          "offset": 1027544384
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 22,
+          "name": "blk.22.ffn_up_exps.weight",
+          "offset": 1041442112
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            512,
+            1024,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 23,
+          "name": "blk.23.ffn_down_exps.weight",
+          "offset": 1057789248
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 23,
+          "name": "blk.23.ffn_gate_exps.weight",
+          "offset": 1071551808
+        },
+        {
+          "bytes": 13762560,
+          "bytes_per_expert": 430080,
+          "dimensions": [
+            1024,
+            512,
+            32
+          ],
+          "ggml_type": 14,
+          "layer": 23,
+          "name": "blk.23.ffn_up_exps.weight",
+          "offset": 1085449536
+        }
+      ]
+    },
+    "model": {
+      "alignment": 32,
+      "architecture": "granitemoe",
+      "bytes": 1099212096,
+      "gguf_version": 3,
+      "path": "/disk1/tmp/granite-3.1-1b-a400m-q6/granite-3.1-1b-a400m-instruct-Q6_K.gguf",
+      "sha256": "4566cfa92be10888026bd3663c83d64e91cd91f874dfb3607596587ff1c8f67f"
+    },
+    "placement": {
+      "adaptive_priors": {},
+      "fallback": "unknown routes use bounded demand loading and are never rejected",
+      "preload": [],
+      "warm_candidates": []
+    },
+    "profile_version": "emufpga.install-profile.v1",
+    "ram_budget_bytes": 4294967296,
+    "runtime_build": "llama.cpp-sm120-spm-mmid",
+    "vram_budget_bytes": 12884901888,
+    "workload": {
+      "assignments": 0,
+      "events": 0,
+      "heldout_top32_overlap_ppm": null,
+      "ranking": [],
+      "reuse_ppm": 0,
+      "state": "cold_fallback",
+      "top_coactivations": [],
+      "trace_sha256": [],
+      "unique_applications": 0
+    }
+  }
+}

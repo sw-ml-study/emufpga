@@ -231,6 +231,18 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadInstallGraphic() {
+    const target = document.getElementById("install-graphic");
+    if (!target) return;
+    try {
+      const [granite, gemma] = await Promise.all([fetch("granite-install-profile.json").then(r => r.json()), fetch("gemma4-install-profile.json").then(r => r.json())]);
+      const cold = granite.payload;
+      const trained = gemma.payload;
+      const overlap = trained.workload.heldout_top32_overlap_ppm / 10000;
+      target.innerHTML = `<div class="placement-callout"><strong>${trained.placement.preload.length} experts proposed for preload</strong><span>Gemma profile · ${overlap.toFixed(0)}% calibration/held-out top-32 overlap</span></div><div class="metric-sheet"><h3>Exact expert inventory <small>no tensor bodies loaded</small></h3>${placementBar("Granite Q6_K", cold.inventory.expert_tensor_bytes / 1e9, 18, "GB", "cpu")}${placementBar("Gemma Q5_K_M", trained.inventory.expert_tensor_bytes / 1e9, 18, "GB", "gpu")}</div><div class="metric-sheet"><h3>Observed routed assignments <small>telemetry, not quality</small></h3>${placementBar("Cold install", cold.workload.assignments, trained.workload.assignments, "", "cpu")}${placementBar("Gemma traces", trained.workload.assignments, trained.workload.assignments, "", "gpu")}</div><div class="placement-detail"><span>Cold fallback: <b>${cold.placement.preload.length} invented priors</b></span><span>Gemma within-event reuse: <b>${(trained.workload.reuse_ppm / 10000).toFixed(1)}%</b> · manifest checksum verified in CI</span></div>`;
+    } catch (_) { target.innerHTML = "<p>Model-profile JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -245,6 +257,7 @@
     loadColdCurveGraphic();
     loadStreamTierGraphic();
     loadAgentSharingGraphic();
+    loadInstallGraphic();
     loadResourceGraphic();
   });
 
