@@ -27,6 +27,30 @@
     "provider": "pass-through lease; returns original mmap expert span",
     "device": "CPU only; NVIDIA driver unavailable during this run"
   },
-  "boundary": "immutable Arc expert buffers feed Rust Q5_K/Q8_0 arithmetic; patched llama.cpp now accepts leased spans but only its original mmap span has been validated end to end",
-  "caveat": "The Rust cache is a one-layer arithmetic qualification. The native hook completes inference but its validated provider is pass-through, not yet the bounded cache; token throughput and coding-task quality are therefore not cache-provider results."
+  "native_bounded_provider": {
+    "policy": "immutable 64-byte-aligned copies; admit on second zero-to-active lease transition; LRU; leased entries ineligible for eviction",
+    "budget_bytes": 134217728,
+    "prompt": "Hello",
+    "decode_steps": 3,
+    "logits": 262144,
+    "control_sha256": "b4191db5c6d548233738ad522c1dc6d510deb91f02681747cac6ee9d2a860d9d",
+    "candidate_sha256": "b4191db5c6d548233738ad522c1dc6d510deb91f02681747cac6ee9d2a860d9d",
+    "acquires": 7432,
+    "releases": 7432,
+    "worker_hits": 1830,
+    "worker_misses": 5602,
+    "loads": 610,
+    "evictions": 549,
+    "source_bytes_control": 4181264384,
+    "source_bytes_candidate": 4181264384,
+    "source_byte_reduction": 0,
+    "resident_bytes": 132825088,
+    "peak_bytes": 134188032,
+    "summed_callback_wait_ms": 1073.685,
+    "balanced": true,
+    "device": "CPU only; CUDA initialization failed despite an intermittent successful nvidia-smi query",
+    "interpretation": "Worker hits mostly share a copy within one expert operation. The 128 MiB LRU evicts entries before token-to-token reuse reaches the same layer, so it does not reduce source demand for this single request."
+  },
+  "boundary": "immutable copied expert bytes now feed complete native GGML CPU arithmetic through balanced leases; long-lived concurrent server integration and physical-I/O qualification remain",
+  "caveat": "The native bounded provider now completes inference correctly, but this short single-request CPU run is neither a concurrent-agent workload nor a physical-I/O, token-throughput, coding-quality, VRAM, or confidence campaign."
 }

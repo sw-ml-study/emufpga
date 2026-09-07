@@ -87,6 +87,7 @@ echo "=== repository size ==="
 "$SCRIPT_DIR/check-size"
 
 echo "=== visualization calculations ==="
+scripts/check-mmid-cache
 node visualization/economics.test.js
 node visualization/architectures.test.js
 node visualization/notebook.test.js

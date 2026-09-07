@@ -20,4 +20,7 @@ const adapter = JSON.parse(fs.readFileSync("docs/data/gemma4-inference-cache-ada
 if (!adapter.correct || adapter.max_error > adapter.tolerance) throw new Error("cache adapter arithmetic failed");
 if (!adapter.native_span_hook.balanced || adapter.native_span_hook.acquires !== adapter.native_span_hook.releases) throw new Error("native span leases are unbalanced");
 if (new Set([adapter.native_span_hook.resident_sha256, adapter.native_span_hook.reclaimed_sha256, adapter.native_span_hook.passthrough_sha256]).size !== 1) throw new Error("native span hook changed logits");
+const native = adapter.native_bounded_provider;
+if (!native.balanced || native.acquires !== native.releases || native.control_sha256 !== native.candidate_sha256) throw new Error("native bounded provider failed correctness");
+if (native.peak_bytes > native.budget_bytes) throw new Error("native bounded provider exceeded budget");
 console.log("model install profiles: structurally valid; Rust tests cover payload checksums");

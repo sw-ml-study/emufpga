@@ -113,6 +113,11 @@ needs a bounded provider, but its new native expert-span hook completed a
 bit-identical 262,144-logit pass-through run with 3,592 balanced leases. See
 [docs/inference-cache-integration.md](docs/inference-cache-integration.md).
 
+The first 128 MiB native provider also preserves complete logits, but its
+three-step single-request test saved zero source bytes: 610 loads and 549
+evictions expose a reuse distance larger than the cache. This is a useful
+negative result. Concurrent-agent and layer-aware reuse remain to be tested.
+
 
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary

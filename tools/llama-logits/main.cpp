@@ -1,6 +1,7 @@
 #include "llama.h"
 #include "ggml.h"
 #include "ggml-backend.h"
+#include "mmid-cache.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -21,15 +22,6 @@ struct scored_token {
 struct dump_config {
     const char * directory;
 };
-
-struct mmid_span {
-    const void * data;
-    void * lease;
-};
-
-using mmid_acquire = bool (*)(const ggml_tensor *, int64_t, size_t, mmid_span *, void *);
-using mmid_release = void (*)(mmid_span *, void *);
-using set_mmid_provider = void (*)(mmid_acquire, mmid_release, void *);
 
 struct mmid_probe {
     std::atomic<uint64_t> acquires{0};
@@ -78,15 +70,22 @@ int main(int argc, char ** argv) {
     }
     ggml_backend_load_all();
     mmid_probe probe;
+    const char * cache_mib = std::getenv("LLAMA_MMID_CACHE_MIB");
+    const size_t cache_budget = cache_mib == nullptr ? 0 : std::strtoull(cache_mib, nullptr, 10) * 1024 * 1024;
+    mmid_cache cache(cache_budget);
     set_mmid_provider install_provider = nullptr;
-    if (std::getenv("LLAMA_MMID_SPAN_PASSTHROUGH") != nullptr) {
+    if (cache_budget > 0 || std::getenv("LLAMA_MMID_SPAN_PASSTHROUGH") != nullptr) {
         install_provider = reinterpret_cast<set_mmid_provider>(
             dlsym(RTLD_DEFAULT, "ggml_cpu_set_mmid_span_provider"));
         if (install_provider == nullptr) {
             std::fprintf(stderr, "patched GGML expert-span provider API is unavailable\n");
             return 1;
         }
-        install_provider(passthrough_acquire, passthrough_release, &probe);
+        if (cache_budget > 0) {
+            install_provider(cache_acquire, cache_release, &cache);
+        } else {
+            install_provider(passthrough_acquire, passthrough_release, &probe);
+        }
     }
     auto model_params = llama_model_default_params();
     const char * gpu_layers = std::getenv("LLAMA_LOGITS_GPU_LAYERS");
@@ -132,8 +131,20 @@ int main(int argc, char ** argv) {
         llama_model_free(model);
         return 1;
     }
-    const float * logits = llama_get_logits_ith(context, -1);
     const int vocab_size = llama_vocab_n_tokens(vocab);
+    const char * steps_text = std::getenv("LLAMA_LOGITS_STEPS");
+    const int steps = steps_text == nullptr ? 1 : std::max(1, std::atoi(steps_text));
+    for (int step = 1; step < steps; ++step) {
+        const float * current = llama_get_logits_ith(context, -1);
+        llama_token next = std::max_element(current, current + vocab_size) - current;
+        auto next_batch = llama_batch_get_one(&next, 1);
+        if (llama_decode(context, next_batch) != 0) {
+            llama_free(context);
+            llama_model_free(model);
+            return 1;
+        }
+    }
+    const float * logits = llama_get_logits_ith(context, -1);
     const char * raw_path = std::getenv("LLAMA_LOGITS_RAW");
     if (raw_path != nullptr) {
         std::ofstream raw(raw_path, std::ios::binary);
@@ -166,15 +177,24 @@ int main(int argc, char ** argv) {
     }
     if (install_provider != nullptr) {
         install_provider(nullptr, nullptr, nullptr);
-        const auto acquires = probe.acquires.load(std::memory_order_relaxed);
-        const auto releases = probe.releases.load(std::memory_order_relaxed);
-        std::printf("mmid_span acquires=%llu releases=%llu balanced=%s\n",
-            (unsigned long long) acquires, (unsigned long long) releases,
-            acquires == releases && acquires > 0 ? "true" : "false");
-        if (acquires == 0 || acquires != releases) {
-            llama_free(context);
-            llama_model_free(model);
-            return 1;
+        if (cache_budget > 0) {
+            cache.report();
+            if (!cache.balanced()) {
+                llama_free(context);
+                llama_model_free(model);
+                return 1;
+            }
+        } else {
+            const auto acquires = probe.acquires.load(std::memory_order_relaxed);
+            const auto releases = probe.releases.load(std::memory_order_relaxed);
+            std::printf("mmid_span acquires=%llu releases=%llu balanced=%s\n",
+                (unsigned long long) acquires, (unsigned long long) releases,
+                acquires == releases && acquires > 0 ? "true" : "false");
+            if (acquires == 0 || acquires != releases) {
+                llama_free(context);
+                llama_model_free(model);
+                return 1;
+            }
         }
     }
     llama_free(context);

@@ -1,6 +1,6 @@
 number = 31
 slug = "rtx5060-native-bounded-expert-provider"
-status = "pending"
+status = "in-progress"
 description = "Implement an explicit opt-in bounded native provider for the new GGML mul_mat..."
 role = "legacy"
 context_files = []
