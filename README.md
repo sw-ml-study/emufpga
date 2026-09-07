@@ -94,6 +94,12 @@ physical reads 8.4-9.8%; the wider warm tier hit 23.4-27.6% but increased reads
 which remains measured, with speculative preload, which did not repay its cold
 cost. See [docs/profile-driven-cache-results.md](docs/profile-driven-cache-results.md).
 
+A 12-batch persistent-cache follow-up finds the first limited win: 128 MiB
+admit-on-second-use avoids 11.6% of userspace model copying and breaks even by
+batch two on repeated held-out routing. It saves zero physical HDD bytes because
+Linux page cache already retains the file, and 512 MiB buys no extra hits. See
+[docs/demand-cache-break-even.md](docs/demand-cache-break-even.md).
+
 
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary

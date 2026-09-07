@@ -5,11 +5,12 @@ import fs from "node:fs";
 import { performance } from "node:perf_hooks";
 
 const [manifestPath, modelPath, tracePath, policy, budgetText, limitText, output] = process.argv.slice(2);
-if (!output) throw new Error("usage: replay-profile-cache.mjs MANIFEST MODEL TRACE demand|static|warm|adaptive BUDGET_MIB MAX_EVENTS OUTPUT");
+if (!output) throw new Error("usage: replay-profile-cache.mjs MANIFEST MODEL TRACE demand|static|warm|adaptive|recency BUDGET_MIB MAX_EVENTS OUTPUT");
 const budget = Number(budgetText) * 1048576;
 const limit = Number(limitText);
+const batches = Number(process.env.BATCHES || 1);
 if (!Number.isSafeInteger(budget) || !Number.isSafeInteger(limit) || limit < 1) throw new Error("invalid bounds");
-if (!["demand", "static", "warm", "adaptive"].includes(policy)) throw new Error("invalid policy");
+if (!["demand", "static", "warm", "adaptive", "recency"].includes(policy)) throw new Error("invalid policy");
 
 const envelope = JSON.parse(fs.readFileSync(manifestPath));
 const profile = envelope.payload;
@@ -38,12 +39,13 @@ const fd = fs.openSync(modelPath, "r");
 const cache = new Map();
 const seen = new Map();
 const digests = new Map();
-let resident = 0, age = 0, hits = 0, misses = 0, evictions = 0, sourceBytes = 0, peakRss = 0;
+let resident = 0, age = 0, hits = 0, misses = 0, evictions = 0, sourceBytes = 0, peakRss = 0, expertWaitMs = 0;
 const logical = crypto.createHash("sha256");
 const io = () => Object.fromEntries(fs.readFileSync("/proc/self/io", "utf8").trim().split("\n").map(line => line.split(": ")).map(([key, value]) => [key, Number(value)]));
 const device = () => process.env.MODEL_DEVICE_STAT ? fs.readFileSync(process.env.MODEL_DEVICE_STAT, "utf8").trim().split(/\s+/).map(Number) : [];
 
 function load(key) {
+  const started = performance.now();
   const [layer, expert] = key.split(":").map(Number);
   const chunks = tensors.get(layer).map(tensor => {
     const data = Buffer.allocUnsafe(tensor.bytes_per_expert);
@@ -53,6 +55,7 @@ function load(key) {
   });
   const data = Buffer.concat(chunks);
   sourceBytes += data.length;
+  expertWaitMs += performance.now() - started;
   let digest = digests.get(key);
   if (!digest) {
     digest = crypto.createHash("sha256").update(data).digest("hex");
@@ -82,30 +85,39 @@ for (const key of fixed) {
   if (!evictFor(value.data.length, fixed)) break;
   cache.set(key, value); resident += value.data.length;
 }
-for (const event of events) for (const key of event) {
+const timeline = [];
+for (let batch = 1; batch <= batches; batch += 1) for (const event of events) for (const key of event) {
   let value = cache.get(key);
   if (value) { hits += 1; value.uses += 1; value.age = age++; }
   else {
     misses += 1; value = load(key);
     const count = (seen.get(key) || 0) + 1;
     seen.set(key, count);
-    if (policy === "adaptive" && count >= 2 && evictFor(value.data.length, fixed)) {
+    if (((policy === "adaptive" && count >= 2) || policy === "recency") && evictFor(value.data.length, fixed)) {
       cache.set(key, value); resident += value.data.length;
     }
   }
   logical.update(key).update(value.digest);
   peakRss = Math.max(peakRss, process.memoryUsage.rss());
+  if (timeline.length < batch && event === events.at(-1) && key === event.at(-1)) {
+    const currentIo = io(), currentDevice = device();
+    timeline.push({ batch, hits, misses, evictions, source_bytes: sourceBytes,
+      process_read_bytes: currentIo.read_bytes - startedIo.read_bytes,
+      process_rchar: currentIo.rchar - startedIo.rchar,
+      device_read_bytes: currentDevice.length ? (currentDevice[2] - startedDevice[2]) * 512 : null,
+      resident_bytes: resident, expert_wait_ms: expertWaitMs, elapsed_ms: performance.now() - started });
+  }
 }
 const endedIo = io(), endedDevice = device();
 fs.closeSync(fd);
 const result = { schema: "emufpga.profile-cache-replay.v1", policy, budget_bytes: budget,
-  events: events.length, applications: events.flat().length, hits, misses, evictions,
-  hit_rate: hits / events.flat().length, source_bytes: sourceBytes,
+  batches, events_per_batch: events.length, applications: events.flat().length * batches, hits, misses, evictions,
+  hit_rate: hits / (events.flat().length * batches), source_bytes: sourceBytes,
   process_read_bytes: endedIo.read_bytes - startedIo.read_bytes,
   read_syscalls: endedIo.syscr - startedIo.syscr,
   device_read_ios: endedDevice.length ? endedDevice[0] - startedDevice[0] : null,
   device_read_bytes: endedDevice.length ? (endedDevice[2] - startedDevice[2]) * 512 : null,
-  resident_bytes: resident, peak_rss_bytes: peakRss,
+  resident_bytes: resident, peak_rss_bytes: peakRss, expert_wait_ms: expertWaitMs, timeline,
   elapsed_ms: performance.now() - started, logical_digest: logical.digest("hex"),
   manifest_payload_sha256: envelope.payload_sha256,
   trace_sha256: tracePaths.map(path => crypto.createHash("sha256").update(fs.readFileSync(path)).digest("hex")) };
