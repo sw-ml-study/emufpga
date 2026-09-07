@@ -126,6 +126,7 @@ node scripts/check-resource-service-data.mjs
 node --check scripts/analyze-gemma4-agent-sharing.mjs
 node --check scripts/analyze-gemma4-sharing-curve.mjs
 node scripts/check-gemma4-agent-sharing-data.mjs
+node scripts/check-model-install-profiles.mjs
 
 echo "=== Cargo.lock consistency ==="
 "$SCRIPT_DIR/check-locks.sh"

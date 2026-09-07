@@ -1,6 +1,6 @@
 number = 26
 slug = "rtx5060-model-install-expert-profile"
-status = "pending"
+status = "in-progress"
 description = "Generalize the validated Gemma-4 workload-aware cache experiment into a model..."
 role = "production"
 context_files = []

@@ -79,6 +79,14 @@ This is useful but strongly diminishing reuse, not linear scaling,
 physical-storage savings, or an FPGA result. See
 [docs/workload-aware-expert-cache.md](docs/workload-aware-expert-cache.md).
 
+The new model-install phase makes that cache work repeatable rather than
+Gemma-specific. It safely inventories routed GGUF tensors, binds the result to
+the exact model/runtime/hardware/budgets, and records trace frequency,
+co-activation, reuse, and held-out ranking stability. Granite demonstrates a
+graceful no-prior cold start; Gemma demonstrates a workload-derived proposal.
+The placement is not yet a measured speedup. See
+[docs/model-install-expert-profile.md](docs/model-install-expert-profile.md).
+
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary
 loader read the complete 19.32 GB model before serving; lazy expert marking

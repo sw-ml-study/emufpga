@@ -1,0 +1,15 @@
+{
+  "schema": "emufpga.hardware-profile.v1",
+  "host": "large12",
+  "cpu": "Intel Xeon E5-2699 v3",
+  "cpu_sockets": 2,
+  "physical_cores": 36,
+  "system_ram_bytes": 270582939648,
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "gpu_vram_bytes": 17103388672,
+  "model_storage": {
+    "mount": "/disk1",
+    "class": "single rotational disk",
+    "filesystem": "ext4"
+  }
+}

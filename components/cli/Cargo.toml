@@ -17,6 +17,7 @@ members = [
     "crates/spm-extract",
     "crates/spm-gguf",
     "crates/spm-gguf-inspect",
+    "crates/spm-model-profile",
     "crates/spm-file-residency",
     "crates/spm-qwen3-slice",
     "crates/spm-granite-moe",
