@@ -245,9 +245,11 @@
       const adaptive = lifetime.groups.find(row => row.budget_mib === 128 && row.policy === "adaptive");
       const physical = direct.confidence_95.physical_byte_reduction;
       const native = adapter.native_bounded_provider;
-      const server = concurrent.candidate;
-      const slowdown = 100 * (1 - server.aggregate_tps.c8 / concurrent.control.aggregate_tps.c8);
-      target.innerHTML = `<div class="placement-callout"><strong>Shared-server pilot: ${(100 * server.source_byte_reduction).toFixed(1)}% fewer logical source bytes</strong><span>Promising traffic evidence, but only one CPU campaign and the current provider is much slower</span></div><div class="metric-sheet"><h3>512 MiB layer-aware cache <small>c4→c1→c2→c8</small></h3>${placementBar("Source bytes saved", 100 * server.source_byte_reduction, 20, "%", "gpu")}${placementBar("c8 throughput penalty", slowdown, 60, "%", "cpu")}</div><div class="metric-sheet"><h3>Deterministic oracle <small>three greedy steps, CPU</small></h3>${placementBar("Source bytes saved", 100 * concurrent.oracle_layer_policy.source_byte_reduction, 20, "%", "gpu")}${placementBar("Logit difference", 0, 100, "%", "cpu")}</div><div class="placement-detail"><span>Pilot correctness: <b>${server.correct}/${server.requests}</b> · no confidence interval yet</span><span>Conclusion: <b>mechanism shares bytes but implementation churns</b> · ${server.evictions.toLocaleString()} evictions</span></div>`;
+      const rerun = concurrent.operation_shared_rerun;
+      const server = rerun.candidate;
+      const slowdown = 100 * (1 - server.aggregate_tps.c8 / rerun.control.aggregate_tps.c8);
+      const callReduction = 100 * (1 - rerun.control.operations / concurrent.control.worker_acquires);
+      target.innerHTML = `<div class="placement-callout"><strong>One lease per operation: ${callReduction.toFixed(1)}% fewer control-path callbacks</strong><span>Fresh cache/no-cache logits and all response text match exactly; this removes the per-worker bottleneck</span></div><div class="metric-sheet"><h3>512 MiB operation-shared cache <small>single CPU-only pilot</small></h3>${placementBar("Observed source-byte difference", 100 * server.source_byte_reduction, 50, "%", "gpu")}${placementBar("c8 throughput penalty", slowdown, 60, "%", "cpu")}</div><div class="metric-sheet"><h3>What remains <small>lower is better</small></h3>${placementBar("Operation cache hits", 100 * server.operation_hits / server.operations, 10, "%", "gpu")}${placementBar("Loads evicted", 100 * server.evictions / server.loads, 100, "%", "cpu")}</div><div class="placement-detail"><span>Correctness: <b>byte-identical logits and responses</b> · one run, no confidence interval</span><span>Conclusion: <b>worker locking is fixed; synchronous copying still churns</b> · source-byte result is confounded by different dynamic batches</span></div>`;
     } catch (_) { target.innerHTML = "<p>Model-profile JSON unavailable in this preview.</p>"; }
   }
 
