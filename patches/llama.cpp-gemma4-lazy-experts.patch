@@ -1,3 +1,30 @@
+diff --git a/ggml/include/ggml-cpu.h b/ggml/include/ggml-cpu.h
+--- a/ggml/include/ggml-cpu.h
++++ b/ggml/include/ggml-cpu.h
+@@ -29,6 +29,23 @@ extern "C" {
+         GGML_NUMA_STRATEGY_COUNT
+     };
+ 
++    // Experimental selected-expert backing-store boundary. Install callbacks
++    // before graph execution starts and keep them installed until all graphs
++    // finish. Each CPU worker acquires its own lease; release occurs only after
++    // every worker has crossed the expert-completion barrier.
++    struct ggml_mmid_span {
++        const void * data;
++        void * lease;
++    };
++    typedef bool (*ggml_mmid_span_acquire_t)(const struct ggml_tensor * tensor,
++            int64_t expert, size_t bytes, struct ggml_mmid_span * span, void * user_data);
++    typedef void (*ggml_mmid_span_release_t)(struct ggml_mmid_span * span, void * user_data);
++
++    GGML_BACKEND_API void ggml_cpu_set_mmid_span_provider(
++            ggml_mmid_span_acquire_t acquire,
++            ggml_mmid_span_release_t release,
++            void * user_data);
++
+     GGML_BACKEND_API void    ggml_numa_init(enum ggml_numa_strategy numa); // call once for better performance on NUMA systems
+     GGML_BACKEND_API bool    ggml_is_numa(void); // true if init detected that system has >1 NUMA node
+
 diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
 --- a/ggml/src/ggml-cpu/ggml-cpu.c
 +++ b/ggml/src/ggml-cpu/ggml-cpu.c
@@ -9,6 +36,20 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
 +#include <sys/mman.h>
 +#include <unistd.h>
 +#endif
++
++static ggml_mmid_span_acquire_t g_mmid_span_acquire = NULL;
++static ggml_mmid_span_release_t g_mmid_span_release = NULL;
++static void * g_mmid_span_user_data = NULL;
++
++void ggml_cpu_set_mmid_span_provider(
++        ggml_mmid_span_acquire_t acquire,
++        ggml_mmid_span_release_t release,
++        void * user_data) {
++    GGML_ASSERT((acquire == NULL) == (release == NULL));
++    g_mmid_span_acquire = acquire;
++    g_mmid_span_release = release;
++    g_mmid_span_user_data = user_data;
++}
 +
  #ifdef GGML_USE_OPENMP
  #include <omp.h>
@@ -46,6 +87,12 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
          }
  
 +        const char * src0_cur = (const char *) src0->data + cur_a * nb02;
++        struct ggml_mmid_span expert_span = { src0_cur, NULL };
++        if (g_mmid_span_acquire != NULL) {
++            GGML_ASSERT(g_mmid_span_acquire(src0, cur_a, nb02, &expert_span, g_mmid_span_user_data));
++            GGML_ASSERT(expert_span.data != NULL);
++            src0_cur = expert_span.data;
++        }
 +#if defined(__linux__)
 +        if (getenv("GGML_MUL_MAT_ID_DONTNEED") != NULL) {
 +            if (ith == 0) {
@@ -78,12 +125,14 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
          }
 +
 +release_expert:;
++        // The acquired bytes remain leased until every CPU worker has
++        // completed this expert. Providers may evict only after release.
++        ggml_barrier(params->threadpool);
 +#if defined(__linux__)
 +        // Experimental bounded-residency mode for read-only mmap-backed expert
 +        // tensors. All workers finish this expert before its interior pages are
 +        // made immediately reclaimable. Boundary pages remain mapped so this
 +        // never discards bytes belonging to an adjacent expert.
-+        ggml_barrier(params->threadpool);
 +        if (ith == 0 && getenv("GGML_MUL_MAT_ID_DONTNEED") != NULL) {
 +            const uintptr_t page = (uintptr_t) sysconf(_SC_PAGESIZE);
 +            const uintptr_t begin = ((uintptr_t) src0_cur + page - 1) & ~(page - 1);
@@ -109,6 +158,9 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
 +        }
 +        ggml_barrier(params->threadpool);
 +#endif
++        if (g_mmid_span_release != NULL) {
++            g_mmid_span_release(&expert_span, g_mmid_span_user_data);
++        }
      }
  }
  

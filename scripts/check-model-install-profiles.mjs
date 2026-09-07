@@ -18,4 +18,6 @@ const direct = JSON.parse(fs.readFileSync("docs/data/gemma4-direct-cache-break-e
 if (direct.runs.length !== 3 || direct.correctness.digest_mismatches !== 0) throw new Error("direct cache analysis incomplete");
 const adapter = JSON.parse(fs.readFileSync("docs/data/gemma4-inference-cache-adapter.json"));
 if (!adapter.correct || adapter.max_error > adapter.tolerance) throw new Error("cache adapter arithmetic failed");
+if (!adapter.native_span_hook.balanced || adapter.native_span_hook.acquires !== adapter.native_span_hook.releases) throw new Error("native span leases are unbalanced");
+if (new Set([adapter.native_span_hook.resident_sha256, adapter.native_span_hook.reclaimed_sha256, adapter.native_span_hook.passthrough_sha256]).size !== 1) throw new Error("native span hook changed logits");
 console.log("model install profiles: structurally valid; Rust tests cover payload checksums");

@@ -3,6 +3,7 @@
 #include "ggml-backend.h"
 
 #include <algorithm>
+#include <atomic>
 #include <bit>
 #include <cstdint>
 #include <cstdlib>
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <dlfcn.h>
 
 struct scored_token {
     llama_token token;
@@ -19,6 +21,30 @@ struct scored_token {
 struct dump_config {
     const char * directory;
 };
+
+struct mmid_span {
+    const void * data;
+    void * lease;
+};
+
+using mmid_acquire = bool (*)(const ggml_tensor *, int64_t, size_t, mmid_span *, void *);
+using mmid_release = void (*)(mmid_span *, void *);
+using set_mmid_provider = void (*)(mmid_acquire, mmid_release, void *);
+
+struct mmid_probe {
+    std::atomic<uint64_t> acquires{0};
+    std::atomic<uint64_t> releases{0};
+};
+
+static bool passthrough_acquire(const ggml_tensor *, int64_t, size_t, mmid_span * span, void * data) {
+    static_cast<mmid_probe *>(data)->acquires.fetch_add(1, std::memory_order_relaxed);
+    span->lease = span;
+    return true;
+}
+
+static void passthrough_release(mmid_span *, void * data) {
+    static_cast<mmid_probe *>(data)->releases.fetch_add(1, std::memory_order_relaxed);
+}
 
 static bool dump_intermediate(ggml_tensor * tensor, bool ask, void * user_data) {
     const std::string name = tensor->name;
@@ -51,6 +77,17 @@ int main(int argc, char ** argv) {
         return 2;
     }
     ggml_backend_load_all();
+    mmid_probe probe;
+    set_mmid_provider install_provider = nullptr;
+    if (std::getenv("LLAMA_MMID_SPAN_PASSTHROUGH") != nullptr) {
+        install_provider = reinterpret_cast<set_mmid_provider>(
+            dlsym(RTLD_DEFAULT, "ggml_cpu_set_mmid_span_provider"));
+        if (install_provider == nullptr) {
+            std::fprintf(stderr, "patched GGML expert-span provider API is unavailable\n");
+            return 1;
+        }
+        install_provider(passthrough_acquire, passthrough_release, &probe);
+    }
     auto model_params = llama_model_default_params();
     const char * gpu_layers = std::getenv("LLAMA_LOGITS_GPU_LAYERS");
     model_params.n_gpu_layers = gpu_layers == nullptr ? 0 : std::atoi(gpu_layers);
@@ -126,6 +163,19 @@ int main(int argc, char ** argv) {
     for (int i = 0; i < 10; ++i) {
         const auto item = ranked[i];
         std::printf("%d %.9g %08x\n", item.token, item.logit, std::bit_cast<std::uint32_t>(item.logit));
+    }
+    if (install_provider != nullptr) {
+        install_provider(nullptr, nullptr, nullptr);
+        const auto acquires = probe.acquires.load(std::memory_order_relaxed);
+        const auto releases = probe.releases.load(std::memory_order_relaxed);
+        std::printf("mmid_span acquires=%llu releases=%llu balanced=%s\n",
+            (unsigned long long) acquires, (unsigned long long) releases,
+            acquires == releases && acquires > 0 ? "true" : "false");
+        if (acquires == 0 || acquires != releases) {
+            llama_free(context);
+            llama_model_free(model);
+            return 1;
+        }
     }
     llama_free(context);
     llama_model_free(model);

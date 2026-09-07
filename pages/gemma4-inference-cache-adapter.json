@@ -14,6 +14,19 @@
   "max_error": 0.00000381,
   "tolerance": 0.002,
   "correct": true,
-  "boundary": "immutable Arc expert buffers are consumed by Rust Q5_K/Q8_0 arithmetic; llama.cpp complete inference still consumes stable mmap tensor pointers",
-  "caveat": "This is a one-layer adapter qualification, not complete inference, token throughput, or coding-task quality."
+  "native_span_hook": {
+    "scope": "complete Gemma-4 inference through patched GGML CPU mul_mat_id",
+    "prompt": "Hello",
+    "logits": 262144,
+    "resident_sha256": "167aaa9c3a8a1a3f7e9e110fde23d4e1b74fc65071a3692b8f0b786896ab2133",
+    "reclaimed_sha256": "167aaa9c3a8a1a3f7e9e110fde23d4e1b74fc65071a3692b8f0b786896ab2133",
+    "passthrough_sha256": "167aaa9c3a8a1a3f7e9e110fde23d4e1b74fc65071a3692b8f0b786896ab2133",
+    "acquires": 3592,
+    "releases": 3592,
+    "balanced": true,
+    "provider": "pass-through lease; returns original mmap expert span",
+    "device": "CPU only; NVIDIA driver unavailable during this run"
+  },
+  "boundary": "immutable Arc expert buffers feed Rust Q5_K/Q8_0 arithmetic; patched llama.cpp now accepts leased spans but only its original mmap span has been validated end to end",
+  "caveat": "The Rust cache is a one-layer arithmetic qualification. The native hook completes inference but its validated provider is pass-through, not yet the bounded cache; token throughput and coding-task quality are therefore not cache-provider results."
 }
