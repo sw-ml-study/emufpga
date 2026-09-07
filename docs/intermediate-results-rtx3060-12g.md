@@ -207,8 +207,37 @@ Findings, all consistent with the 5060 lane's cold-HDD qualification:
   lane recorded.
 
 Derived data: [gemma4-q5km-coldio-rtx3060-scoped.json](data/gemma4-q5km-coldio-rtx3060-scoped.json).
-A wider campaign (3 repetitions, c1/2/4/8) is running to match the 5060
-lane's qualification shape.
+
+### Cold-cache I/O (widened: 3 repetitions, c1/2/4/8)
+
+The full campaign matching the 5060 lane's cold-HDD qualification: 3
+repetitions x concurrency 1/2/4/8 x cold/warm x resident/reclaimed = 48
+trials, 180 executable tasks. Means across the three repetitions:
+
+| Concurrency | Cold read (mean) | Bytes per passing task | Peak RSS resident -> reclaimed | Cold completion rate |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 8.43 GB | 8.43 GB | 11,707 -> 10,219 MiB | 30.3 tasks/h |
+| 2 | 9.54 GB | 4.77 GB | 12,794 -> 11,182 MiB | 50.2 tasks/h |
+| 4 | 10.52 GB | 2.63 GB | 13,777 -> 11,248 MiB | 89.0 tasks/h |
+| 8 | 11.13 GB | 1.39 GB | 14,410 -> 12,577 MiB | 139.3 tasks/h |
+
+- **All 180 executable evaluations passed**, cold or warm, resident or
+  reclaimed -- the same headline the 5060 lane reported.
+- **Cold demand grows sub-linearly** (8.43 -> 11.13 GB from c1 to c8),
+  so bytes per passing task fall 6x (8.43 -> 1.39 GB) as the eight-request
+  route union reuses experts. The 5060 lane measured 8.12 -> 10.70 GB and
+  1.34 GB per task at c8; this box lands in the same place.
+- **Reclamation saved 1.49 to 2.53 GiB peak RSS** across concurrencies
+  without reducing cold disk bytes (the resident and reclaimed cold reads
+  match at each concurrency) -- the 5060 lane saw 1.47 to 2.79 GiB. It is
+  a memory/latency tradeoff, not a disk-traffic reduction.
+- **Completion rate rises with concurrency** (30.3 -> 139.3 cold resident
+  tasks/hour), the expected amortization; the 5060 lane rose 23.2 ->
+  109.8, and this dual-Xeon box runs somewhat faster in absolute terms.
+- Reads remain demand-paged mmap faults, not a purpose-built sequential
+  expert stream -- the same negative control the 5060 lane flagged.
+
+Derived data: [gemma4-q5km-coldio-rtx3060-wide.json](data/gemma4-q5km-coldio-rtx3060-wide.json).
 
 ## Expectations (to be confirmed or refuted, not assumed)
 
