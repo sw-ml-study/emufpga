@@ -14,7 +14,10 @@ const outputTokens = Number(outputCountText);
 const concurrency = Number(concurrencyText);
 const runs = Number(runsText);
 const tasks = JSON.parse(fs.readFileSync(tasksPath, "utf8"));
-if (tasks.length < concurrency) throw new Error("task file has fewer tasks than concurrency");
+const taskOffset = Number(process.env.TASK_OFFSET || 0);
+if (!Number.isInteger(taskOffset) || taskOffset < 0 || tasks.length < taskOffset + concurrency) {
+  throw new Error("task offset and concurrency exceed task file");
+}
 const cachePlan = (process.env.CACHE_PLAN || "").split(",").filter(Boolean);
 const metricsPath = process.env.TRIAL_METRICS;
 const requestTimeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 900000);
@@ -86,7 +89,7 @@ function prepareCache(run, cacheMode) {
 }
 
 async function request(run, requestId) {
-  const task = tasks[requestId - 1];
+  const task = tasks[taskOffset + requestId - 1];
   const started = performance.now();
   const payload = JSON.stringify({ messages: [{ role: "user", content: task.prompt }], max_tokens: outputTokens,
     temperature: 0, seed: 42, stream: false, chat_template_kwargs: { enable_thinking: false } });
@@ -104,7 +107,7 @@ async function request(run, requestId) {
 }
 
 function evaluate(record) {
-  const task = tasks[record.request_id - 1];
+  const task = tasks[taskOffset + record.request_id - 1];
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "emufpga-eval-input-"));
   try {
     const responsePath = path.join(directory, "response.txt");

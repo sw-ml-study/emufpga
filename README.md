@@ -64,9 +64,20 @@ peak RSS was 13.17 GiB file-backed mappings and only 0.80 GiB anonymous memory.
 This is a capacity success and one-path arithmetic check. A follow-up paired
 Rust corpus compiled and executed generated functions in isolated containers:
 both resident and reclaimed policies passed 30/30, with zero outcome
-disagreements. That is bounded executable reliability evidence—not validation
+disagreements. That is bounded executable reliability evidence, not validation
 of repository-scale coding agents, which remains open.
 See [docs/gemma4-serial-experts.md](docs/gemma4-serial-experts.md).
+
+The first direct multi-agent comparison now measures the project's actual
+sharing target. Four held-out Rust tasks, repeated three times, passed 12/12
+both sequentially and at concurrency four with exactly 690 completion tokens
+per policy. Existing batched expert execution reduced logical expert traversal
+by 25.2%, finished inference 33.9% sooner, and raised aggregate token
+throughput by 51.4%. Eight agents gained another 19.6% over two matched c4
+batches while using 17.4% fewer logical expert bytes per routed assignment.
+This is useful but strongly diminishing reuse, not linear scaling,
+physical-storage savings, or an FPGA result. See
+[docs/workload-aware-expert-cache.md](docs/workload-aware-expert-cache.md).
 
 The completed cold-HDD qualification is recorded in
 [docs/intermediate-results.md](docs/intermediate-results.md). The ordinary

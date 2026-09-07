@@ -1,0 +1,140 @@
+{
+  "schema": "emufpga.gemma4-agent-sharing-curve.v1",
+  "repetitions": 3,
+  "baseline": {
+    "concurrency": 1,
+    "events": 21060,
+    "expert_touches": 171856,
+    "assignments": 177120,
+    "logical_expert_bytes": 773761150976,
+    "elapsed_seconds": 104.1890001296997,
+    "generated_tokens": 690,
+    "passed": 12,
+    "requests": 12,
+    "logical_expert_byte_reduction": 0,
+    "logical_bytes_per_assignment_reduction": 0,
+    "elapsed_time_reduction": 0,
+    "aggregate_tokens_per_second": 6.6225801105784035,
+    "aggregate_tokens_per_second_gain": 0
+  },
+  "curve": [
+    {
+      "concurrency": 1,
+      "events": 21060,
+      "expert_touches": 171856,
+      "assignments": 177120,
+      "logical_expert_bytes": 773761150976,
+      "elapsed_seconds": 104.1890001296997,
+      "generated_tokens": 690,
+      "passed": 12,
+      "requests": 12,
+      "logical_expert_byte_reduction": 0,
+      "logical_bytes_per_assignment_reduction": 0,
+      "elapsed_time_reduction": 0,
+      "aggregate_tokens_per_second": 6.6225801105784035,
+      "aggregate_tokens_per_second_gain": 0
+    },
+    {
+      "concurrency": 2,
+      "events": 15300,
+      "expert_touches": 149273,
+      "assignments": 179760,
+      "logical_expert_bytes": 672562930688,
+      "elapsed_seconds": 83.4239993095398,
+      "generated_tokens": 690,
+      "passed": 12,
+      "requests": 12,
+      "logical_expert_byte_reduction": 0.13078741438537134,
+      "logical_bytes_per_assignment_reduction": 0.14355288627023233,
+      "elapsed_time_reduction": 0.1993012774315004,
+      "aggregate_tokens_per_second": 8.271001219203074,
+      "aggregate_tokens_per_second_gain": 0.24890919869608052
+    },
+    {
+      "concurrency": 4,
+      "path": "/disk1/tmp/emufpga-gemma4-share-concurrent-c4-r3/server.log",
+      "events": 11850,
+      "expert_touches": 128329,
+      "assignments": 184320,
+      "logical_expert_bytes": 578608881664,
+      "elapsed_seconds": 68.83100008964539,
+      "generated_tokens": 690,
+      "assignments_per_touch": 1.436308238979498,
+      "aggregate_tokens_per_second": 10.024552877356788,
+      "passed": 12,
+      "requests": 12,
+      "runs": [
+        {
+          "run": 1,
+          "events": 3990,
+          "expert_touches": 44012,
+          "assignments": 66240,
+          "logical_expert_bytes": 198424573952,
+          "elapsed_seconds": 32.33200001716614,
+          "generated_tokens": 230
+        },
+        {
+          "run": 2,
+          "events": 3840,
+          "expert_touches": 40827,
+          "assignments": 59040,
+          "logical_expert_bytes": 184088261632,
+          "elapsed_seconds": 17.716000080108643,
+          "generated_tokens": 230
+        },
+        {
+          "run": 3,
+          "events": 4020,
+          "expert_touches": 43490,
+          "assignments": 59040,
+          "logical_expert_bytes": 196096046080,
+          "elapsed_seconds": 18.782999992370605,
+          "generated_tokens": 230
+        }
+      ],
+      "logical_expert_byte_reduction": 0.25221254526133874,
+      "logical_bytes_per_assignment_reduction": 0.2814229927120677,
+      "elapsed_time_reduction": 0.3393640403117306,
+      "aggregate_tokens_per_second_gain": 0.5136929580276928
+    }
+  ],
+  "c4_confidence_95": {
+    "logical_expert_byte_reduction": {
+      "mean": 0.2522126452448881,
+      "ci95_half_width": 0.07409589716117947
+    },
+    "logical_bytes_per_assignment_reduction": {
+      "mean": 0.2800864770241678,
+      "ci95_half_width": 0.09361670482780378
+    },
+    "aggregate_tokens_per_second_gain": {
+      "mean": 0.485207094974921,
+      "ci95_half_width": 0.36552757110652695
+    }
+  },
+  "c2_task_mix": [
+    {
+      "expert_touch_reduction": 0.25785032507954075,
+      "logical_expert_byte_reduction": 0.2569431921292805,
+      "assignments_per_touch_gain": 1.3795189277947897,
+      "logical_bytes_per_assignment_reduction": 0.27422358300999494,
+      "assignment_count_difference": 0.023809523809523725,
+      "aggregate_tokens_per_second_gain": 0.43858960801723446,
+      "elapsed_time_reduction": 0.3048747228347699
+    },
+    {
+      "expert_touch_reduction": 0.06727531046095558,
+      "logical_expert_byte_reduction": 0.06679384752922934,
+      "assignments_per_touch_gain": 1.0831578462267455,
+      "logical_bytes_per_assignment_reduction": 0.07629696517149787,
+      "assignment_count_difference": 0.010288065843621297,
+      "aggregate_tokens_per_second_gain": 0.15341780011236938,
+      "elapsed_time_reduction": 0.13301147259685342
+    }
+  ],
+  "caveats": [
+    "Concurrency 2 is two disjoint two-task batches; concurrency 4 is all four tasks together.",
+    "Results cover four small executable Rust tasks, not repository-scale autonomous agents.",
+    "Logical expert bytes are tensor traversal demand, not measured storage traffic."
+  ]
+}

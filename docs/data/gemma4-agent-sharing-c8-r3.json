@@ -1,0 +1,192 @@
+{
+  "schema": "emufpga.gemma4-agent-sharing.v1",
+  "concurrent": {
+    "path": "/disk1/tmp/emufpga-gemma4-share-concurrent-c8-combined-r3/server.log",
+    "events": 14880,
+    "expert_touches": 213064,
+    "assignments": 380640,
+    "logical_expert_bytes": 962096717824,
+    "elapsed_seconds": 120.31699967384338,
+    "generated_tokens": 1526,
+    "assignments_per_touch": 1.7865054631472235,
+    "aggregate_tokens_per_second": 12.68316201481667,
+    "passed": 24,
+    "requests": 24,
+    "runs": [
+      {
+        "run": 1,
+        "events": 5100,
+        "expert_touches": 74332,
+        "assignments": 137280,
+        "logical_expert_bytes": 335611082752,
+        "elapsed_seconds": 52.549999952316284,
+        "generated_tokens": 512
+      },
+      {
+        "run": 2,
+        "events": 4890,
+        "expert_touches": 69366,
+        "assignments": 121680,
+        "logical_expert_bytes": 313242817536,
+        "elapsed_seconds": 33.92199993133545,
+        "generated_tokens": 507
+      },
+      {
+        "run": 3,
+        "events": 4890,
+        "expert_touches": 69366,
+        "assignments": 121680,
+        "logical_expert_bytes": 313242817536,
+        "elapsed_seconds": 33.84499979019165,
+        "generated_tokens": 507
+      }
+    ]
+  },
+  "independent": [
+    {
+      "path": "/disk1/tmp/emufpga-gemma4-share-calibration-c4-r3/server.log",
+      "events": 11880,
+      "expert_touches": 142447,
+      "assignments": 214560,
+      "logical_expert_bytes": 642678029312,
+      "elapsed_seconds": 73.2209997177124,
+      "generated_tokens": 816,
+      "assignments_per_touch": 1.5062444277520761,
+      "aggregate_tokens_per_second": 11.144343878749403,
+      "passed": 12,
+      "requests": 12,
+      "runs": [
+        {
+          "run": 1,
+          "events": 4290,
+          "expert_touches": 50771,
+          "assignments": 78720,
+          "logical_expert_bytes": 229025268736,
+          "elapsed_seconds": 34.58799982070923,
+          "generated_tokens": 282
+        },
+        {
+          "run": 2,
+          "events": 4170,
+          "expert_touches": 48457,
+          "assignments": 71520,
+          "logical_expert_bytes": 218614111232,
+          "elapsed_seconds": 18.921000003814697,
+          "generated_tokens": 282
+        },
+        {
+          "run": 3,
+          "events": 3420,
+          "expert_touches": 43219,
+          "assignments": 64320,
+          "logical_expert_bytes": 195038649344,
+          "elapsed_seconds": 19.711999893188477,
+          "generated_tokens": 252
+        }
+      ]
+    },
+    {
+      "path": "/disk1/tmp/emufpga-gemma4-share-concurrent-c4-r3/server.log",
+      "events": 11850,
+      "expert_touches": 128329,
+      "assignments": 184320,
+      "logical_expert_bytes": 578608881664,
+      "elapsed_seconds": 68.83100008964539,
+      "generated_tokens": 690,
+      "assignments_per_touch": 1.436308238979498,
+      "aggregate_tokens_per_second": 10.024552877356788,
+      "passed": 12,
+      "requests": 12,
+      "runs": [
+        {
+          "run": 1,
+          "events": 3990,
+          "expert_touches": 44012,
+          "assignments": 66240,
+          "logical_expert_bytes": 198424573952,
+          "elapsed_seconds": 32.33200001716614,
+          "generated_tokens": 230
+        },
+        {
+          "run": 2,
+          "events": 3840,
+          "expert_touches": 40827,
+          "assignments": 59040,
+          "logical_expert_bytes": 184088261632,
+          "elapsed_seconds": 17.716000080108643,
+          "generated_tokens": 230
+        },
+        {
+          "run": 3,
+          "events": 4020,
+          "expert_touches": 43490,
+          "assignments": 59040,
+          "logical_expert_bytes": 196096046080,
+          "elapsed_seconds": 18.782999992370605,
+          "generated_tokens": 230
+        }
+      ]
+    }
+  ],
+  "independent_sum": {
+    "events": 23730,
+    "expert_touches": 270776,
+    "assignments": 398880,
+    "logical_expert_bytes": 1221286910976,
+    "elapsed_seconds": 142.0519998073578,
+    "generated_tokens": 1506,
+    "passed": 24,
+    "requests": 24,
+    "assignments_per_touch": 1.47309953614796,
+    "aggregate_tokens_per_second": 10.601751485669649
+  },
+  "amortization": {
+    "expert_touch_reduction": 0.2131355807013916,
+    "logical_expert_byte_reduction": 0.21222711127303107,
+    "assignments_per_touch_gain": 1.2127527158271976,
+    "logical_bytes_per_assignment_reduction": 0.1744775907539582,
+    "assignment_count_difference": -0.04572803850782192,
+    "aggregate_tokens_per_second_gain": 0.1963270438814244,
+    "elapsed_time_reduction": 0.15300735056873593
+  },
+  "paired_repetitions": [
+    {
+      "run": 1,
+      "logical_expert_byte_reduction": 0.21485271665670969,
+      "logical_bytes_per_assignment_reduction": 0.1709283931130292,
+      "aggregate_tokens_per_second_gain": 0.2734538515432612
+    },
+    {
+      "run": 2,
+      "logical_expert_byte_reduction": 0.22214807102269585,
+      "logical_bytes_per_assignment_reduction": 0.16538175667918453,
+      "aggregate_tokens_per_second_gain": 0.06948932708610278
+    },
+    {
+      "run": 3,
+      "logical_expert_byte_reduction": 0.19914336109601127,
+      "logical_bytes_per_assignment_reduction": 0.18808616884289897,
+      "aggregate_tokens_per_second_gain": 0.1963843628701485
+    }
+  ],
+  "confidence_95": {
+    "logical_expert_byte_reduction": {
+      "mean": 0.2120480495918056,
+      "ci95_half_width": 0.02920590657350912
+    },
+    "logical_bytes_per_assignment_reduction": {
+      "mean": 0.1747987728783709,
+      "ci95_half_width": 0.029406365617203844
+    },
+    "aggregate_tokens_per_second_gain": {
+      "mean": 0.17977584716650416,
+      "ci95_half_width": 0.25586589747457866
+    }
+  },
+  "caveats": [
+    "Logical bytes count each unique expert tensor traversal per gate-up invocation; they are not physical storage bytes.",
+    "A valid comparison requires identical task prompts, output limits, model, seed, and successful outputs.",
+    "Routed assignment counts can differ with batching and graph shape; bytes per assignment is the normalized comparison.",
+    "This establishes runtime batching amortization, not an application-owned serial scheduler or FPGA result."
+  ]
+}

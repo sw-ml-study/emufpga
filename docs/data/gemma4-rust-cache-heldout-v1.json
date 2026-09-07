@@ -1,0 +1,6 @@
+[
+  {"id":"count_byte","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn count_byte(bytes: &[u8], needle: u8) -> usize","tests":"assert_eq!(count_byte(b\"banana\", b'a'), 3); assert_eq!(count_byte(b\"\", 4), 0);"},
+  {"id":"sorted","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn sorted(values: &[i32]) -> bool","tests":"assert!(sorted(&[])); assert!(sorted(&[1, 1, 2])); assert!(!sorted(&[2, 1]));"},
+  {"id":"factorial","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn factorial(n: u64) -> u64","tests":"assert_eq!(factorial(0), 1); assert_eq!(factorial(5), 120);"},
+  {"id":"binary_search","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn binary_search(values: &[i32], target: i32) -> Option<usize>","tests":"assert_eq!(binary_search(&[1, 3, 7], 3), Some(1)); assert_eq!(binary_search(&[1, 3, 7], 2), None); assert_eq!(binary_search(&[], 2), None);"}
+]

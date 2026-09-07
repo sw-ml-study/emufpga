@@ -1,0 +1,98 @@
+{
+  "schema": "emufpga.gemma4-expert-cache-physical.v1",
+  "protocol": "held-out Rust coding tasks; concurrency 4; three repetitions; cold before server load; llama-server warmup enabled; cache state otherwise untouched",
+  "baseline": {
+    "directory": "/disk1/tmp/emufpga-gemma4-heldout-reclaimed-steady-r3",
+    "correctness": {
+      "requests": 12,
+      "strict": 12,
+      "compiled": 12,
+      "passed": 12
+    },
+    "generated_tokens": 690,
+    "aggregate_tokens_per_second": 2.952790362166908,
+    "batch_wall_ms": 77892.42438166666,
+    "runs": [
+      {
+        "device_read_bytes": 7814672384,
+        "major_faults": 1907880,
+        "resident_bytes_end": 13175791616
+      },
+      {
+        "device_read_bytes": 12623872,
+        "major_faults": 3082,
+        "resident_bytes_end": 13188415488
+      },
+      {
+        "device_read_bytes": 26877952,
+        "major_faults": 6562,
+        "resident_bytes_end": 13215293440
+      }
+    ],
+    "device_read_bytes": {
+      "mean": 2618058069.3333335,
+      "sd": 4500405653.521474,
+      "ci95_half_width": 11180529717.996058
+    },
+    "major_faults": {
+      "mean": 639174.6666666666,
+      "sd": 1098732.4263538113,
+      "ci95_half_width": 2729622.9475141657
+    },
+    "resident_bytes_end": {
+      "mean": 13193166848,
+      "sd": 20174986.77122104,
+      "ci95_half_width": 50121490.4881547
+    }
+  },
+  "static_1g": {
+    "directory": "/disk1/tmp/emufpga-gemma4-heldout-static-1g-steady-r3",
+    "correctness": {
+      "requests": 12,
+      "strict": 12,
+      "compiled": 12,
+      "passed": 12
+    },
+    "generated_tokens": 690,
+    "aggregate_tokens_per_second": 2.9422394974796426,
+    "batch_wall_ms": 78171.74645266666,
+    "runs": [
+      {
+        "device_read_bytes": 7761707008,
+        "major_faults": 1894949,
+        "resident_bytes_end": 13148143616
+      },
+      {
+        "device_read_bytes": 16609280,
+        "major_faults": 4055,
+        "resident_bytes_end": 13164752896
+      },
+      {
+        "device_read_bytes": 9662464,
+        "major_faults": 2359,
+        "resident_bytes_end": 13174415360
+      }
+    ],
+    "device_read_bytes": {
+      "mean": 2595992917.3333335,
+      "sd": 4473640979.610147,
+      "ci95_half_width": 11114037215.964844
+    },
+    "major_faults": {
+      "mean": 633787.6666666666,
+      "sd": 1092198.082137729,
+      "ci95_half_width": 2713389.426511819
+    },
+    "resident_bytes_end": {
+      "mean": 13162437290.666666,
+      "sd": 13288064.352839557,
+      "ci95_half_width": 33012045.986413613
+    }
+  },
+  "deltas": {
+    "batch_wall_percent": 0.35859979095187455,
+    "aggregate_tokens_per_second_percent": -0.35731844774521404,
+    "device_read_bytes_percent": -0.8428060576066154
+  },
+  "caveat": "Three sequential repetitions are not independent cold trials. The first repetition dominates physical I/O; later repetitions benefit from the Linux page cache. Application MADV_DONTNEED drops mappings, not necessarily clean file-cache pages."
+}

@@ -28,6 +28,14 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
 +        fprintf(stderr,
 +                "spm_mmid timestamp_s=%.9f tensor=%s activations=%" PRId64 " assignments=%" PRId64 " selected=%" PRId64 " expert_bytes=%zu logical_bytes=%zu\n",
 +                timestamp_s, src0->name, ids->ne[1], ids->ne[1] * n_ids, selected, nb02, (size_t) selected * nb02);
++        fprintf(stderr, "spm_mmid_experts timestamp_s=%.9f tensor=%s counts=", timestamp_s, src0->name);
++        int printed = 0;
++        for (int cur_a = 0; cur_a < n_as; ++cur_a) {
++            if (matrix_row_counts[cur_a] != 0) {
++                fprintf(stderr, "%s%d:%" PRId64, printed++ == 0 ? "" : ",", cur_a, matrix_row_counts[cur_a]);
++            }
++        }
++        fputc('\n', stderr);
 +    }
 +
      for (int cur_a = 0; cur_a < n_as; ++cur_a) {
@@ -80,7 +88,22 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
 +            const uintptr_t page = (uintptr_t) sysconf(_SC_PAGESIZE);
 +            const uintptr_t begin = ((uintptr_t) src0_cur + page - 1) & ~(page - 1);
 +            const uintptr_t end = ((uintptr_t) src0_cur + nb02) & ~(page - 1);
-+            if (begin < end && madvise((void *) begin, end - begin, MADV_DONTNEED) != 0) {
++            const char * keep = getenv("GGML_MUL_MAT_ID_KEEP");
++            int layer = -1;
++            char key[48];
++            sscanf(src0->name, "blk.%d.", &layer);
++            snprintf(key, sizeof(key), "|%d:%d|", layer, cur_a);
++            const int retained = keep != NULL && strstr(keep, key) != NULL;
++            static _Atomic uint64_t retained_count = 0;
++            static _Atomic uint64_t reclaimed_count = 0;
++            const uint64_t decisions = retained
++                ? atomic_fetch_add_explicit(&retained_count, 1, memory_order_relaxed) + 1
++                : atomic_fetch_add_explicit(&reclaimed_count, 1, memory_order_relaxed) + 1;
++            if (getenv("GGML_MUL_MAT_ID_TRACE") != NULL && (decisions == 1 || decisions % 4096 == 0)) {
++                fprintf(stderr, "spm_mmid_residency policy=%s tensor=%s expert=%d bytes=%zu decisions=%" PRIu64 "\n",
++                        retained ? "retain" : "reclaim", src0->name, cur_a, nb02, decisions);
++            }
++            if (!retained && begin < end && madvise((void *) begin, end - begin, MADV_DONTNEED) != 0) {
 +                fprintf(stderr, "warning: expert MADV_DONTNEED failed: %s\n", strerror(errno));
 +            }
 +        }

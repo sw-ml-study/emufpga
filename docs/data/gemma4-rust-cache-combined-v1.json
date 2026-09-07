@@ -1,0 +1,10 @@
+[
+  {"id":"clamp","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn clamp(value: i32, low: i32, high: i32) -> i32","tests":"assert_eq!(clamp(5, 0, 10), 5); assert_eq!(clamp(-2, 0, 10), 0); assert_eq!(clamp(12, 0, 10), 10);"},
+  {"id":"gcd","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn gcd(a: i64, b: i64) -> i64","tests":"assert_eq!(gcd(54, 24), 6); assert_eq!(gcd(-54, 24), 6); assert_eq!(gcd(0, 7), 7);"},
+  {"id":"sum_even","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn sum_even(values: &[i32]) -> i32","tests":"assert_eq!(sum_even(&[1, 2, 3, 4]), 6); assert_eq!(sum_even(&[]), 0); assert_eq!(sum_even(&[-2, -3, 8]), 6);"},
+  {"id":"palindrome","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn is_palindrome(text: &str) -> bool","tests":"assert!(is_palindrome(\"racecar\")); assert!(is_palindrome(\"\")); assert!(!is_palindrome(\"rust\"));"},
+  {"id":"count_byte","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn count_byte(bytes: &[u8], needle: u8) -> usize","tests":"assert_eq!(count_byte(b\"banana\", b'a'), 3); assert_eq!(count_byte(b\"\", 4), 0);"},
+  {"id":"sorted","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn sorted(values: &[i32]) -> bool","tests":"assert!(sorted(&[])); assert!(sorted(&[1, 1, 2])); assert!(!sorted(&[2, 1]));"},
+  {"id":"factorial","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn factorial(n: u64) -> u64","tests":"assert_eq!(factorial(0), 1); assert_eq!(factorial(5), 120);"},
+  {"id":"binary_search","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn binary_search(values: &[i32], target: i32) -> Option<usize>","tests":"assert_eq!(binary_search(&[1, 3, 7], 3), Some(1)); assert_eq!(binary_search(&[1, 3, 7], 2), None); assert_eq!(binary_search(&[], 2), None);"}
+]

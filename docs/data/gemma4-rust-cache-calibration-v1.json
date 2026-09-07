@@ -1,0 +1,6 @@
+[
+  {"id":"clamp","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn clamp(value: i32, low: i32, high: i32) -> i32","tests":"assert_eq!(clamp(5, 0, 10), 5); assert_eq!(clamp(-2, 0, 10), 0); assert_eq!(clamp(12, 0, 10), 10);"},
+  {"id":"gcd","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn gcd(a: i64, b: i64) -> i64","tests":"assert_eq!(gcd(54, 24), 6); assert_eq!(gcd(-54, 24), 6); assert_eq!(gcd(0, 7), 7);"},
+  {"id":"sum_even","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn sum_even(values: &[i32]) -> i32","tests":"assert_eq!(sum_even(&[1, 2, 3, 4]), 6); assert_eq!(sum_even(&[]), 0); assert_eq!(sum_even(&[-2, -3, 8]), 6);"},
+  {"id":"palindrome","prompt":"Write this Rust function. Return only the function, with no Markdown or explanation.\nfn is_palindrome(text: &str) -> bool","tests":"assert!(is_palindrome(\"racecar\")); assert!(is_palindrome(\"\")); assert!(!is_palindrome(\"rust\"));"}
+]

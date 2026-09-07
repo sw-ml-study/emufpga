@@ -9,6 +9,24 @@ model=${GEMMA4_MODEL:-/disk1/tmp/gemma-4-26b-a4b/google_gemma-4-26B-A4B-it-Q5_K_
 tasks=${TASKS:-$root/docs/data/gemma4-correctness-tasks.json}
 client=${CLIENT:-$root/scripts/bench-gemma4-requests.mjs}
 out=${1:-/disk1/tmp/emufpga-gemma4-$(date -u +%Y%m%dT%H%M%SZ)}
+[ "$#" -gt 0 ] && shift
+expert_keep_analysis=
+expert_keep_mib=0
+task_offset=0
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --expert-keep-analysis|--expert-keep-mib)
+            [ "$#" -ge 2 ] || { echo "missing value for $1" >&2; exit 2; }
+            if [ "$1" = --expert-keep-analysis ]; then expert_keep_analysis=$2; else expert_keep_mib=$2; fi
+            shift 2
+            ;;
+        --task-offset)
+            [ "$#" -ge 2 ] || { echo "missing value for $1" >&2; exit 2; }
+            task_offset=$2; shift 2
+            ;;
+        *) echo "unknown argument: $1" >&2; exit 2 ;;
+    esac
+done
 build=${LLAMA_BUILD:-/disk1/tmp/llama.cpp-sm120-build}
 server=$build/bin/llama-server
 cpu_library=$(readlink -f "$build/bin/libggml-cpu.so")
@@ -30,6 +48,28 @@ warmup=${WARMUP:-on}
 for value in "$runs" "$prompt_tokens" "$output_tokens" "$gpu_layers"; do
     case "$value" in ''|*[!0-9]*) echo "counts must be nonnegative integers" >&2; exit 2 ;; esac
 done
+case "$expert_keep_mib" in ''|*[!0-9]*) echo "expert keep MiB must be a nonnegative integer" >&2; exit 2 ;; esac
+case "$task_offset" in ''|*[!0-9]*) echo "task offset must be a nonnegative integer" >&2; exit 2 ;; esac
+export TASK_OFFSET=$task_offset
+[ -z "$expert_keep_analysis" ] || [ -f "$expert_keep_analysis" ] || {
+    echo "missing expert-cache analysis: $expert_keep_analysis" >&2
+    exit 2
+}
+[ "$expert_keep_mib" -eq 0 ] || [ -n "$expert_keep_analysis" ] || {
+    echo "--expert-keep-mib requires --expert-keep-analysis" >&2
+    exit 2
+}
+if [ -n "$expert_keep_analysis" ]; then
+    export GGML_MUL_MAT_ID_KEEP
+    GGML_MUL_MAT_ID_KEEP=$(node -e '
+        const fs = require("fs");
+        const [path, mib] = process.argv.slice(1);
+        const analysis = JSON.parse(fs.readFileSync(path, "utf8"));
+        const budget = analysis.budgets.find(item => item.mib === Number(mib));
+        if (!budget) throw new Error(`analysis has no ${mib} MiB budget`);
+        process.stdout.write(`|${budget.static.resources.join("||")}|`);
+    ' "$expert_keep_analysis" "$expert_keep_mib")
+fi
 [ "$runs" -gt 0 ] && [ "$prompt_tokens" -gt 0 ] && [ "$output_tokens" -gt 0 ] || {
     echo "run and token counts must be positive" >&2
     exit 2
@@ -80,8 +120,8 @@ case "$placement" in
     experts-cpu) override=(-ot '.*ffn_.*_exps\.weight=CPU') ;;
     *) echo "unknown PLACEMENT: $placement" >&2; exit 2 ;;
 esac
-printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","model_path":"%s","sha256":"%s","model_identity":"%s","model_source":"%s","model_mount":"%s","model_fstype":"%s","model_device_stat":"%s","llama_revision":"%s","llama_build":"%s","server_sha256":"%s","cpu_library_sha256":"%s","placement":"%s","lazy_mode":"%s","expert_reclaim":%s,"warmup":"%s","cache_before_load":"%s","cache_plan":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"tasks":"%s","client":"%s","energy_scope":"NVIDIA board only; not whole system"}\n' \
-    "$(basename "$model")" "$model" "$actual_sha" "$model_identity" "$model_source" "$model_target" "$model_fstype" "$device_stat" "$revision" "$build" "$server_sha" "$cpu_library_sha" "$placement" "$lazy_mode" "$expert_reclaim" "$warmup" "$cache_before_load" "$cache_plan" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" "$(basename "$tasks")" "$(basename "$client")" >"$out/manifest.json"
+printf '{"schema":"emufpga.gemma4-offload.v1","model":"%s","model_path":"%s","sha256":"%s","model_identity":"%s","model_source":"%s","model_mount":"%s","model_fstype":"%s","model_device_stat":"%s","llama_revision":"%s","llama_build":"%s","server_sha256":"%s","cpu_library_sha256":"%s","placement":"%s","lazy_mode":"%s","expert_reclaim":%s,"expert_keep_analysis":"%s","expert_keep_mib":%s,"task_offset":%s,"warmup":"%s","cache_before_load":"%s","cache_plan":"%s","gpu_layers":%s,"prompt_tokens":%s,"output_tokens":%s,"runs":%s,"tasks":"%s","client":"%s","energy_scope":"NVIDIA board only; not whole system"}\n' \
+    "$(basename "$model")" "$model" "$actual_sha" "$model_identity" "$model_source" "$model_target" "$model_fstype" "$device_stat" "$revision" "$build" "$server_sha" "$cpu_library_sha" "$placement" "$lazy_mode" "$expert_reclaim" "${expert_keep_analysis##*/}" "$expert_keep_mib" "$task_offset" "$warmup" "$cache_before_load" "$cache_plan" "$gpu_layers" "$prompt_tokens" "$output_tokens" "$runs" "$(basename "$tasks")" "$(basename "$client")" >"$out/manifest.json"
 
 if [ "$cache_before_load" = cold ]; then
     "$root/scripts/gemma4-file-residency" evict >"$out/cache-before-load.json"

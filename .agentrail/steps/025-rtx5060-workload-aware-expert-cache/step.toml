@@ -1,6 +1,6 @@
 number = 25
 slug = "rtx5060-workload-aware-expert-cache"
-status = "pending"
+status = "in-progress"
 description = "Using the pinned oversized Gemma-4 Q5_K_M model, build a realistic but focuse..."
 role = "validation"
 context_files = []
