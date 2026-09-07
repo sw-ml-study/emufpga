@@ -213,6 +213,24 @@
     } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
   }
 
+  async function loadAgentSharingGraphic() {
+    const resource = document.querySelector('[aria-labelledby="resource-title"]');
+    if (!resource) return;
+    const section = document.createElement("section");
+    section.className = "placement-result";
+    section.setAttribute("aria-labelledby", "agent-sharing-title");
+    section.innerHTML = `<div class="section-heading"><p class="kicker">Four coding agents · measured · three repetitions</p><h2 id="agent-sharing-title">Shared experts reduce repeated work—not fourfold</h2><p>The same four Rust tasks ran sequentially and as a concurrent c4 batch. Both produced exactly 690 completion tokens and all 24 compiled evaluations passed.</p></div><div id="agent-sharing-graphic" class="placement-graphic" aria-live="polite"><p>Loading measured agent-sharing evidence…</p></div><p class="pencil-note">Logical traversal counts unique layer/expert visits, not physical disk traffic. Existing llama.cpp batching provides this sharing; an application-owned serial scheduler and FPGA acceleration remain future experiments.</p>`;
+    resource.before(section);
+    const target = section.querySelector("#agent-sharing-graphic");
+    try {
+      const [data, c8data] = await Promise.all([fetch("gemma4-agent-sharing-curve.json").then(r => r.json()), fetch("gemma4-agent-sharing-c8-r3.json").then(r => r.json())]);
+      const [c1, c2, c4] = data.curve;
+      const byteBars = data.curve.map(row => placementBar(`c${row.concurrency}`, row.logical_expert_bytes / 1e9, c1.logical_expert_bytes / 1e9, "GB", row.concurrency === 1 ? "cpu" : "gpu")).join("");
+      const rateBars = data.curve.map(row => placementBar(`c${row.concurrency}`, row.aggregate_tokens_per_second, c4.aggregate_tokens_per_second, "tok/s", row.concurrency === 1 ? "cpu" : "gpu")).join("");
+      target.innerHTML = `<div class="placement-callout"><strong>${(100 * c4.logical_expert_byte_reduction).toFixed(1)}% less repeated expert traversal at c4</strong><span>95% paired interval ±${(100 * data.c4_confidence_95.logical_expert_byte_reduction.ci95_half_width).toFixed(1)} points</span></div><div class="metric-sheet"><h3>Logical expert bytes <small>lower is better</small></h3>${byteBars}</div><div class="metric-sheet"><h3>Aggregate useful rate <small>higher is better</small></h3>${rateBars}</div><div class="placement-detail"><span>c1 to c4 elapsed: <b>${c1.elapsed_seconds.toFixed(1)} s → ${c4.elapsed_seconds.toFixed(1)} s</b></span><span>Throughput gain: c2 <b>+${(100 * c2.aggregate_tokens_per_second_gain).toFixed(1)}%</b> · c4 <b>+${(100 * c4.aggregate_tokens_per_second_gain).toFixed(1)}%</b> · c8 adds <b>+${(100 * c8data.amortization.aggregate_tokens_per_second_gain).toFixed(1)}%</b> over two c4 batches</span></div>`;
+    } catch (_) { target.innerHTML = "<p>Measured JSON unavailable in this preview.</p>"; }
+  }
+
   if (document) document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-lesson]").forEach(button => button.addEventListener("click", () => selectLesson(button)));
     document.querySelectorAll("[data-evidence]").forEach(button => button.addEventListener("click", () => selectEvidence(button)));
@@ -226,6 +244,7 @@
     loadValidationGemmaGraphic();
     loadColdCurveGraphic();
     loadStreamTierGraphic();
+    loadAgentSharingGraphic();
     loadResourceGraphic();
   });
 
