@@ -1,8 +1,9 @@
 number = 29
 slug = "rtx5060-direct-io-cache-break-even"
-status = "in-progress"
+status = "completed"
 description = "Implement a bounded direct-I/O or equivalently controlled page-cache-bypass e..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-06T20:53:27"
-commits = []
+completed_at = "2026-09-07T07:21:22"
+commits = ["b0f1634c220f81d0cf047ffa3362c9fbf47e9f9f"]
