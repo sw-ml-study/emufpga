@@ -1,0 +1,8 @@
+number = 28
+slug = "rtx5060-demand-cache-break-even"
+status = "pending"
+description = "Measure a long-lived application-owned demand-admitted expert cache across su..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-06T20:41:06"
+commits = []

@@ -1,8 +1,9 @@
 number = 27
 slug = "rtx5060-profile-driven-cache-policy"
-status = "in-progress"
+status = "completed"
 description = "Consume the versioned Gemma-4 install manifest in the shared expert scheduler..."
 role = "validation"
 context_files = []
 created_at = "2026-09-06T20:08:37"
-commits = []
+completed_at = "2026-09-06T20:41:06"
+commits = ["6645a34473c5319ef2a0145ef1e2762f8844cb0d"]
