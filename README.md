@@ -118,10 +118,12 @@ three-step single-request test saved zero source bytes: 610 loads and 549
 evictions expose a reuse distance larger than the cache. This is a useful
 negative result. Concurrent-agent and layer-aware reuse remain to be tested.
 
-A first CPU-only long-lived-server pilot now shows 10.94% fewer logical source
-bytes with a 512 MiB layer-aware cache, but roughly 40% to 45% lower aggregate
-throughput from copying and global locking. This is promising traffic evidence,
-not a win. See
+A native operation-shared lease now performs one cache lookup per selected
+expert operation instead of one per CPU worker, while fresh cache/no-cache
+three-step logits remain byte-identical. A CPU-only rerun still finds heavy
+copy/eviction churn and 17% to 61% slower throughput; its 10.1% whole-run logical
+byte difference is confounded by different dynamic batching and is not yet a
+cache-reuse claim. See
 [docs/concurrent-agent-cache-pilot.md](docs/concurrent-agent-cache-pilot.md).
 
 

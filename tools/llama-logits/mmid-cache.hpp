@@ -39,6 +39,19 @@ class mmid_cache {
     using key = std::pair<const void *, size_t>;
 
 public:
+    struct statistics {
+        uint64_t operations;
+        uint64_t operation_hits;
+        uint64_t operation_misses;
+        uint64_t acquires;
+        uint64_t releases;
+        uint64_t loads;
+        uint64_t evictions;
+        uint64_t source_bytes;
+        size_t resident;
+        size_t peak;
+    };
+
     explicit mmid_cache(size_t budget, bool layer_aware = false) : budget_(budget), layer_aware_(layer_aware) {}
 
     bool acquire(const ggml_tensor * tensor, mmid_span * span, size_t size) {
@@ -52,15 +65,12 @@ public:
             std::sscanf(tensor == nullptr ? "" : tensor->name, "blk.%d.", &item->layer);
         }
         entry & value = *item;
-        const bool new_observation = value.active == 0;
-        if (new_observation) {
-            ++value.observations;
-            ++operations_;
-            if (value.bytes) {
-                ++operation_hits_;
-            } else {
-                ++operation_misses_;
-            }
+        ++value.observations;
+        ++operations_;
+        if (value.bytes) {
+            ++operation_hits_;
+        } else {
+            ++operation_misses_;
         }
         ++acquires_;
         if (value.bytes) {
@@ -68,7 +78,7 @@ public:
         } else {
             ++misses_;
             admit(value);
-            if (new_observation && !value.bytes) {
+            if (!value.bytes) {
                 source_bytes_ += size;
             }
         }
@@ -103,6 +113,12 @@ public:
 
     bool balanced() const {
         return acquires_ == releases_ && acquires_ > 0;
+    }
+
+    statistics stats() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return {operations_, operation_hits_, operation_misses_, acquires_, releases_, loads_,
+                evictions_, source_bytes_, resident_, peak_};
     }
 
 private:

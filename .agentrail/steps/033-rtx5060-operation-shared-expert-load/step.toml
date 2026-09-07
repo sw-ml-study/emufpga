@@ -1,6 +1,6 @@
 number = 33
 slug = "rtx5060-operation-shared-expert-load"
-status = "pending"
+status = "in-progress"
 description = "Redesign the native GGML expert-span integration so each selected expert oper..."
 role = "legacy"
 context_files = []

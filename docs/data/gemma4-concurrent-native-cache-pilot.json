@@ -45,6 +45,49 @@
     "logit_sha256": "b4191db5c6d548233738ad522c1dc6d510deb91f02681747cac6ee9d2a860d9d",
     "bit_identical": true
   },
+  "operation_shared_rerun": {
+    "date": "2026-09-07",
+    "device": "CPU only (-ngl 0); GPU visibility was intermittent",
+    "protocol": "one long-lived server per policy; request order c4, c1, c2, c8; 16 output tokens; one repetition",
+    "task_corpus": "gemma4-rust-cache-combined-v1.json",
+    "control": {
+      "policy": "1 MiB no-admission",
+      "operations": 80328,
+      "acquires": 80328,
+      "releases": 80328,
+      "source_bytes": 181207245824,
+      "summed_callback_wait_ms": 55.698,
+      "aggregate_tps": {"c1": 6.340217649044102, "c2": 8.06412425689728, "c4": 3.248496541413696, "c8": 4.494897567021061}
+    },
+    "candidate": {
+      "policy": "512 MiB admit-on-second-use layer-aware LRU",
+      "operations": 73684,
+      "operation_hits": 1496,
+      "operation_misses": 72188,
+      "acquires": 73684,
+      "releases": 73684,
+      "loads": 68196,
+      "evictions": 67902,
+      "source_bytes": 162889278464,
+      "source_byte_reduction": 0.10108849277358134,
+      "resident_bytes": 535636992,
+      "peak_bytes": 536752128,
+      "summed_callback_wait_ms": 28287.118,
+      "aggregate_tps": {"c1": 3.0767367444207134, "c2": 3.119453862051824, "c4": 2.5099414975647116, "c8": 3.7179945395203804}
+    },
+    "oracle": {
+      "decode_steps": 3,
+      "logit_sha256": "836cb407bafe5aa39d8adc0363e6af5bfe9eede860af47b033b72120f55fab1",
+      "bit_identical": true
+    },
+    "response_text_identical": true,
+    "caveats": [
+      "Only one run per policy; timings are directional, not confidence results.",
+      "The control and candidate formed different dynamic batches, visible in their different operation totals, so source-byte reduction is not a pure cache-policy effect.",
+      "Sixteen generated tokens truncate every function before it compiles; byte-identical response text, not pass count, is the useful quality check here.",
+      "The copy-on-admission policy still churned and was 17% to 61% slower across c1, c2, c4, and c8 in this single run."
+    ]
+  },
   "caveats": [
     "One sequential campaign per policy is insufficient for confidence intervals.",
     "The candidate ran before the control; page-cache and thermal state were not alternated.",

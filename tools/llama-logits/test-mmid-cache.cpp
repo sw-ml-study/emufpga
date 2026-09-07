@@ -48,4 +48,13 @@ int main() {
         worker.join();
     }
     assert(cache.balanced());
+    const auto stats = cache.stats();
+    assert(stats.operations == stats.acquires);
+    assert(stats.acquires == stats.releases);
+    assert(stats.operation_hits + stats.operation_misses == stats.operations);
+    assert(stats.source_bytes == first.size() * 2 + second.size() * 3);
+    assert(stats.resident == second.size());
+    assert(stats.peak == second.size());
+    assert(stats.loads == 2);
+    assert(stats.evictions == 1);
 }

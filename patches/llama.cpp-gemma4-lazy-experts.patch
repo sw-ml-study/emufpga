@@ -7,8 +7,8 @@ diff --git a/ggml/include/ggml-cpu.h b/ggml/include/ggml-cpu.h
  
 +    // Experimental selected-expert backing-store boundary. Install callbacks
 +    // before graph execution starts and keep them installed until all graphs
-+    // finish. Each CPU worker acquires its own lease; release occurs only after
-+    // every worker has crossed the expert-completion barrier.
++    // finish. The operation leader acquires one lease into graph-scoped shared
++    // workspace; all workers consume it until the completion barrier.
 +    struct ggml_mmid_span {
 +        const void * data;
 +        void * lease;
@@ -54,7 +54,17 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
  #ifdef GGML_USE_OPENMP
  #include <omp.h>
  #endif
-@@ -1663,6 +1667,17 @@ static void ggml_compute_forward_mul_mat_id(
+@@ -1587,6 +1591,9 @@ static void ggml_compute_forward_mul_mat_id(
+     char (*atomic_current_chunk)[CACHE_LINE_SIZE] = // [n_as]
+         incr_ptr_aligned(&wdata_cur, CACHE_LINE_SIZE * n_as, CACHE_LINE_SIZE);
+ 
++    struct ggml_mmid_span * shared_expert_span =
++        incr_ptr_aligned(&wdata_cur, sizeof(struct ggml_mmid_span), sizeof(void *));
++
+     // IQ panel gemm (see iqp.h); per expert eligibility is decided below, but the work buffer is
+     // reserved for the whole node (ggml_graph_plan sizes it without params, use_ref only skips the dispatch)
+     const bool iqp = ggml_cpu_iqp_supports_mul_mat_id(dst) && !params->use_ref;
+@@ -1663,6 +1670,17 @@ static void ggml_compute_forward_mul_mat_id(
  
      ggml_barrier(params->threadpool);
  
@@ -82,17 +92,21 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
      for (int cur_a = 0; cur_a < n_as; ++cur_a) {
          const int64_t cne1 = matrix_row_counts[cur_a];
  
-@@ -1670,15 +1685,16 @@ static void ggml_compute_forward_mul_mat_id(
+@@ -1670,15 +1688,21 @@ static void ggml_compute_forward_mul_mat_id(
              continue;
          }
  
-+        const char * src0_cur = (const char *) src0->data + cur_a * nb02;
-+        struct ggml_mmid_span expert_span = { src0_cur, NULL };
-+        if (g_mmid_span_acquire != NULL) {
-+            GGML_ASSERT(g_mmid_span_acquire(src0, cur_a, nb02, &expert_span, g_mmid_span_user_data));
-+            GGML_ASSERT(expert_span.data != NULL);
-+            src0_cur = expert_span.data;
++        if (ith == 0) {
++            *shared_expert_span = (struct ggml_mmid_span) {
++                (const char *) src0->data + cur_a * nb02, NULL
++            };
++            if (g_mmid_span_acquire != NULL) {
++                GGML_ASSERT(g_mmid_span_acquire(src0, cur_a, nb02, shared_expert_span, g_mmid_span_user_data));
++                GGML_ASSERT(shared_expert_span->data != NULL);
++            }
 +        }
++        ggml_barrier(params->threadpool);
++        const char * src0_cur = shared_expert_span->data;
 +#if defined(__linux__)
 +        if (getenv("GGML_MUL_MAT_ID_DONTNEED") != NULL) {
 +            if (ith == 0) {
@@ -119,7 +133,7 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
          const void * wdata = (src1->type == vec_dot_type) ? src1->data : params->wdata;
          const size_t row_size = ggml_row_size(vec_dot_type, ne10);
  
-@@ -1733,6 +1738,24 @@ static void ggml_compute_forward_mul_mat_id(
+@@ -1733,6 +1757,24 @@ static void ggml_compute_forward_mul_mat_id(
  
              current_chunk = atomic_fetch_add_explicit(current_chunk_ctr, 1, memory_order_relaxed);
          }
@@ -158,12 +172,19 @@ diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
 +        }
 +        ggml_barrier(params->threadpool);
 +#endif
-+        if (g_mmid_span_release != NULL) {
-+            g_mmid_span_release(&expert_span, g_mmid_span_user_data);
++        if (ith == 0 && g_mmid_span_release != NULL) {
++            g_mmid_span_release(shared_expert_span, g_mmid_span_user_data);
 +        }
++        ggml_barrier(params->threadpool);
      }
  }
  
+@@ -2908,3 +2953,5 @@ static struct ggml_cplan ggml_graph_plan(
+                         // atomic_current_chunk
+                         cur += CACHE_LINE_SIZE*n_as + CACHE_LINE_SIZE;
++                        // selected-expert lease shared by all workers in this graph operation
++                        cur += sizeof(struct ggml_mmid_span) + sizeof(void *);
+                         // the IQ panel path needs one scratch panel per thread on top of that
 diff --git a/src/models/gemma4.cpp b/src/models/gemma4.cpp
 --- a/src/models/gemma4.cpp
 +++ b/src/models/gemma4.cpp
