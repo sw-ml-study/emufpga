@@ -1,0 +1,8 @@
+number = 33
+slug = "rtx5060-operation-shared-expert-load"
+status = "pending"
+description = "Redesign the native GGML expert-span integration so each selected expert oper..."
+role = "legacy"
+context_files = []
+created_at = "2026-09-07T11:00:26"
+commits = []

@@ -1,8 +1,9 @@
 number = 32
 slug = "rtx5060-concurrent-agent-expert-sharing"
-status = "in-progress"
+status = "completed"
 description = "Move the validated bounded expert provider from the logits oracle into the pi..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-07T09:09:04"
-commits = []
+completed_at = "2026-09-07T11:00:26"
+commits = ["ab8a2d00828d3d0ded5f648c7728b1e23a9338c1"]
