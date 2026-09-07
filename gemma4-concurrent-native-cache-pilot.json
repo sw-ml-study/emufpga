@@ -1,0 +1,56 @@
+{
+  "schema": "emufpga.gemma4-concurrent-native-cache-pilot.v1",
+  "status": "pilot",
+  "model": "Gemma-4 26B-A4B Q5_K_M",
+  "model_sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+  "device": "CPU only; CUDA initialization and nvidia-smi failed during the campaign",
+  "server": "patched llama.cpp revision 4d9176092d00586775af140581bb0b558ddc4389",
+  "request_order": [4, 1, 2, 8],
+  "runs_per_concurrency": 1,
+  "prompt_tokens": 128,
+  "output_tokens": 16,
+  "control": {
+    "policy": "1 MiB no-admission provider over conventional mmap",
+    "correct": 14,
+    "requests": 15,
+    "source_bytes": 172080477184,
+    "worker_acquires": 457788,
+    "worker_releases": 457788,
+    "summed_callback_wait_ms": 990.612,
+    "aggregate_tps": {"c1": 1.7275719249734418, "c2": 1.8458795456490455, "c4": 2.513221565929486, "c8": 4.036234238663673}
+  },
+  "candidate": {
+    "policy": "512 MiB admit-on-second-use layer-aware LRU",
+    "correct": 15,
+    "requests": 15,
+    "source_bytes": 153252520960,
+    "source_bytes_saved": 18827956224,
+    "source_byte_reduction": 0.10941366814009869,
+    "worker_acquires": 410172,
+    "worker_releases": 410172,
+    "worker_hits": 318312,
+    "worker_misses": 91860,
+    "loads": 63180,
+    "evictions": 62864,
+    "resident_bytes": 536752128,
+    "peak_bytes": 536752128,
+    "summed_callback_wait_ms": 147528.739,
+    "aggregate_tps": {"c1": 1.010283316937381, "c2": 1.283343528724321, "c4": 1.595355401457246, "c8": 2.1769874284574264}
+  },
+  "oracle_layer_policy": {
+    "decode_steps": 3,
+    "control_source_bytes": 4181264384,
+    "candidate_source_bytes": 3908551680,
+    "source_byte_reduction": 0.06522254489420969,
+    "logit_sha256": "b4191db5c6d548233738ad522c1dc6d510deb91f02681747cac6ee9d2a860d9d",
+    "bit_identical": true
+  },
+  "caveats": [
+    "One sequential campaign per policy is insufficient for confidence intervals.",
+    "The candidate ran before the control; page-cache and thermal state were not alternated.",
+    "Worker-hit counts include threads sharing the current expert and are not expert-operation hits.",
+    "Operation-level telemetry was implemented after this pilot and needs a rebuilt rerun.",
+    "No physical-I/O, RSS/PSS, VRAM, board energy, or accepted-code throughput was captured.",
+    "The one-answer correctness difference may be batching variation and is not evidence of a quality change."
+  ]
+}
