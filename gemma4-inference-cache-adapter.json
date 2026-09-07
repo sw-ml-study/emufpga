@@ -1,0 +1,19 @@
+{
+  "schema": "emufpga.gemma4-cache-adapter.v1",
+  "model": "Gemma-4 26B-A4B Q5_K_M",
+  "model_sha256": "6b4f8074239f72543997a950ff6ae4509553c599f5b432748309ff3438416493",
+  "scope": "real block-0 selected-expert arithmetic; batch 4",
+  "assignments": 32,
+  "selected_experts": 20,
+  "cache_budget_bytes": 134217728,
+  "cache_resident_bytes": 96645120,
+  "cache_hits": 40,
+  "cache_misses": 80,
+  "cache_evictions": 0,
+  "packed_stream_bytes": 102841632,
+  "max_error": 0.00000381,
+  "tolerance": 0.002,
+  "correct": true,
+  "boundary": "immutable Arc expert buffers are consumed by Rust Q5_K/Q8_0 arithmetic; llama.cpp complete inference still consumes stable mmap tensor pointers",
+  "caveat": "This is a one-layer adapter qualification, not complete inference, token throughput, or coding-task quality."
+}
