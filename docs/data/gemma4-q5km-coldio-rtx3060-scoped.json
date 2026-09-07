@@ -1,0 +1,24 @@
+{
+  "schema":"emufpga.gemma4-coldio-rtx3060.v1",
+  "hardware":"RTX 3060 12G (Ampere sm_86), dual Xeon E5-2697 v4, 503 GiB RAM",
+  "backing_disk":"Seagate ST4000NM0063 HDD (rotational), ext4, /mnt/storage1",
+  "eviction":"posix_fadvise(POSIX_FADV_DONTNEED) per-file; no sudo; resident_pages=0 verified",
+  "scope":"1 repetition, concurrency 1 and 8, cold/warm x resident/reclaimed",
+  "trials":[
+{"trial":"c1-cold-resident","passed":1,"responses":1,"startup_read_bytes":3205029888,"total_phys_read_bytes":8433328128,"peak_rss_mib":11706.890625,"peak_vram_mib":3372,"gpu_board_energy_joules":5412.814785676006}
+,
+{"trial":"c1-cold-reclaimed","passed":1,"responses":1,"startup_read_bytes":3205029888,"total_phys_read_bytes":8433328128,"peak_rss_mib":10224.41015625,"peak_vram_mib":3372,"gpu_board_energy_joules":6501.73942404866}
+,
+{"trial":"c1-warm-resident","passed":1,"responses":1,"startup_read_bytes":0,"total_phys_read_bytes":0,"peak_rss_mib":11819.22265625,"peak_vram_mib":3372,"gpu_board_energy_joules":379.48090878367424}
+,
+{"trial":"c1-warm-reclaimed","passed":1,"responses":1,"startup_read_bytes":0,"total_phys_read_bytes":0,"peak_rss_mib":8950.85546875,"peak_vram_mib":3372,"gpu_board_energy_joules":873.4941702628137}
+,
+{"trial":"c8-cold-resident","passed":8,"responses":8,"startup_read_bytes":3205029888,"total_phys_read_bytes":11133419520,"peak_rss_mib":14402.5625,"peak_vram_mib":3374,"gpu_board_energy_joules":11614.715730841164}
+,
+{"trial":"c8-cold-reclaimed","passed":8,"responses":8,"startup_read_bytes":3205029888,"total_phys_read_bytes":11106340864,"peak_rss_mib":12616.2890625,"peak_vram_mib":3378,"gpu_board_energy_joules":12604.538704056742}
+,
+{"trial":"c8-warm-resident","passed":8,"responses":8,"startup_read_bytes":0,"total_phys_read_bytes":0,"peak_rss_mib":14463.6953125,"peak_vram_mib":3374,"gpu_board_energy_joules":1586.2740316951276}
+,
+{"trial":"c8-warm-reclaimed","passed":8,"responses":8,"startup_read_bytes":0,"total_phys_read_bytes":0,"peak_rss_mib":12202.7265625,"peak_vram_mib":3376,"gpu_board_energy_joules":4716.870678179263}
+  ]
+}

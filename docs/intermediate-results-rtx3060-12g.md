@@ -167,8 +167,48 @@ repetition.
 
 Derived data: [gemma4-q5km-executable-rtx3060.json](data/gemma4-q5km-executable-rtx3060.json).
 
-Still not run on this box: a cold-cache campaign (`bench-gemma4-cold-io`,
-which needs `drop_caches` / sudo).
+### Cold-cache I/O (scoped: 1 repetition, c1 and c8)
+
+`bench-gemma4-cold-io` evicts the model's page-cache pages per-file with
+`posix_fadvise(POSIX_FADV_DONTNEED)` (no root needed; not a global
+`drop_caches`), then loads a fresh server for every cache/policy
+combination. The model file lives on a rotational HDD (Seagate
+ST4000NM0063, ext4). Eviction was verified effective: `resident_pages`
+returned to 0 before each cold trial.
+
+| Trial | Passed | Startup HDD read | Total phys read | Peak RSS |
+| --- | ---: | ---: | ---: | ---: |
+| c1 cold, resident | 1/1 | 3.21 GB | 8.43 GB | 11,707 MiB |
+| c1 cold, reclaimed | 1/1 | 3.21 GB | 8.43 GB | 10,224 MiB |
+| c1 warm, resident | 1/1 | 0 | 0 | 11,819 MiB |
+| c1 warm, reclaimed | 1/1 | 0 | 0 | 8,951 MiB |
+| c8 cold, resident | 8/8 | 3.21 GB | 11.13 GB | 14,403 MiB |
+| c8 cold, reclaimed | 8/8 | 3.21 GB | 11.11 GB | 12,616 MiB |
+| c8 warm, resident | 8/8 | 0 | 0 | 14,464 MiB |
+| c8 warm, reclaimed | 8/8 | 0 | 0 | 12,203 MiB |
+
+Findings, all consistent with the 5060 lane's cold-HDD qualification:
+
+- **All trials pass** cold or warm, resident or reclaimed. Peak VRAM
+  stayed 3372-3378 MiB throughout.
+- **Cold demand grows sub-linearly with concurrency**: 8.43 GB at one
+  request, 11.13 GB at eight -- so bytes per passing task fall sharply as
+  the eight-request route union reuses experts. The 5060 lane measured
+  8.12 GB (c1) and 10.70 GB (c8); this box's 8.43 / 11.13 GB land in the
+  same place. Lazy loading keeps startup reads to 3.21 GB, not the full
+  19.3 GB.
+- **Reclamation lowers peak RSS but not physical bytes**: it saved about
+  1.48 GiB at c1 (11,707 -> 10,224) and 1.79 GiB at c8 (14,403 ->
+  12,616), while cold read totals were unchanged (8.43 = 8.43; 11.13 vs
+  11.11). Same conclusion the 5060 lane reached: reclamation is a
+  memory/latency tradeoff, not a disk-traffic reduction.
+- These reads are demand-paged mmap faults, not a purpose-built
+  sequential expert stream -- the same negative-control caveat the 5060
+  lane recorded.
+
+Derived data: [gemma4-q5km-coldio-rtx3060-scoped.json](data/gemma4-q5km-coldio-rtx3060-scoped.json).
+A wider campaign (3 repetitions, c1/2/4/8) is running to match the 5060
+lane's qualification shape.
 
 ## Expectations (to be confirmed or refuted, not assumed)
 
