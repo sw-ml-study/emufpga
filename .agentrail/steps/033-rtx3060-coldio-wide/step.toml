@@ -1,0 +1,8 @@
+number = 33
+slug = "rtx3060-coldio-wide"
+status = "pending"
+description = "Widen the cold-cache I/O campaign to 3 repetitions x concurrency 1/2/4/8 (48 ..."
+role = "validation"
+context_files = []
+created_at = "2026-09-06T20:58:04"
+commits = ["007604e668d421361136ff0ffb600dd494c73e91"]

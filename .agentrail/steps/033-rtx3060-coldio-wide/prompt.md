@@ -1,0 +1,1 @@
+Widen the cold-cache I/O campaign to 3 repetitions x concurrency 1/2/4/8 (48 trials, 180 executable tasks) on the RTX 3060 with the model on an HDD, and record cold-read scaling, reclamation RSS savings, and completion rates against the 5060 cold-HDD qualification. Record in docs/intermediate-results-rtx3060-12g.md.
