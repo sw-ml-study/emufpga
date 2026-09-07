@@ -1,0 +1,8 @@
+number = 32
+slug = "rtx3060-coldio-scoped"
+status = "pending"
+description = "Run a scoped cold-cache I/O campaign (bench-gemma4-cold-io, 1 rep, c1 and c8)..."
+role = "validation"
+context_files = []
+created_at = "2026-09-06T17:20:22"
+commits = ["2dba94651c8a3a6a64b09a2ad409b9c5acfe67fa"]

@@ -1,0 +1,1 @@
+Run a scoped cold-cache I/O campaign (bench-gemma4-cold-io, 1 rep, c1 and c8) on the RTX 3060 with the model on an HDD, using per-file fadvise eviction (no sudo), and record cold vs warm physical reads, reclamation RSS savings, and pass rates against the 5060 cold-HDD qualification. Record in docs/intermediate-results-rtx3060-12g.md.
