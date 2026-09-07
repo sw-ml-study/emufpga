@@ -1,8 +1,9 @@
 number = 31
 slug = "rtx5060-native-bounded-expert-provider"
-status = "in-progress"
+status = "completed"
 description = "Implement an explicit opt-in bounded native provider for the new GGML mul_mat..."
 role = "legacy"
 context_files = []
 created_at = "2026-09-07T08:50:09"
-commits = []
+completed_at = "2026-09-07T09:09:04"
+commits = ["ccc7b24cbdd14dccf2db0994005c7d9238474339"]
